@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w @lms/contracts && npm run build -w @lms/api-gateway -w @lms/identity-service -w @lms/course-service -w @lms/quiz-service -w @lms/learning-service",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   }
