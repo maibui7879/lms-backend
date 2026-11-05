@@ -15,11 +15,11 @@ Backend LMS sử dụng NestJS và npm workspaces: một API Gateway, bốn busi
 
 | Thư mục | Owner | Trách nhiệm | Branch hiện có |
 |---|---|---|---|
-| [apps/api-gateway](apps/api-gateway) | Chốt người tích hợp | Routing, JWT verification, request ID, timeout; không chứa business logic | Tạo branch task riêng |
-| [services/identity-service](services/identity-service) | TV1 | User, credential, đăng ký/đăng nhập, JWT, RBAC | `feat/identity/auth-rbac` |
-| [services/course-service](services/course-service) | TV2 | Course, chapter, lesson, publish, enrollment | `feat/course/enrollment` |
-| [services/quiz-service](services/quiz-service) | TV3 | Question, quiz, attempt, grading, result, outbox | `feat/quiz/grading` |
-| [services/learning-service](services/learning-service) | TV4 | Progress, mastery, consumer, Atlas activity/read model | `feat/learning/progress` |
+| [apps/api-gateway](apps/api-gateway) | Mạnh | Routing, JWT verification, request ID, timeout; không chứa business logic | Tạo branch task riêng |
+| [services/identity-service](services/identity-service) | Chưa chốt | User, credential, đăng ký/đăng nhập, JWT, RBAC | `feat/identity/auth-rbac` |
+| [services/course-service](services/course-service) | Chưa chốt | Course, chapter, lesson, publish, enrollment | `feat/course/enrollment` |
+| [services/quiz-service](services/quiz-service) | Chưa chốt | Question, quiz, attempt, grading, result, outbox | `feat/quiz/grading` |
+| [services/learning-service](services/learning-service) | Chưa chốt | Progress, mastery, consumer, Atlas activity/read model | `feat/learning/progress` |
 | [packages/contracts](packages/contracts) | Cả nhóm review | HTTP types, event envelope/payload, routing keys, fixture IDs | `chore/contracts-foundation` |
 | [docs](docs) | Cả nhóm | Thiết kế và quy ước tích hợp | Theo PR thay đổi |
 | [infrastructure](infrastructure) | Người tích hợp | Cấu hình hạ tầng khi triển khai | Theo task |
