@@ -96,6 +96,23 @@ Package đã khai báo `main`/`types`, các app khai báo dependency `@lms/contr
 | Course, Quiz, Learning | `@nestjs/axios`, `axios`, `amqplib` | HTTP nội bộ và RabbitMQ client |
 | Learning | `mongodb` | MongoDB Atlas native driver |
 
+### Type definitions và công cụ phát triển đã cài
+
+Các type packages dưới đây thuộc **devDependencies**, không phải runtime dependencies:
+
+| Workspace | Type definitions |
+|---|---|
+| Gateway, Identity, Course, Quiz, Learning | `@types/passport-jwt@4.0.1`, `@types/express`, `@types/jest`, `@types/node`, `@types/supertest` |
+| Course, Quiz, Learning | `@types/amqplib@0.10.8` |
+
+Cả 5 app có `@nestjs/cli`, `@nestjs/schematics`, `@nestjs/testing`, TypeScript, `ts-node`, `ts-loader`, `tsconfig-paths`, `source-map-support`, Jest, `ts-jest`, Supertest, Prettier, `oxlint` và `oxlint-tsgolint`. `@nestjs/mau` có sẵn từ scaffold; việc có package này không có nghĩa dự án đã deploy bằng Mau.
+
+Package [@lms/contracts](packages/contracts/package.json) có TypeScript trong devDependencies, scripts `build`/`typecheck` và entry points `dist/index.js`/`dist/index.d.ts`; không chứa dependency truy cập DB hoặc HTTP framework.
+
+Phiên bản chính xác nằm trong `package.json` từng workspace; [package-lock.json](package-lock.json) khóa dependency tree để cài lại bằng `npm.cmd ci`. Không cài lại type packages chỉ vì không thấy chúng trong mục runtime dependencies. Nếu API của thư viện thay đổi, vẫn cần kiểm tra declarations có tương thích với code thực tế.
+
+Không cài Mongoose/`@nestjs/mongoose` vì Learning dùng MongoDB Node.js Driver trực tiếp. Không cài `@nestjs/microservices` vì publisher/consumer RabbitMQ dự kiến dùng `amqplib` trực tiếp. Jest và Supertest hiện kiểm tra scaffold; chưa có integration tests cho PostgreSQL, Atlas hoặc RabbitMQ. Dockerfile và Docker Compose là cấu hình triển khai còn cần làm, không phải thư viện npm.
+
 Các business service đã có TypeORM, `pg`, Config và Terminus. Không cần Supabase SDK khi dùng PostgreSQL connection string với TypeORM. Các type packages Passport JWT/AMQP được cài ở devDependencies tương ứng. Dependency đã cài chưa có nghĩa module, guard, interceptor, timeout/retry, consumer hoặc database đã được cấu hình. RabbitMQ dùng `amqplib` trực tiếp theo event routing contract, không mặc định dùng Nest RPC transport.
 
 ```powershell
