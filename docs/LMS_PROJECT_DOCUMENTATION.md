@@ -99,9 +99,10 @@ flowchart TB
     CO --> DB2[(Supabase Course DB)]
     QU --> DB3[(Supabase Quiz DB)]
     LE --> DB4[(Supabase Learning DB)]
+    LE -->|Activity/read-model projection| AT[(MongoDB Atlas)]
 ```
 
-**[Đã thống nhất]** 4 business services + API Gateway; 4 Supabase projects riêng; TypeORM; monorepo npm workspaces. **[Đề xuất]** RabbitMQ làm event bus cho đồng bộ tiến độ. **Không dùng** một database chung hay foreign key xuyên database.
+**[Đã thống nhất]** 4 business services + API Gateway; 4 Supabase projects riêng cho dữ liệu nghiệp vụ; TypeORM; monorepo npm workspaces. MongoDB Atlas là datastore phụ trợ cho learning activity, analytics/read model và recommendation features. **[Đề xuất]** RabbitMQ làm event bus cho đồng bộ tiến độ. **Không dùng** một database chung hay foreign key xuyên database.
 
 ## 7. Trách nhiệm và quyền sở hữu dữ liệu
 
@@ -111,8 +112,11 @@ flowchart TB
 | Course | `Course`, `Chapter`, `Lesson`, `Enrollment` | Lưu mật khẩu, tự chấm quiz |
 | Quiz | `Question`, `Quiz`, `Attempt`, `Answer`, `Result` | Sửa trực tiếp enrollment/progress |
 | Learning | `LessonProgress`, `CourseProgress`, `Mastery`, `Certificate` | Đọc trực tiếp DB Quiz/Course |
+| Learning projection | `learning_activity_events`, `progress_read_models`, `recommendation_features` trên MongoDB Atlas | Không làm source of truth cho enrollment, grading hoặc credential |
 
 Các service chỉ lưu **ID tham chiếu** (`userId`, `courseId`, `quizId`, `lessonId`), không tạo database-level FK sang service khác. Dữ liệu tham chiếu có thể được xác minh bằng REST hoặc local read model từ event; nếu service nguồn unavailable, xử lý lỗi hạ tầng hoặc PENDING thay vì đoán.
+
+Supabase/PostgreSQL là **source of truth** cho User, Course, Enrollment, Quiz, Attempt, Result và Progress chính thức. MongoDB Atlas chỉ giữ dữ liệu append-only hoặc projection có thể xây dựng lại từ event. Không thực hiện distributed transaction giữa Supabase và Atlas; nếu projection thất bại, consumer retry hoặc rebuild projection sau.
 
 ### 7.1 Tại sao không chia theo Controller/Entity?
 
@@ -198,7 +202,7 @@ src/modules/courses/
 | CI | GitHub Actions | Build/test/lint tự động; điểm cộng |
 | Observability | Pino, correlation ID, Terminus | Log có cấu trúc, truy vết, health |
 | Advanced | Circuit breaker, OpenTelemetry | Tăng độ tin cậy/trace; tùy chọn |
-| NoSQL | MongoDB Atlas | **Không cần cho MVP**; PostgreSQL JSONB đủ cho nhiều metadata linh hoạt |
+| NoSQL | MongoDB Atlas | Learning activity, analytics/read model, recommendation features và search document; không lưu transaction nghiệp vụ cốt lõi |
 
 **Phân biệt:** package đã cài (`@nestjs/typeorm`, `@nestjs/terminus`...) không chứng minh đã cấu hình kết nối, migrations hay triển khai các tính năng. Không ghi mọi công nghệ là “đã hoàn tất” trong báo cáo.
 
@@ -210,9 +214,9 @@ src/modules/courses/
 | Identity | 3001 | `PORT`, `DATABASE_URL`, signing key/config |
 | Course | 3002 | `PORT`, `DATABASE_URL`, `RABBITMQ_URL`, `IDENTITY_URL` |
 | Quiz | 3003 | `PORT`, `DATABASE_URL`, `RABBITMQ_URL`, `COURSE_URL` |
-| Learning | 3004 | `PORT`, `DATABASE_URL`, `RABBITMQ_URL`, `COURSE_URL` |
+| Learning | 3004 | `PORT`, `DATABASE_URL`, `RABBITMQ_URL`, `COURSE_URL`, `MONGODB_URI`, `MONGODB_DATABASE` |
 
-**Không commit `.env`**; chỉ commit `.env.example` với placeholder. Dùng Supabase connection string lấy trực tiếp từ dashboard (pooler phù hợp với mạng của nhóm), mã hóa ký tự đặc biệt trong password. Mỗi thành viên quản lý project Supabase riêng; mời trưởng nhóm vào project để tránh phụ thuộc vào tài khoản cá nhân khi demo.
+**Không commit `.env`**; chỉ commit `.env.example` với placeholder. Dùng Supabase connection string lấy trực tiếp từ dashboard (pooler phù hợp với mạng của nhóm), mã hóa ký tự đặc biệt trong password. Dùng MongoDB Atlas connection string từ Secret/Environment của môi trường, không hard-code vào source. Mỗi thành viên quản lý project Supabase riêng; MongoDB Atlas nên dùng database/collection namespace riêng cho môi trường dev và test.
 
 ### 10.1 Database module minh họa
 
@@ -393,6 +397,8 @@ Mỗi business service có `GET /health` kiểm tra khả năng hoạt động (
 Consumer ghi `eventId` vào bảng `processed_events` với UNIQUE constraint. Trong **cùng một database transaction**, kiểm tra/insert eventId và cập nhật progress. Nếu event đã xử lý → ack, không cập nhật lại. Nếu lỗi tạm thời → retry có backoff và giới hạn; vượt ngưỡng → DLQ để kiểm tra. **Không ack trước khi transaction commit**.
 
 **Vấn đề quan trọng:** ghi DB Quiz thành công nhưng publish RabbitMQ thất bại có thể mất event. Giải pháp production là **transactional outbox** (ghi result + outbox row cùng transaction; publisher worker gửi event và đánh dấu đã gửi). MVP có thể triển khai outbox tối giản; nếu không, phải ghi rõ hạn chế và kịch bản phục hồi.
+
+Learning xử lý event theo hai nhánh: cập nhật progress/mastery chính thức trong Supabase/PostgreSQL và ghi activity/projection vào MongoDB Atlas. Nhánh Atlas không được quyết định kết quả nghiệp vụ; phải idempotent theo `eventId`, có retry và có thể rebuild từ event/outbox. Nếu Atlas unavailable, vẫn giữ được progress chính thức và đánh dấu projection cần đồng bộ lại.
 
 ## 14. Distributed workflow: Submit quiz → update progress
 
@@ -630,7 +636,7 @@ docker compose up --build
 | TV1 | Identity | Entities/migrations, Auth/RBAC, OpenAPI, Dockerfile, tests |
 | TV2 | Course | Courses/lessons/enrollment, event publish, OpenAPI, Dockerfile, tests |
 | TV3 | Quiz | Questions/attempt/grading, event/outbox, OpenAPI, Dockerfile, tests |
-| TV4 | Learning | Progress/mastery, event consumer/idempotency, OpenAPI, Dockerfile, tests |
+| TV4 | Learning | Progress/mastery trên Supabase, MongoDB Atlas activity/read model, event consumer/idempotency, OpenAPI, Dockerfile, tests |
 | Cả nhóm | Gateway, shared contracts, Compose, E2E, báo cáo | PR review, fault demos, integration |
 
 Mỗi thành viên cần giải thích được thiết kế, mã nguồn và trade-offs của phần mình phụ trách khi vấn đáp. Chốt owner của Gateway/Compose cụ thể trong bảng phân công thực tế; “cả nhóm” không có nghĩa không ai chịu trách nhiệm.
@@ -651,8 +657,8 @@ Mỗi thành viên cần giải thích được thiết kế, mã nguồn và tr
 | 2 — Persistence | 4 Supabase projects, TypeORM, migrations, seed | CRUD DB và health DB test pass |
 | 3 — Contracts | OpenAPI, DTO, event schema, error envelope | 4 nhóm review và chốt contracts |
 | 4 — Core business | Identity/Course/Quiz/Learning | ≥4 endpoints/service, business rule tests |
-| 5 — Integration | Gateway, JWT, HTTP adapters, RabbitMQ, outbox | Quiz→Learning sync + idempotency |
-| 6 — Reliability | Timeout/retry, PENDING, DLQ, fault injection | 2 scenarios có số liệu |
+| 5 — Integration | Gateway, JWT, HTTP adapters, RabbitMQ, outbox, MongoDB Atlas projection | Quiz→Learning sync + idempotency + activity projection |
+| 6 — Reliability | Timeout/retry, PENDING, DLQ, fault injection, projection rebuild | 2 scenarios có số liệu; Atlas projection không làm mất progress chính thức |
 | 7 — Delivery | Dockerfiles, Compose, Postman, CI, docs | `docker compose up --build` demo thành công |
 | 8 — Defense | Báo cáo, slide, tập vấn đáp | Mỗi thành viên giải thích phần mình |
 
@@ -683,6 +689,7 @@ Mỗi thành viên cần giải thích được thiết kế, mã nguồn và tr
 8. Frontend dùng state management gì trong số lựa chọn đã đề xuất?
 9. Phương thức Supabase pooling/TLS và cơ chế migration khi deploy?
 10. Chốt số liệu SLA demo (timeout, retry, latency) sau khi benchmark.
+11. MongoDB Atlas dùng cho những projection nào, namespace dev/test ra sao, và cơ chế retry/rebuild khi Atlas unavailable?
 
 ---
 
