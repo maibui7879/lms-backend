@@ -22,7 +22,7 @@ export interface JwtClaims {
 export interface RegisterRequest {
   email: string;
   password: string;
-  role?: Exclude<UserRole, 'ADMIN'>;
+  role?: Exclude<UserRole, 'STUDENT'>;
 }
 
 export interface LoginRequest {
