@@ -2,6 +2,8 @@
   "name": "@lms/contracts",
   "version": "0.1.0",
   "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "description": "Shared HTTP and event contracts for the LMS services",
   "scripts": {
     "build": "tsc -p tsconfig.json",
