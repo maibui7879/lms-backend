@@ -84,7 +84,19 @@ Danh sách biến cần triển khai nằm ở mục 10 của [tài liệu thi�
 
 Types là hợp đồng **compile-time**, không phải runtime validation, JWT signature verification hoặc OpenAPI. `Uuid = string` không tự kiểm tra UUID. Mỗi service vẫn phải validate HTTP/event đầu vào, kiểm tra role và ownership.
 
-Package hiện có scripts build/typecheck nhưng chưa có `main`/`types`/`exports`, và các service chưa khai báo dependency `@lms/contracts`. Trước khi import theo package name, cần một PR cấu hình package entry points, dependency và thứ tự build (contracts trước consumer). Không mặc định `import ... from '@lms/contracts'` đã hoạt động chỉ vì package nằm trong workspaces.
+Package đã khai báo `main`/`types`, các app khai báo dependency `@lms/contracts`; root build biên dịch contracts trước consumer. Chạy build contracts trước khi phát triển consumer nếu chưa có output. Dùng `import type` cho các interface; event constants là runtime exports.
+
+### Thư viện đã cài theo workspace
+
+| Workspace | Dependency bổ sung | Mục đích |
+|---|---|---|
+| Tất cả app | `class-validator`, `class-transformer`, `@nestjs/swagger`, `helmet`, `nestjs-pino`, `pino-http`, `@nestjs/passport`, `passport`, `passport-jwt`, `@lms/contracts` | Validation, OpenAPI, HTTP security, logging, JWT verification, contracts |
+| Identity | `@nestjs/jwt`, `argon2` | Phát JWT, hash mật khẩu |
+| Gateway | `@nestjs/config`, `@nestjs/axios`, `axios`, `@nestjs/throttler` | Config, HTTP forwarding, rate limit |
+| Course, Quiz, Learning | `@nestjs/axios`, `axios`, `amqplib` | HTTP nội bộ và RabbitMQ client |
+| Learning | `mongodb` | MongoDB Atlas native driver |
+
+Các business service đã có TypeORM, `pg`, Config và Terminus. Không cần Supabase SDK khi dùng PostgreSQL connection string với TypeORM. Các type packages Passport JWT/AMQP được cài ở devDependencies tương ứng. Dependency đã cài chưa có nghĩa module, guard, interceptor, timeout/retry, consumer hoặc database đã được cấu hình. RabbitMQ dùng `amqplib` trực tiếp theo event routing contract, không mặc định dùng Nest RPC transport.
 
 ```powershell
 npm.cmd run typecheck -w @lms/contracts
