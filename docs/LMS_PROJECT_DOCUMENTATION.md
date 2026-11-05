@@ -50,6 +50,8 @@ Hệ thống Learning Management System (LMS) hỗ trợ giảng viên xây dự
 
 **Ngoài phạm vi MVP:** livestream, thanh toán, chống gian lận nâng cao, AI recommendation bắt buộc, video transcoding, đa tổ chức phức tạp. Nếu backlog thực tế có các mục này, đưa vào phase sau và giữ ưu tiên từ backlog đã duyệt.
 
+**Đối chiếu Function List:** P0/P1 trong bảng là phạm vi MVP kỹ thuật đề xuất, không thay thế backlog môn học/Function List đã duyệt. Chưa có Function List trong nguồn tài liệu hiện tại để xác nhận certificate là tùy chọn. Trước khi giao task, nhóm phải lập mapping `Function ID → yêu cầu → service owner → mức bắt buộc → phase → acceptance test`; chức năng bắt buộc trong Function List vẫn phải triển khai dù nằm ngoài luồng cốt lõi. Certificate và recommendation giữ trạng thái **chờ đối chiếu backlog**, không tự coi đã loại khỏi phạm vi giao nộp.
+
 ## 4. Quy tắc nghiệp vụ đề xuất
 
 | ID | Quy tắc | Service sở hữu | HTTP lỗi gợi ý |
@@ -68,6 +70,12 @@ Hệ thống Learning Management System (LMS) hỗ trợ giảng viên xây dự
 | BR-12 | Hoàn thành bài học phải thuộc khóa học đã đăng ký | Learning | `403 ENROLLMENT_REQUIRED` |
 | BR-13 | Cập nhật tiến độ không được cộng trùng cùng một sự kiện | Learning | Idempotent consumer |
 | BR-14 | Chứng chỉ chỉ cấp khi thỏa điều kiện hoàn thành | Learning | `409 COURSE_NOT_COMPLETED` |
+| BR-15 | Practice quiz chỉ phục vụ luyện tập, không góp điều kiện graded assessment; graded quiz tính đạt theo policy snapshot của attempt | Quiz/Learning | `422 INVALID_QUIZ_POLICY` |
+| BR-16 | Chỉ hoàn thành course khi enrollment hợp lệ, tất cả learning items bắt buộc hoàn thành và tất cả graded assessments bắt buộc đạt | Learning | `409 COURSE_REQUIREMENTS_NOT_MET` |
+| BR-17 | Hoàn thành course không tự động đồng nghĩa đã cấp certificate; eligibility và issuance là bước riêng | Learning | `409 CERTIFICATE_NOT_ELIGIBLE` |
+| BR-18 | Resume chỉ đọc/ghi vị trí thuộc course mà user được phép học; checkpoint không tự đánh dấu hoàn thành | Learning | `403 ENROLLMENT_REQUIRED` |
+
+BR-15–18 là **đề xuất domain bổ sung**, cần review cùng Function List; không phải các rule đã được hiện thực trong code.
 
 **Cần chốt trước khi code:** ngưỡng đạt quiz, số lượt làm, điều kiện hoàn thành khóa học, có cho học viên tự hủy enrollment hay không, quiz gắn vào lesson hay course. Các giá trị này không được hard-code vào Gateway.
 
@@ -385,12 +393,12 @@ Mỗi business service có `GET /health` kiểm tra khả năng hoạt động (
 | Routing key | Producer | Consumer | Mục đích |
 |---|---|---|---|
 | `course.enrollment.created.v1` | Course | Learning | Khởi tạo progress |
-| `course.lesson.completed.v1` | Learning | Analytics/khác (tùy chọn) | Thống kê |
+| `learning.lesson.completed.v1` | Learning | Analytics/khác (tùy chọn) | Thống kê |
 | `quiz.attempt.graded.v1` | Quiz | Learning | Cập nhật mastery/progress |
 | `course.published.v1` | Course | Search/Notification (tùy chọn) | Cập nhật read model |
 | `learning.course.completed.v1` | Learning | Notification (tùy chọn) | Thông báo hoàn thành |
 
-**Chú ý:** `course.lesson.completed.v1` chỉ là event do Learning phát sau khi xử lý completion; tên event cần nhất quán với owner thực tế.
+**Đề xuất chuẩn hóa namespace:** dùng `learning.lesson.completed.v1` cho event do Learning phát sau khi transaction completion commit. Tên cũ `course.lesson.completed.v1` được thay thế trong thiết kế; nếu đã có consumer thực tế, phải lập kế hoạch chuyển đổi routing key, không đổi âm thầm. Contract package hiện chưa khai báo event completion này.
 
 ### 13.3 Idempotency và DLQ
 
@@ -679,6 +687,8 @@ Mỗi thành viên cần giải thích được thiết kế, mã nguồn và tr
 
 ## 29. Quyết định kiến trúc còn cần chốt (ADR backlog)
 
+Các đề xuất chi tiết ở mục 30–33 chưa được xem là quyết định đã duyệt. Chỉ triển khai module phụ thuộc sau khi owner liên quan xác nhận ADR và cập nhật contracts/tests cùng PR.
+
 1. Quiz thuộc course hay lesson? Có quiz bắt buộc để hoàn thành course không?
 2. Quiz pass threshold, maxAttempts và grading policy?
 3. Progress calculation: tỷ trọng lesson vs quiz; có cho reset không?
@@ -692,6 +702,61 @@ Mỗi thành viên cần giải thích được thiết kế, mã nguồn và tr
 11. MongoDB Atlas dùng cho những projection nào, namespace dev/test ra sao, và cơ chế retry/rebuild khi Atlas unavailable?
 
 ---
+
+## 30. Domain Model & Learning Item Model — đề xuất review
+
+Giữ 4 business services, không thêm microservice. Đề xuất quan hệ `Course → Chapter → Lesson → LearningItem`; mỗi lesson chứa các item có thứ tự, `type = VIDEO | READING | QUIZ`, cờ `required` và `contentVersion`. Course sở hữu cấu trúc/content reference; Quiz sở hữu định nghĩa câu hỏi, policy và attempts. Item loại QUIZ chỉ tham chiếu `quizId`, không copy đáp án hoặc grading logic sang Course.
+
+Enrollment ghi nhận một phiên bản requirements đã publish. Learning đọc snapshot requirements gồm item IDs, required flags, graded assessment references và version; không suy luận course completed chỉ từ số phần trăm. Cần xác minh quan hệ quiz/item bằng API/event đã thống nhất, không join DB xuyên service. Việc sửa nội dung tạo version mới; không âm thầm làm mất trạng thái hoàn thành của enrollment cũ. Chính sách migrate enrollment sang version mới cần ADR riêng.
+
+## 31. Course Completion Policy — đề xuất review
+
+- Practice quiz: phản hồi luyện tập; không góp vào điều kiện đạt graded assessment bắt buộc. Nếu practice item là required, tiêu chí hoàn thành item phải được định nghĩa riêng (ví dụ submitted), không đánh đồng với passed.
+- Graded quiz: policy gồm `quizType`, `passingScorePercent` trong `[0,100]`, `maxAttempts` là số nguyên dương và `requiredForCompletion`. Đề xuất lấy kết quả đạt của bất kỳ attempt hợp lệ nào trên cùng assessment version; không lấy practice score thay graded score.
+- `passed = score / maxScore * 100 >= passingScorePercent`, với `maxScore > 0`; quy tắc làm tròn hiển thị không thay đổi phép so sánh. Attempt snapshot policy và assessment version để thay threshold sau này không đổi kết quả lịch sử.
+- Course `COMPLETED` khi enrollment hợp lệ **AND** mọi required item hoàn thành **AND** mọi required graded assessment đạt. Item optional không chặn hoàn thành; course không có requirements bắt buộc phải bị chặn publish hoặc có policy riêng được chốt, không tự hoàn thành bằng phép kiểm tra tập rỗng.
+- Learning sở hữu quyết định completion; Course sở hữu enrollment và requirements. Certificate eligibility kiểm tra course completed cùng policy cấp chứng chỉ riêng; issuance có unique constraint/idempotency, không cấp trùng. Practice/graded không quy định cứng số lần làm; giới hạn theo policy đã validate.
+
+**API cần bổ sung ở §12.3:** đề xuất `PATCH /api/v1/quizzes/:id` cho Owner/Admin cập nhật draft policy. DTO runtime phải validate enum, range, integer và quan hệ policy; publish đóng băng version. Không cho client tự truyền điểm, `passed` hoặc tự đặt `requiredForCompletion` trái requirements Course. Event graded cần thêm assessment/policy version trước khi Learning sử dụng policy mới; đó là thay đổi contract cần review compatibility, chưa có trong code hiện tại.
+
+## 32. Learning Resume & Progress State Machine — đề xuất review
+
+### 32.1 Resume Learning
+
+Đề xuất bổ sung §12.4:
+
+| Method | Route qua Gateway | Ý nghĩa |
+|---|---|---|
+| GET | `/api/v1/learning/courses/:id/resume` | Lấy checkpoint gần nhất của user hiện tại |
+| PUT | `/api/v1/learning/courses/:id/resume` | Lưu checkpoint sau validation quyền học và content version |
+| GET | `/api/v1/learning/attempts/:attemptId/sync` | Đọc trạng thái projection Quiz → Learning |
+
+Resume resource gồm `courseId`, `lessonId`, `learningItemId`, `contentVersion`, `positionSeconds` (video), `updatedAt`, `revision`. Không có checkpoint trả `data: null`; client có thể chọn item được phép học đầu tiên. Server lấy `userId` từ identity context, kiểm tra checkpoint thuộc đúng course. Dùng revision/optimistic concurrency để checkpoint cũ không ghi đè checkpoint mới; không lấy video position lớn nhất vì user có thể chủ động xem lại. Checkpoint không phải bằng chứng hoàn thành; completion endpoint vẫn có policy riêng.
+
+### 32.2 Completion và đồng bộ
+
+Item: `NOT_STARTED → IN_PROGRESS → COMPLETED`. Course: `NOT_STARTED → IN_PROGRESS → COMPLETED` theo requirements snapshot; reset/reopen phải có policy riêng. Event trùng không cập nhật hai lần; event đến trễ không làm giảm progress hoặc ghi đè assessment version khác. Checkpoint và completion được lưu riêng trong Learning PostgreSQL.
+
+Quiz sở hữu kết quả chấm (`GRADED`) và trạng thái outbox delivery; Learning sở hữu **projection receipt** theo `eventId/attemptId/userId`. Không coi outbox SENT là ProgressSync SYNCED, và không coi việc chưa thấy receipt là đã xử lý thất bại.
+
+- `PENDING`: chưa có receipt terminal hoặc đang retry; API phải kiểm tra attempt tồn tại/ownership qua Quiz (timeout → 503/504, không suy đoán). Có thể biểu diễn pending suy ra khi event chưa tới, không khẳng định Learning đã có row từ lúc Quiz chấm.
+- `SYNCED`: transaction Learning đã ghi `processed_events`, progress/mastery và receipt thành công. Receipt cần lưu bền vững ở PostgreSQL; trả `eventId`, `attemptId`, `status`, `updatedAt` và lỗi công khai nếu có.
+- `FAILED`: retry đã hết và có failure receipt được ghi bền vững bởi Learning retry/DLQ handler. Chỉ đưa vào broker DLQ không tự cập nhật DB; nếu handler chưa ghi được failure receipt, API vẫn báo pending/unknown kèm trạng thái chẩn đoán, không bịa FAILED.
+- Replay được phép `FAILED → PENDING → SYNCED` sau khi sửa lỗi; giữ cùng event identity để deduplicate. ACK chỉ sau commit. Nếu crash giữa ghi failure receipt và đưa DLQ, cần cơ chế retry/outbox để không mất thông tin.
+
+Frontend đọc Quiz result riêng và poll sync endpoint qua Gateway với backoff giới hạn; chỉ hỏi tiến độ của chính user. Atlas projection là trạng thái phụ trợ khác, không quyết định receipt SYNCED của progress chính thức. Cần thống nhất retention/replay source, timeout hiển thị và phân biệt pending với missing attempt trong contract review.
+
+## 33. ADR review register
+
+| ADR | Nội dung cần chốt | Owner review | Trạng thái và tác động |
+|---|---|---|---|
+| ADR-01 | LearningItem liên kết Quiz, requirements/content version | TV2 + TV3 + TV4 | Đề xuất §30; ảnh hưởng Course/Quiz/Learning schemas |
+| ADR-02 | Practice/graded, threshold, attempt policy, completion, certificate eligibility | TV2 + TV3 + TV4 | Đề xuất §31; đối chiếu Function List trước khi duyệt |
+| ADR-03 | Resume revision và checkpoint validation | TV2 + TV4 | Đề xuất §32; thêm HTTP DTO/OpenAPI |
+| ADR-04 | Receipt ownership, sync query, retry/DLQ/replay | TV3 + TV4 + Gateway owner | Đề xuất §32; thêm status contract và event version metadata |
+| ADR-05 | Mapping Function List → MVP/P0/P1 | Trưởng nhóm + cả nhóm | Chờ nguồn Function List; chưa xác nhận certificate tùy chọn |
+
+Mỗi ADR khi duyệt phải bổ sung ngày, người xác nhận, lựa chọn và trade-offs, acceptance tests, migration/versioning plan và PR liên quan. Không ghi tên/ngày phê duyệt khi chưa có xác nhận thực tế. Tech stack và ranh giới 4 services không thay đổi trong đợt chỉnh lý này.
 
 ## Phụ lục A — Contract ownership matrix
 
