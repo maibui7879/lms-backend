@@ -71,6 +71,8 @@ Danh sách biến cần triển khai nằm ở mục 10 của [tài liệu thi�
 
 ## 4. Shared contracts và fixture IDs
 
+Mock authentication cho local/test nằm tại [packages/auth](packages/auth/README.md). Package cung cấp `MockAuthGuard`, `CurrentUser` và fixture identity; chưa được tự động gắn vào service. Chỉ bật với `MOCK_AUTH=true` và `NODE_ENV=development` hoặc `test`; không dùng làm fallback cho JWT trên production. Root build biên dịch contracts → auth → các app.
+
 | File | Nội dung |
 |---|---|
 | [http/common.ts](packages/contracts/src/http/common.ts) | UUID alias, success/error envelope |
