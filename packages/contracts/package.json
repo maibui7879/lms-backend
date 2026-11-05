@@ -1,0 +1,13 @@
+{
+  "name": "@lms/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared HTTP and event contracts for the LMS services",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}
