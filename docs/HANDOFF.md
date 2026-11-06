@@ -1,5 +1,13 @@
 # Integration handoff
 
+## Course create prototype — 2026-11-07
+
+Follow-up verification: six Course unit tests and lint passed after adding safe seed diagnostics. Supabase session-pooler connectivity and the seed command were subsequently verified: the draft fixture exists exactly once after repeated runs. Credentials remain in the ignored service environment file. This verifies connectivity/schema setup/seed, not an end-to-end POST through Gateway against Supabase.
+
+[Course onboarding](../services/course-service/README.md) now documents the implemented POST `/api/v1/courses`: TypeORM PostgreSQL persistence, environment loading/validation, opt-in development-only schema sync, guarded development/test mock auth, shared-contract input validation, response/error envelopes and an insert-only draft seed. GET `/` remains available. JWT integration, migrations/health, other course APIs and cross-service flows remain unimplemented; historical scaffold-only notes below predate this prototype.
+
+Focused checks passed: Course build/lint, four unit tests, six HTTP tests (repository test double), two persistence/seed tests against an isolated PostgreSQL 18 database in local WSL, and eight shared-contract tests. The default e2e run skips DB tests without TEST_DATABASE_URL; the dedicated DB run was executed separately. Supabase connectivity/TLS was not exercised because no Supabase environment file/credentials were configured. Root typecheck and code formatting checks passed. Runtime validation uses the shared parser rather than duplicating class-validator rules. Unexpected failures use the additive shared INTERNAL_ERROR/500 code.
+
 ## Contract baseline — 2026-11-06
 
 The [contract package baseline](../packages/contracts/README.md) now defines the planned HTTP/internal/event surface, runtime validation and generated OpenAPI. Its explicit policies supersede the older contract proposals below: public signup is STUDENT only (Admin provisions Instructor), Course publishing requires Admin review, new result APIs separate attempt/grading state, and versioned enrollment/graded events pin requirements/assessment snapshots. Existing v1 event types and legacy result types remain available. No business endpoints, mock dataset or seed are implemented by this contract change; producer/consumer review and external Function List reconciliation remain required.
@@ -8,14 +16,14 @@ The [contract package baseline](../packages/contracts/README.md) now defines the
 
 Verified on Windows with Node v24.21.0 and npm 11.21.0:
 
-| Check | Result |
-|---|---|
-| `npm ci` | Passed; 711 packages installed |
-| `npm run build` | Passed: contracts, auth and all five Nest applications |
-| `npm run typecheck` | Passed; only contracts/auth currently expose this script |
-| `npm test` | Passed: five scaffold Jest tests and four mock auth tests |
-| `git diff --check` | Passed |
-| Quiz scaffold startup and HTTP GET `/` | Passed: 200, `Hello World!`; temporary process stopped |
+| Check                                  | Result                                                    |
+| -------------------------------------- | --------------------------------------------------------- |
+| `npm ci`                               | Passed; 711 packages installed                            |
+| `npm run build`                        | Passed: contracts, auth and all five Nest applications    |
+| `npm run typecheck`                    | Passed; only contracts/auth currently expose this script  |
+| `npm test`                             | Passed: five scaffold Jest tests and four mock auth tests |
+| `git diff --check`                     | Passed                                                    |
+| Quiz scaffold startup and HTTP GET `/` | Passed: 200, `Hello World!`; temporary process stopped    |
 
 Install reported 26 dependency vulnerabilities (5 low, 19 moderate, 2 high). Dependency remediation needs a separate compatibility review. This run did not exercise registration, JWT verification, database seeds, RabbitMQ or a cross-service business flow. The new CI workflow has not yet run on GitHub, and branch protection has not been verified or enabled. Onboarding was tested from a clean dependency install in the existing checkout, not a fresh clone.
 
