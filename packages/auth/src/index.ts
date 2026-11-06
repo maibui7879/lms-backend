@@ -11,19 +11,31 @@ export interface AuthenticatedRequest {
 }
 
 const roles: Record<MockUserName, UserRole> = {
-  studentA: 'STUDENT', studentB: 'STUDENT', studentC: 'STUDENT', studentD: 'STUDENT',
-  instructorA: 'INSTRUCTOR', instructorB: 'INSTRUCTOR', adminA: 'ADMIN',
+  studentA: 'STUDENT',
+  studentB: 'STUDENT',
+  studentC: 'STUDENT',
+  studentD: 'STUDENT',
+  instructorA: 'INSTRUCTOR',
+  instructorB: 'INSTRUCTOR',
+  adminA: 'ADMIN',
 };
 
 export function getMockUser(name: MockUserName): AuthUser {
-  return { id: ids.users[name], email: `${name}@example.test`, role: roles[name], status: 'ACTIVE' };
+  return {
+    id: ids.users[name],
+    email: `${name}@example.test`,
+    role: roles[name],
+    status: 'ACTIVE',
+  };
 }
 
 /** Local/test only. This guard does NOT verify JWTs or enforce ownership/RBAC. */
 export class MockAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    if (process.env.MOCK_AUTH !== 'true' ||
-      !['development', 'test'].includes(process.env.NODE_ENV ?? '')) {
+    if (
+      process.env.MOCK_AUTH !== 'true' ||
+      !['development', 'test'].includes(process.env.NODE_ENV ?? '')
+    ) {
       throw new UnauthorizedException('Mock authentication is disabled');
     }
     if (context.getType() !== 'http') {
@@ -34,7 +46,9 @@ export class MockAuthGuard implements CanActivate {
     delete request.user;
     const name = request.headers['x-mock-user'];
     if (typeof name !== 'string' || !Object.hasOwn(roles, name)) {
-      throw new UnauthorizedException('A valid x-mock-user fixture name is required');
+      throw new UnauthorizedException(
+        'A valid x-mock-user fixture name is required',
+      );
     }
     request.user = getMockUser(name as MockUserName);
     return true;
