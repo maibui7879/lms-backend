@@ -19,14 +19,109 @@ Hiện chỉ có scaffold `GET /` → `Hello World!`; chưa có quiz API, DB, de
 
 API cần triển khai: quiz draft/publish/archive; question CRUD; start/get attempt; save answers/submit/result/review/history; owner statistics/learner summaries; internal graded summary/attempt access. Lấy operationId từ [catalog](../../packages/contracts/src/endpoints.ts), không tự đổi route hoặc quay về legacy result.status.
 
-## Thứ tự nhận task
+## Mục tiêu và cách thực hiện
 
-1. Config/DB/migrations, health, auth và Course integration adapter cho enrollment/access/content reference.
-2. Draft quiz/policy và question authoring; publish đóng băng assessment version.
-3. Start attempt với transaction/idempotency, policy/questions/order snapshot và expiresAt.
-4. Autosave với revision, submit atomic, objective grading, result V2 và deadline worker.
-5. Outbox graded.v2 và internal graded/attempt-access để Learning tích hợp.
-6. History/review policy/statistics, skill score evidence, failure/recovery tests.
+Xây dựng backend để giảng viên soạn quiz, học viên làm/nộp bài và Learning nhận kết quả chấm chính xác. Thực hiện sáu giai đoạn; kiểm thử chức năng, sai quyền và lỗi liên quan sau từng bước.
+
+### Giai đoạn 1 — Chuẩn bị hệ thống và kiểm tra quyền truy cập
+
+**Mục tiêu:** Có DB và nền tảng xác thực, kiểm tra Course trước khi xử lý quiz.
+
+**Công việc cụ thể:**
+
+1. Triển khai config validation, PostgreSQL/migrations và health; thiết kế quiz, question, attempt, answer, result và outbox.
+2. Kiểm tra user JWT và ownership theo course, không tin userId/role từ client.
+3. Viết Course adapter kiểm tra enrollment, access và quan hệ course/lesson/item/quiz.
+
+**Giải thích thuật ngữ:** Migration thay đổi DB schema; ownership là quyền sở hữu tài nguyên; adapter kết nối service khác; outbox giữ sự kiện trong DB trước khi gửi; dependency là thành phần cần dùng từ bên ngoài.
+
+**Kết quả cần đạt:** Service có DB và adapter xác định được điều kiện truy cập; chưa có Course thật thì dùng fake adapter có ghi rõ trong test.
+
+**Cách kiểm thử:** Config/DB lỗi, JWT không hợp lệ, owner khác course và Course timeout/unavailable. Xác nhận provider lỗi trả 503/504, không cho học viên truy cập theo giả định.
+
+### Giai đoạn 2 — Soạn câu hỏi và xuất bản quiz
+
+**Mục tiêu:** Giảng viên tạo quiz có policy và câu hỏi hợp lệ mà không lộ đáp án cho học viên.
+
+**Công việc cụ thể:**
+
+1. Viết quiz draft CRUD và question authoring cho SINGLE_CHOICE/MULTIPLE_CHOICE; kiểm tra choices, đáp án, points và skillIds.
+2. Validate thời lượng, threshold, số lần làm, lịch mở/đóng và review policy; cập nhật phải kiểm tra version.
+3. Publish đóng băng assessmentVersion/policy/questions; archive chặn start mới, chỉ xóa draft đủ điều kiện.
+4. Tách QuestionAuthoringDTO khỏi QuestionDeliveryDTO bằng mapping allowlist.
+
+**Giải thích thuật ngữ:** Authoring là dữ liệu soạn câu hỏi có đáp án; delivery là dữ liệu gửi người làm bài; policy là quy tắc làm/chấm bài; assessmentVersion là phiên bản bài kiểm tra; threshold là mức điểm đạt.
+
+**Kết quả cần đạt:** Quiz draft chỉnh sửa được; quiz đã publish bất biến theo baseline; metadata/delivery không có đáp án đúng hoặc explanation.
+
+**Cách kiểm thử:** Không phải owner, choice trùng/ngoài câu hỏi, single-choice có nhiều đáp án đúng, points không dương, policy sai và stale version. Thử sửa published quiz, publish thiếu câu hỏi và parse delivery có answer keys để xác nhận bị chặn.
+
+### Giai đoạn 3 — Bắt đầu và đọc lại lượt làm bài
+
+**Mục tiêu:** Mỗi attempt có dữ liệu cố định, deadline server và giới hạn số lượt rõ ràng.
+
+**Công việc cụ thể:**
+
+1. Start chỉ khi enrollment/access, trạng thái/lịch quiz và maxAttempts hợp lệ.
+2. Tạo attempt cùng snapshot policy/questions/version/thứ tự câu-lựa chọn trong transaction.
+3. Tính expiresAt từ server; xử lý Idempotency-Key và concurrent starts không vượt giới hạn.
+4. Cho đúng attempt owner đọc lại cùng snapshot và answers đã lưu.
+
+**Giải thích thuật ngữ:** Attempt là một lượt làm bài; snapshot là bản dữ liệu cố định; expiresAt là hạn chót do server cấp; idempotency key nhận biết request lặp; concurrency là nhiều thao tác đồng thời.
+
+**Kết quả cần đạt:** Start/retry không tạo lượt trùng; get attempt không shuffle lại và người khác không đọc được lượt làm bài.
+
+**Cách kiểm thử:** Quiz draft/archived/ngoài lịch; hết maxAttempts; cùng key/cùng body, cùng key/khác body và hai start đồng thời. Kiểm tra expiresAt lấy mốc sớm hơn duration và closesAt, và câu hỏi không đổi giữa hai lần đọc.
+
+### Giai đoạn 4 — Lưu đáp án, nộp bài và chấm điểm
+
+**Mục tiêu:** Answers được lưu theo revision và chấm đúng snapshot khi nộp hoặc hết hạn.
+
+**Công việc cụ thể:**
+
+1. SaveAnswers thay toàn bộ bộ đáp án, kiểm tra question/choice thuộc snapshot và expectedRevision.
+2. Submit khóa attempt, chấm answers đã lưu, ghi result V2 và outbox trong cùng transaction.
+3. Triển khai worker tự chấm answers đã lưu khi hết hạn; từ chối dữ liệu nộp trễ.
+4. Tách attemptStatus/gradingStatus; điểm chờ chấm là null, không lấy score/passed từ client.
+
+**Giải thích thuật ngữ:** Autosave lưu đáp án trong quá trình làm; revision là số lần cập nhật để chặn ghi đè cũ; worker xử lý công việc nền; atomic nghĩa là các thay đổi nghiệp vụ cùng thành công hoặc cùng hủy.
+
+**Kết quả cần đạt:** Nộp/hết hạn chỉ chấm một lần; score/passed dựa policy snapshot và trạng thái hợp lệ, không phụ thuộc countdown frontend.
+
+**Cách kiểm thử:** Autosave đến sai thứ tự, câu/choice ngoài snapshot, submit hai lần, worker và submit chạy đồng thời, crash trước commit và boundary deadline. Kiểm tra all-or-nothing grading, threshold không làm tròn và thay policy không sửa kết quả lịch sử.
+
+### Giai đoạn 5 — Gửi kết quả và cung cấp API cho Learning
+
+**Mục tiêu:** Learning nhận kết quả có đủ version/policy/evidence và xác minh được attempt owner.
+
+**Công việc cụ thể:**
+
+1. Publisher đọc outbox và gửi quiz.attempt.graded.v2 sau commit; thêm retry theo baseline.
+2. Cung cấp internal graded summary và attempt access với credential riêng.
+3. Payload chứa assessmentVersion, quizType, threshold, gradedAt và skillScores; không có answer keys.
+4. Chốt queue/version cutover với Learning; không áp dụng trùng v1/v2.
+
+**Giải thích thuật ngữ:** Publisher gửi sự kiện; consumer nhận/xử lý sự kiện; routing key phân loại event trên broker; skillScores là bằng chứng điểm theo kỹ năng; receipt là xác nhận xử lý do Learning lưu.
+
+**Kết quả cần đạt:** Kết quả chấm không mất khi broker lỗi và Learning có thể kiểm tra dữ liệu/ownership qua internal API; outbox SENT không bị gọi nhầm là progress SYNCED.
+
+**Cách kiểm thử:** Dừng/khởi động lại broker, publisher retry và gửi trùng event; validate payload v2. Gọi internal API bằng user JWT hoặc sai scope; phối hợp Learning thử nhận lại event mà không cộng progress hai lần.
+
+### Giai đoạn 6 — Lịch sử, review và thống kê
+
+**Mục tiêu:** Hoàn thiện trải nghiệm xem kết quả theo đúng quyền và policy.
+
+**Công việc cụ thể:**
+
+1. Viết history của chính học viên, review chỉ khi policy cho phép, owner statistics và learner assessment summaries.
+2. Hoàn thiện skill evidence cho mastery theo mapping đã được review.
+3. Kiểm thử failure/recovery, cập nhật cấu hình, migrations và tài liệu demo tích hợp.
+
+**Giải thích thuật ngữ:** Review trả chi tiết đáp án sau điều kiện cho phép; statistics tổng hợp điểm/lượt làm; recovery khôi phục xử lý sau lỗi; evidence là dữ liệu làm căn cứ tính kết quả.
+
+**Kết quả cần đạt:** Học viên chỉ xem attempt của mình; giảng viên/Admin dùng báo cáo được phép; kết quả GRADED vẫn đọc được khi Learning còn PENDING.
+
+**Cách kiểm thử:** History sai owner, review trước closesAt/NEVER, thống kê không có mẫu trả null và không trộn assessmentVersion. Kiểm tra dữ liệu đúng qua Gateway và Learning thật; ghi rõ case còn dùng fake adapter.
 
 ## Quy tắc phải giữ
 
