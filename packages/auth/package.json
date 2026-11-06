@@ -1,0 +1,25 @@
+{
+  "name": "@lms/auth",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.cjs"
+  },
+  "dependencies": {
+    "@lms/contracts": "0.1.0"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^12.0.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^12.0.1",
+    "@types/node": "^24.0.0",
+    "typescript": "^6.0.2"
+  }
+}
