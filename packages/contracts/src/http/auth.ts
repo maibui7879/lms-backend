@@ -22,7 +22,8 @@ export interface JwtClaims {
 export interface RegisterRequest {
   email: string;
   password: string;
-  role?: Exclude<UserRole, 'STUDENT'>;
+  /** Defaults to STUDENT. Runtime validation must reject ADMIN and unknown roles. */
+  role?: Exclude<UserRole, 'ADMIN'>;
 }
 
 export interface LoginRequest {
