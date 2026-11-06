@@ -1,132 +1,76 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Quiz Service — Hướng dẫn TV3 nhận việc
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Owner: chưa chốt tên. Workspace `@lms/quiz-service`, port mặc định 3003, branch hiện có `feat/quiz/grading`. Theo [quy trình nhận task](../../README.md) và đọc [AGENTS.md](AGENTS.md) trước khi sửa.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Trạng thái và phạm vi
 
-## Description
+Hiện chỉ có scaffold `GET /` → `Hello World!`; chưa có quiz API, DB, deadline worker hoặc publisher. Quiz sở hữu cấu hình quiz, câu hỏi/đáp án đúng, immutable attempt snapshots, answers, grading result và outbox trong PostgreSQL riêng. Không sở hữu enrollment hoặc tiến độ khóa học.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Contracts phải đọc
 
-## Project setup
+| Nguồn                                                                       | Mục đích                                                       |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| [Quiz DTO](../../packages/contracts/src/http/quiz.ts)                       | Policy, authoring/delivery, attempt, answer, review/statistics |
+| [Result DTO](../../packages/contracts/src/http/quiz-result.ts)              | QuizResultV2Data tách attemptStatus/gradingStatus              |
+| [Internal DTO](../../packages/contracts/src/internal/integration.ts)        | Course references, graded summary, attempt ownership           |
+| [Graded event v2](../../packages/contracts/src/events/attempt-graded.v2.ts) | Kết quả/policy/assessmentVersion và skillScores gửi Learning   |
+| [Quiz OpenAPI](../../packages/contracts/openapi/quiz.json)                  | Method/path, request/response, quyền và idempotency            |
+| [Baseline](../../packages/contracts/README.md)                              | Grading, deadline, retention/retry, migration v1/v2            |
 
-```bash
-$ npm install
+API cần triển khai: quiz draft/publish/archive; question CRUD; start/get attempt; save answers/submit/result/review/history; owner statistics/learner summaries; internal graded summary/attempt access. Lấy operationId từ [catalog](../../packages/contracts/src/endpoints.ts), không tự đổi route hoặc quay về legacy result.status.
+
+## Thứ tự nhận task
+
+1. Config/DB/migrations, health, auth và Course integration adapter cho enrollment/access/content reference.
+2. Draft quiz/policy và question authoring; publish đóng băng assessment version.
+3. Start attempt với transaction/idempotency, policy/questions/order snapshot và expiresAt.
+4. Autosave với revision, submit atomic, objective grading, result V2 và deadline worker.
+5. Outbox graded.v2 và internal graded/attempt-access để Learning tích hợp.
+6. History/review policy/statistics, skill score evidence, failure/recovery tests.
+
+## Quy tắc phải giữ
+
+QuestionAuthoringDTO có correctChoiceIds/explanation/skillIds; QuestionDeliveryDTO chỉ có câu hỏi, lựa chọn và points. Student payload phải map bằng allowlist; không spread authoring object rồi xóa vài field. Parser delivery từ chối đáp án đúng hoặc explanation.
+
+Start chỉ khi Student có enrollment/access hợp lệ, quiz PUBLISHED trong lịch, còn maxAttempts. Snapshot policy/questions/version/order một lần; đọc lại attempt không shuffle lần nữa. `expiresAt` do server tính, lấy mốc sớm hơn giữa duration và closesAt. Không dựa vào countdown client.
+
+SaveAnswers thay toàn bộ answer set, xác minh question/choice thuộc snapshot, không nhận question trùng. expectedRevision ngăn autosave cũ ghi đè mới. Submit dùng answers đã lưu, kiểm tra revision, khóa trạng thái và lưu result/outbox cùng transaction. Client không gửi score/passed/userId tự chọn.
+
+Hết hạn từ chối save/submit trễ; worker idempotent chấm answers đã lưu và chuyển EXPIRED. SINGLE_CHOICE/MULTIPLE_CHOICE chấm all-or-nothing; không partial credit/trừ điểm trong baseline. So sánh passed bằng score/maxScore theo threshold snapshot, không làm tròn trước so sánh. Practice không thay required graded assessment.
+
+Tách AttemptStatus, GradingStatus và ProgressSyncStatus. Result đang chờ chấm có các trường điểm null; SYNCED thuộc receipt Learning, không suy ra từ outbox SENT. Student chỉ đọc attempt của chính mình; Instructor/Admin dùng owner statistics. Review chỉ lộ đáp án khi reviewPolicy cho phép.
+
+## Dependency và bàn giao
+
+Consume Course enrollment/access/reference; dependency failure trả 503/504, không bypass enrollment. Publish/start phải xác minh course/lesson/quiz reference và version đúng. Identity cấp user JWT; service authentication dùng credential riêng.
+
+Provide Learning: internal graded summary có policy/version/skillScores và attempt access có owner/eventId; publish quiz.attempt.graded.v2 qua outbox. Consumer mới không subscribe đồng thời v1/v2 cho cùng kết quả. Không đưa answer keys vào events. Fake Course adapter trong test phải theo contracts; không coi đó là integration thật.
+
+## Chạy local và cấu hình
+
+Từ root sau `npm.cmd ci`:
+
+```powershell
+npm.cmd run build -w @lms/contracts
+$env:NODE_ENV='development'
+$env:PORT='3003'
+npm.cmd run start:dev -w @lms/quiz-service
 ```
 
-## Compile and run the project
+Terminal khác: `Invoke-RestMethod http://127.0.0.1:3003/` để kiểm tra hello scaffold.
 
-```bash
-# development
-$ npm run start
+[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, RABBITMQ_URL, COURSE_URL, JWT_PUBLIC_KEY/JWT_ISSUER. Chỉ PORT đang được đọc. Owner bổ sung config loader, service credential và worker settings khi triển khai; không commit secret hoặc cho rằng env example đã kết nối DB/broker. Mock authentication theo [hướng dẫn](../../packages/auth/README.md), không tự bật trong production.
 
-# watch mode
-$ npm run start:dev
+## Kiểm tra và nghiệm thu
 
-# production mode
-$ npm run start:prod
+```powershell
+npm.cmd run build -w @lms/quiz-service
+npm.cmd run lint -w @lms/quiz-service
+npm.cmd run test -w @lms/quiz-service -- --runInBand
+npm.cmd run test:e2e -w @lms/quiz-service -- --runInBand
+npm.cmd test -w @lms/contracts
 ```
 
-## Run tests
+Các ca cần bổ sung: student không thấy answer keys; sai owner; draft/outside-window quiz; enrollment unavailable; concurrent starts không vượt maxAttempts; idempotency key replay/conflict; autosave stale revision; lựa chọn ngoài snapshot; submit trùng; boundary deadline; worker replay không chấm/phát event hai lần; policy đổi không sửa điểm lịch sử; review trước giờ đóng bị chặn; result vẫn GRADED khi Learning pending.
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
-
-```bash
-$ npx @nestjs/observe link
-```
-
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
-
-Or do it by hand:
-
-```bash
-$ npm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+PR cần migration, API lỗi và sample event đã qua parseContract; nêu rõ case dùng fake adapter. Chỉ làm mock dataset sau review baseline, dùng [IDs chung](../../packages/contracts/fixtures/ids.json) và kiểm tra quan hệ/version. Các test scaffold hiện chưa chứng minh các ca nghiệp vụ này.

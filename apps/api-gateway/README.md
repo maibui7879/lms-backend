@@ -1,132 +1,66 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# API Gateway — Hướng dẫn nhận việc tích hợp
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Owner theo phân công hiện có: Mạnh. Workspace `@lms/api-gateway`, port mặc định 3000. Tạo branch task từ main theo [README gốc](../../README.md), đọc [AGENTS.md](AGENTS.md) trước khi sửa.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Trạng thái và phạm vi
 
-## Description
+Hiện chỉ có scaffold `GET /` → `Hello World!`. Chưa có proxy, JWT verification, timeout middleware, request ID hoặc runtime Swagger. Gateway là HTTP entrypoint: routing, xác thực ban đầu, correlation/error envelope, giới hạn request và bảo vệ public boundary. Không truy cập database nghiệp vụ hoặc chấm quiz/tính progress.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Contracts và nguồn routing
 
-## Project setup
+Đọc [baseline](../../packages/contracts/README.md), [endpoint catalog](../../packages/contracts/src/endpoints.ts), [OpenAPI tổng](../../packages/contracts/openapi.json), [JWT claims](../../packages/contracts/src/http/auth.ts) và [bảng lỗi](../../packages/contracts/src/errors.ts). Catalog ghi service sở hữu từng operation; không route chỉ bằng một prefix thô.
 
-```bash
-$ npm install
+| Loại route                                                                          | Service đích |
+| ----------------------------------------------------------------------------------- | ------------ |
+| auth/users/admin users                                                              | Identity     |
+| courses/chapters/lessons/learning-items/enrollments/discussions/admin course review | Course       |
+| quizzes/questions/attempts và course assessment summaries                           | Quiz         |
+| learning và certificate verification                                                | Learning     |
+
+Đặc biệt `/api/v1/courses/{id}/assessments` thuộc Quiz, không thuộc Course. Route `/api/v1/internal/...` không public qua Gateway. Đăng ký static paths như `/attempts/me` trước dynamic `/attempts/{id}` hoặc dùng router tránh collision.
+
+## Thứ tự nhận task
+
+1. Config validation, upstream URLs, process health và request ID/error envelope.
+2. JWT verification cùng Identity: public key/JWKS, RS256/issuer/expiry/claim shape; tách public endpoints khỏi authenticated routes bằng catalog.
+3. Forward method/path/query/body đến đúng service, giữ nguyên `/api/v1` prefix; chuyển Bearer token gốc, Idempotency-Key và request ID hợp lệ.
+4. Timeout/error mapping, request/body limits, CORS/rate limit/log redaction theo môi trường; không retry mutation tùy tiện.
+5. Tích hợp các lát cắt auth → review/enroll → quiz submit → Learning receipt/progress; ghi rõ provider còn fake hay thật.
+
+## Quy tắc triển khai
+
+JWT sai không được fallback mock auth. Loại bỏ header user/role do client tự gửi; mỗi service vẫn xác minh JWT và ownership, không giao toàn bộ authorization cho Gateway. Service JWT riêng không được dùng làm user credential public.
+
+Forward nguyên success status/body, kể cả 201/204 và data:null; không bọc envelope hai lần. Giữ lỗi nghiệp vụ 400/401/403/404/409/422, dependency unavailable 503 và timeout 504; không đổi mọi lỗi thành 500. Error message/log không được lộ token, password, connection string hoặc stack upstream.
+
+Không retry start/submit/certificate mà thiếu Idempotency-Key; nếu retry phải giữ nguyên key/body. Luồng result và progress sync là hai API: GRADED không đồng nghĩa SYNCED. Không chặn trả kết quả chấm chỉ vì Learning chưa xử lý event.
+
+Gateway không consume RabbitMQ trong baseline, không join DB, không gộp quyền instructor vào quyền xem kết quả attempt riêng của Student. Chỉ expose public operations, không expose toàn bộ internal OpenAPI bằng proxy catch-all.
+
+## Chạy local và cấu hình
+
+Từ root sau `npm.cmd ci`:
+
+```powershell
+npm.cmd run build -w @lms/contracts
+$env:NODE_ENV='development'
+$env:PORT='3000'
+npm.cmd run start:dev -w @lms/api-gateway
 ```
 
-## Compile and run the project
+Terminal khác: `Invoke-RestMethod http://127.0.0.1:3000/` chỉ kiểm tra hello scaffold; chưa chứng minh request đã được route đến service.
 
-```bash
-# development
-$ npm run start
+[Env example](.env.example) có NODE_ENV, PORT, MOCK_AUTH, JWT_PUBLIC_KEY/JWT_ISSUER, IDENTITY_URL/COURSE_URL/QUIZ_URL/LEARNING_URL. Chỉ PORT đang được đọc. Triển khai config loader/validation trước integration; thêm config CORS/timeout/limits hoặc service credentials khi có task và cập nhật env example. Không commit key hoặc bật mock auth production; xem [package auth](../../packages/auth/README.md).
 
-# watch mode
-$ npm run start:dev
+## Kiểm tra và bàn giao
 
-# production mode
-$ npm run start:prod
+```powershell
+npm.cmd run build -w @lms/api-gateway
+npm.cmd run lint -w @lms/api-gateway
+npm.cmd run test -w @lms/api-gateway -- --runInBand
+npm.cmd run test:e2e -w @lms/api-gateway -- --runInBand
 ```
 
-## Run tests
+Acceptance tests: public login đi qua đúng route; JWT invalid/expired bị chặn; spoofed identity headers không được tin; internal paths không public; static/dynamic route collision; preserve 201/204/data:null/error envelope; upstream unavailable/timeout; Idempotency-Key và request ID giữ nguyên; course assessment route đến Quiz; log không chứa secret.
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
-
-```bash
-$ npx @nestjs/observe link
-```
-
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
-
-Or do it by hand:
-
-```bash
-$ npm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+PR ghi route nào đã tích hợp thật, upstream nào còn fake, cấu hình chạy các tiến trình và kết quả E2E. Không coi tests hello hoặc mock upstream là bằng chứng toàn bộ hệ thống đã hoạt động.
