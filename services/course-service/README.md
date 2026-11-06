@@ -4,7 +4,70 @@ Owner: chưa chốt tên. Workspace `@lms/course-service`, port mặc định 30
 
 ## Trạng thái và phạm vi
 
-Hiện chỉ có scaffold `GET /` → `Hello World!`; chưa có DB, enrollment, review, internal APIs hoặc RabbitMQ. Course sở hữu course/chapter/lesson/learning item, review history, enrollment và immutable requirements snapshots trong PostgreSQL riêng. Quiz sở hữu câu hỏi/điểm; Learning sở hữu tiến độ. Không join DB của hai service này.
+Đã triển khai lát cắt `POST /api/v1/courses`: TypeORM PostgreSQL, đọc config/env, runtime validation, mock auth, error envelope và seed một draft course. `GET /` vẫn trả `Hello World!`. Chưa có JWT thật, migrations/health, chapter/lesson/item APIs, enrollment, review, internal APIs hoặc RabbitMQ; sáu giai đoạn bên dưới vẫn là lộ trình, không phải báo cáo đã hoàn thành.
+
+Course sở hữu course/chapter/lesson/learning item, review history, enrollment và immutable requirements snapshots trong PostgreSQL riêng. Quiz sở hữu câu hỏi/điểm; Learning sở hữu tiến độ. Không join DB của hai service này.
+
+## Chạy thử POST tạo khóa học với PostgreSQL/Supabase dev
+
+Từ root repo: `npm.cmd ci`, `npm.cmd run build -w @lms/contracts`, `npm.cmd run build -w @lms/auth`. Dependency `@lms/auth` đã được khai báo, không cần install lại. Copy [env example](.env.example) sang `.env` trong thư mục service, rồi đặt:
+
+```dotenv
+NODE_ENV=development
+PORT=3002
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres
+DB_SYNC=true
+MOCK_AUTH=true
+```
+
+Chỉ dùng database Course dev riêng có thể reset; thay URL bằng connection string Supabase của bạn và giữ host/port/TLS parameters do provider cấp. Không thêm `rejectUnauthorized:false`, không commit `.env`. Env được nạp từ thư mục service khi chạy source hoặc dist; process environment ưu tiên hơn env file. `DB_SYNC` mặc định false và chỉ được true khi NODE_ENV=development; staging/production cần migrations ở task sau. Mock auth chỉ cho development/test và không phải fallback JWT.
+
+```powershell
+npm.cmd run start:dev -w @lms/course-service
+```
+
+Terminal khác gọi API, không cần Identity/Gateway/RabbitMQ:
+
+```powershell
+$payload = @{ title='NestJS Fundamentals'; description='Learn NestJS from scratch'; thumbnailUrl=$null } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:3002/api/v1/courses -ContentType 'application/json' -Headers @{ 'x-mock-user'='instructorA'; 'x-request-id'='course-local-1' } -Body $payload
+```
+
+HTTP 201 trả `{ data: CourseData, meta: { requestId } }`; `instructorId` lấy từ fixture đã xác thực, status=DRAFT, version/contentVersion=1, UUID/timestamps do server/DB tạo. Header X-Request-Id khớp envelope; nếu không gửi hoặc header không hợp lệ, server tạo ID mới. Body không được chứa instructorId/userId/status/version/timestamps. Student/Admin trả 403; thiếu/sai fixture hoặc mock disabled trả 401; payload sai trả 400; storage unavailable trả 503 không lộ SQL/credentials.
+
+Validation dùng `parseContract` qua Nest pipe chuyên biệt, không khai báo lại class-validator rules dễ lệch schema. Title tối đa 200 ký tự theo contracts; thumbnail HTTP(S) hoặc null, bỏ trống thì lưu null. Bảng courses không có foreign key sang Identity DB. Bản mẫu chưa thực hiện optimistic locking cho update vì chỉ có create.
+
+### Seed và kiểm thử database
+
+```powershell
+npm.cmd run build -w @lms/course-service
+npm.cmd run seed:course -w @lms/course-service
+```
+
+Seed chỉ chạy development/test, insert fixture draftCourse thuộc instructorA theo [IDs chung](../../packages/contracts/fixtures/ids.json); gặp ID đã có thì bỏ qua, không ghi đè chỉnh sửa và không ảnh hưởng rows tạo bởi POST. Seed không tạo course PUBLISHED giả thiếu requirements, không tạo user trong Identity DB. Nếu DB_SYNC=false, bảng phải được chuẩn bị trước; seed không tự bỏ rào chắn schema sync.
+
+Nếu seed lỗi, build lại service trước khi thử tiếp vì lệnh seed chạy file trong dist. Thông báo mới chỉ in mã lỗi/hướng xử lý, không in credentials hoặc SQL:
+
+| Lỗi                          | Cách xử lý                                                                                                                                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HOST placeholder / ENOTFOUND | DATABASE_URL từ env example chưa phải địa chỉ DB thật hoặc DNS lỗi. Copy URL từ nút Connect của đúng Supabase project; không chỉ sửa password rồi giữ HOST                            |
+| ENETUNREACH                  | Kiểm tra IPv6; nếu máy chỉ có IPv4, dùng session pooler URL do Supabase cấp, giữ nguyên user/host/port của pooler                                                                     |
+| 28P01                        | Kiểm tra database password, username và URL-encode ký tự đặc biệt trong credentials; không phải mật khẩu tài khoản đăng nhập Dashboard                                                |
+| 42P01                        | Chưa có bảng courses. Với database dev riêng có thể reset, đặt NODE_ENV=development và chủ động bật DB_SYNC=true; môi trường dùng chung phải chuẩn bị schema bằng quy trình migration |
+| ECONNREFUSED / timeout       | Kiểm tra host/port, DB đang hoạt động và kết nối mạng/firewall                                                                                                                        |
+| TLS certificate              | Cấu hình CA phù hợp; không tắt kiểm tra chứng chỉ                                                                                                                                     |
+
+Kiểm tra cả biến môi trường PowerShell đang giữ vì chúng ưu tiên hơn `.env`; không in DATABASE_URL ra terminal/log khi chia sẻ lỗi. Xem [hướng dẫn kết nối Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres) để chọn direct/session pooler đúng mạng. Không tự bật DB_SYNC cho staging/production để chữa lỗi seed.
+
+HTTP tests mặc định dùng repository test double và được ghi tên rõ; test ghi PostgreSQL thật chạy riêng bằng database **disposable có tên kết thúc `_test`**:
+
+```powershell
+$env:TEST_DATABASE_URL='postgresql://TEST_USER:TEST_PASSWORD@127.0.0.1:5432/course_endpoint_test'
+npm.cmd run test:db -w @lms/course-service
+Remove-Item Env:TEST_DATABASE_URL
+```
+
+Suite DB chủ động bật synchronize trên database test đã chọn, kiểm tra row sau POST và seed hai lần, chỉ dọn IDs do suite tạo. Không dùng Supabase chứa dữ liệu thật cho lệnh này. Khi không có TEST_DATABASE_URL, suite DB được skip trong test:e2e thông thường; không gọi đó là persistence test đã pass. Để xác minh Supabase phải chạy với database dev dành riêng và kiểm tra TLS/connectivity thực tế, không chỉ dựa kết quả PostgreSQL local.
 
 ## Contracts phải đọc
 
@@ -155,7 +218,7 @@ npm.cmd run start:dev -w @lms/course-service
 
 Smoke check ở terminal khác: `Invoke-RestMethod http://127.0.0.1:3002/` chỉ trả hello scaffold.
 
-[Env example](.env.example) dự kiến: NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, RABBITMQ_URL, IDENTITY_URL, JWT_PUBLIC_KEY/JWT_ISSUER. Chỉ PORT đang được đọc. Khi triển khai adapter Learning, bổ sung LEARNING_URL và service credentials vào config/env example; hiện các biến đó chưa được khai báo. Không cho rằng copy `.env` là đã có config loader. Mock auth xem [package auth](../../packages/auth/README.md).
+[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, DB_SYNC đang được dùng cho bản mẫu create-course. RABBITMQ_URL, IDENTITY_URL, JWT_PUBLIC_KEY/JWT_ISSUER vẫn là placeholder cho task sau. Khi triển khai adapter Learning, bổ sung LEARNING_URL và service credentials vào config/env example. Config loader hiện nạp env của service; mock auth xem [package auth](../../packages/auth/README.md).
 
 ## Kiểm tra và bàn giao
 
