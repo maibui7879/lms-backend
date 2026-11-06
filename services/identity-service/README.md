@@ -1,132 +1,68 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Identity Service — Hướng dẫn TV1 nhận việc
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Owner: chưa chốt tên. Workspace `@lms/identity-service`, port mặc định 3001, branch hiện có `feat/identity/auth-rbac`. Nhận task và mở PR theo [hướng dẫn chung](../../README.md); đọc [AGENTS.md](AGENTS.md) trước khi sửa.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Trạng thái và phạm vi
 
-## Description
+Hiện chỉ có scaffold `GET /` → `Hello World!`. Chưa có đăng ký, JWT verification/issuance, session store, config loader hoặc kết nối DB. Các phần dưới đây là việc cần triển khai theo baseline đã viết, không phải tính năng đang chạy.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Identity sở hữu user, password hash, role/status, refresh sessions và audit quản trị trong PostgreSQL riêng. Không quản lý enrollment, course, quiz hoặc progress. Dùng Supabase PostgreSQL không đồng nghĩa dùng Supabase Auth.
 
-## Project setup
+## Contracts phải đọc
 
-```bash
-$ npm install
+| Nguồn                                                                        | Mục đích                                                      |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| [Auth DTO](../../packages/contracts/src/http/auth.ts)                        | Register/Login, AuthUser, JwtClaims                           |
+| [Identity DTO](../../packages/contracts/src/http/identity.ts)                | Profile, sessions, admin user/audit, permissions              |
+| [Internal integration](../../packages/contracts/src/internal/integration.ts) | UserAccessStatus cho Gateway/services                         |
+| [Identity OpenAPI](../../packages/contracts/openapi/identity.json)           | Toàn bộ method/path/request/response và security              |
+| [Contract baseline](../../packages/contracts/README.md)                      | Authorization, session rotation, error codes và review policy |
+
+Nhóm API: register/login/refresh/logout; users/me; admin list/status/role/audit; internal user summary/access. Danh sách operationId đầy đủ ở [endpoint catalog](../../packages/contracts/src/endpoints.ts). Login mới trả SessionData có refresh token; không tự dùng kiểu LoginResponse cũ để bỏ trường session.
+
+## Thứ tự nhận task
+
+1. Config validation, PostgreSQL connection/migrations và health. Thiết kế unique email, sessions và audit; không bật synchronize ở DB dùng chung.
+2. Register/login: normalize email, hash password bằng argon2, public signup chỉ STUDENT, chặn account INACTIVE.
+3. JWT RS256 theo JwtClaims, expiry/issuer/algorithm allowlist; chốt key distribution/JWKS với Gateway. Không tự thêm audience vào user JWT contract mà không review.
+4. Refresh rotation/reuse detection và logout idempotent; lưu hash refresh token, không lưu token thô.
+5. Profile, internal UserAccess/UserSummary để các service tích hợp sớm.
+6. Admin role/status/audit; thu hồi session khi khóa account/đổi role; cập nhật test và tài liệu.
+
+Mỗi mục có thể tách thành một PR. Thống nhất policy còn mở với owner Gateway/consumer trước task phụ thuộc; không tự đánh dấu ADR đã được duyệt.
+
+## Quy tắc và bàn giao tích hợp
+
+Public register chỉ nhận role bỏ trống hoặc STUDENT; ADMIN/INSTRUCTOR bị từ chối. Instructor do Admin cấp quyền. userId, role quản trị, actor/time audit lấy từ identity context/server. Không trả passwordHash hoặc token session trong profile/summary.
+
+Refresh token rotate mỗi lần dùng; reuse thu hồi family. Logout token đã thu hồi vẫn 204. Không cho tự khóa/hạ quyền Admin cuối cùng còn hoạt động. Chi tiết TTL, hash và lỗi theo baseline; service phải thực thi runtime chứ không chỉ khai báo TypeScript.
+
+Provider cho Gateway và cả nhóm: user JWT, public key/JWKS, internal summary/access và mã lỗi chuẩn. Service JWT nội bộ là credential riêng; triển khai issuer/audience/scope và key provisioning cùng người tích hợp. Identity chưa cần RabbitMQ business event trong catalog hiện tại.
+
+## Chạy local và cấu hình
+
+Chạy từ root repo, cài dependency một lần bằng `npm.cmd ci`, sau đó:
+
+```powershell
+npm.cmd run build -w @lms/contracts
+$env:NODE_ENV='development'
+$env:PORT='3001'
+npm.cmd run start:dev -w @lms/identity-service
 ```
 
-## Compile and run the project
+Terminal khác: `Invoke-RestMethod http://127.0.0.1:3001/`. Đây chỉ là smoke check scaffold.
 
-```bash
-# development
-$ npm run start
+[Env example](.env.example) hiện có NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, JWT_ISSUER, JWT_PUBLIC_KEY và JWT_PRIVATE_KEY. Chỉ PORT đang được đọc; phải triển khai config loader trước khi dùng `.env`. Thêm config refresh TTL/service credentials khi triển khai, cập nhật env example bằng placeholder, không commit secret. Mock auth chỉ dùng dev/test theo [hướng dẫn package](../../packages/auth/README.md), chưa tự nối vào service.
 
-# watch mode
-$ npm run start:dev
+## Kiểm tra và nghiệm thu task
 
-# production mode
-$ npm run start:prod
+```powershell
+npm.cmd run build -w @lms/identity-service
+npm.cmd run lint -w @lms/identity-service
+npm.cmd run test -w @lms/identity-service -- --runInBand
+npm.cmd run test:e2e -w @lms/identity-service -- --runInBand
 ```
 
-## Run tests
+Tests cần có theo phần triển khai: email trùng; password/role sai; login INACTIVE; JWT sai signature/issuer/expiry; profile không lộ hash; refresh reuse/rotation/logout lặp; non-Admin đổi role bị chặn; audit dùng actor server. Internal access từ chối user JWT thay service credential. Các tests scaffold hiện tại chưa kiểm tra các điều này.
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
-
-```bash
-$ npx @nestjs/observe link
-```
-
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
-
-Or do it by hand:
-
-```bash
-$ npm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+PR kèm migration, env example, API lỗi 4xx, test results và cách Gateway lấy key/status. Chỉ tạo seed/mock records sau khi nhóm review contracts; dùng [IDs chung](../../packages/contracts/fixtures/ids.json), seed idempotent và từ chối production.
