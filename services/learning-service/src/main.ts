@@ -9,5 +9,7 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
 }
 
-bootstrap();
-
+bootstrap().catch((error: unknown) => {
+  console.error(error);
+  process.exitCode = 1;
+});

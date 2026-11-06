@@ -2,6 +2,8 @@
 
 Backend LMS sử dụng NestJS và npm workspaces: một API Gateway, bốn business services và package contract dùng chung. Frontend được triển khai riêng.
 
+Xem [biên bản bàn giao và xác minh](docs/HANDOFF.md) để biết chính sách đăng ký, đề xuất duyệt khóa học, cấu hình môi trường và các việc còn cần owner xác nhận. Mỗi app/service đã có `.env.example` cho cấu hình dự kiến; scaffold chưa tự load các file này hoặc kết nối integration.
+
 ## 1. Đọc gì trước khi bắt đầu?
 
 1. Đọc [tài liệu thiết kế](docs/LMS_PROJECT_DOCUMENTATION.md), đặc biệt mục 4 (business rules), 7 (ownership), 11–15 (contracts và tích hợp), 25–29 (phân công, Git, roadmap).
@@ -64,12 +66,14 @@ Kiểm tra `main.ts` và biến `PORT` của service để biết port thực t�
 - Mỗi business service sở hữu một PostgreSQL database trên Supabase. Dùng TypeORM migrations, không bật `synchronize: true` cho môi trường dùng chung.
 - Learning dùng thêm MongoDB Atlas cho activity/projection. PostgreSQL giữ progress chính thức; Atlas không quyết định enrollment hoặc điểm quiz.
 - Identity phát JWT theo thiết kế hiện tại; dùng Supabase PostgreSQL **không đồng nghĩa** đã dùng Supabase Auth.
-- Khi triển khai config cho service, tạo `.env.example` với placeholder và hướng dẫn vị trí `.env`/cách load config trong README service. Hiện chưa có bộ `.env.example` hoàn chỉnh; chỉ tạo `.env` chưa đảm bảo NestJS tự load nó.
+- Mỗi app/service đã có `.env.example` với placeholder cho cấu hình dự kiến. Khi triển khai config, bổ sung hướng dẫn vị trí `.env`/cách load config trong README service; chỉ tạo `.env` chưa đảm bảo NestJS tự load nó.
 - Không commit connection string, password, JWT private key, token hoặc `.env`. Không gửi secrets qua PR/log.
 
 Danh sách biến cần triển khai nằm ở mục 10 của [tài liệu thiết kế](docs/LMS_PROJECT_DOCUMENTATION.md).
 
 ## 4. Shared contracts và fixture IDs
+
+Mock authentication cho local/test nằm tại [packages/auth](packages/auth/README.md). Package cung cấp `MockAuthGuard`, `CurrentUser` và fixture identity; chưa được tự động gắn vào service. Chỉ bật với `MOCK_AUTH=true` và `NODE_ENV=development` hoặc `test`; không dùng làm fallback cho JWT trên production. Root build biên dịch contracts → auth → các app.
 
 | File | Nội dung |
 |---|---|
@@ -204,7 +208,7 @@ npm.cmd run test -w @lms/identity-service -- --runInBand
 npm.cmd run test:e2e -w @lms/identity-service -- --runInBand
 ```
 
-Root `typecheck` dùng `--if-present`: hiện chỉ contracts có script này, nên lệnh root không chứng minh tất cả service đã được typecheck riêng. Build/test cũng không chứng minh luồng liên service đã chạy. Nếu Jest lỗi đường dẫn `./node_modules/jest/bin/jest.js` sau clean install do workspace hoisting, cần sửa script test trong PR tooling và báo nhóm; không bỏ qua test hoặc coi đó là business test đã pass.
+Root `typecheck` dùng `--if-present`: hiện chỉ contracts và auth có script này, nên lệnh root không chứng minh tất cả service đã được typecheck riêng. Build/test cũng không chứng minh luồng liên service đã chạy. Nếu Jest lỗi đường dẫn `./node_modules/jest/bin/jest.js` sau clean install do workspace hoisting, cần sửa script test trong PR tooling và báo nhóm; không bỏ qua test hoặc coi đó là business test đã pass.
 
 Push branch rồi mở PR trên GitHub: **base = main**, **compare = branch task**. PR cần nêu:
 
