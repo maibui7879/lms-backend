@@ -110,6 +110,10 @@
             },
             {
               "type": "string",
+              "const": "INTERNAL_ERROR"
+            },
+            {
+              "type": "string",
               "const": "EMAIL_ALREADY_EXISTS"
             },
             {
@@ -2191,6 +2195,10 @@
         {
           "type": "string",
           "const": "GATEWAY_TIMEOUT"
+        },
+        {
+          "type": "string",
+          "const": "INTERNAL_ERROR"
         },
         {
           "type": "string",

@@ -1,6 +1,7 @@
 import type { DomainErrorCode } from './http/common';
 
 export const ERROR_HTTP_STATUS = {
+  INTERNAL_ERROR: 500,
   VALIDATION_ERROR: 400,
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,

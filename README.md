@@ -6,12 +6,12 @@ Monorepo NestJS sử dụng npm workspaces, gồm API Gateway, bốn business se
 
 | Đã có                                                                     | Chưa triển khai                                               |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Scaffold NestJS, scripts build/lint/test, CI workflow                     | API nghiệp vụ, JWT verification và routing Gateway            |
-| Baseline contracts: 146 schemas, 88 operations, runtime parser và OpenAPI | DB connections, migrations, seed, RabbitMQ/outbox/consumer    |
+| Scaffold NestJS, scripts build/lint/test, CI workflow                     | API nghiệp vụ đầy đủ, JWT verification và routing Gateway     |
+| Baseline contracts: 146 schemas, 88 operations, runtime parser và OpenAPI | Migrations, DB các service khác, RabbitMQ/outbox/consumer     |
 | Fixture IDs và package mock authentication cho dev/test                   | Mock dataset liên service, MongoDB projection, Docker Compose |
-| Env example cho từng workspace                                            | Tự load `.env`, health dependency checks, runtime Swagger     |
+| Env example; Course có env loader, POST tạo course và seed draft          | Env loader các app khác, health checks, runtime Swagger       |
 
-Mỗi app hiện chỉ có `GET /` trả `Hello World!`. Build hoặc scaffold test pass không chứng minh luồng nghiệp vụ đã hoạt động. OpenAPI là đặc tả dự kiến, chưa phải danh sách API đang chạy. Các policy trong [baseline contracts](packages/contracts/README.md) cần producer/consumer review; chưa đối chiếu đầy đủ Function List bên ngoài. Không tự đánh dấu ADR đã được duyệt.
+Course đã có bản mẫu [POST tạo course](services/course-service/README.md) ghi PostgreSQL, mock auth và seed draft có giới hạn môi trường; các app khác vẫn là scaffold. `GET /` của mỗi app vẫn trả `Hello World!`. Chưa có luồng liên service hoàn chỉnh. OpenAPI là đặc tả mục tiêu, không phải mọi API đều đang chạy. Các policy trong [baseline contracts](packages/contracts/README.md) cần producer/consumer review; chưa đối chiếu đầy đủ Function List bên ngoài. Không tự đánh dấu ADR đã được duyệt.
 
 ## 2. Chọn phần việc và đọc hướng dẫn riêng
 
@@ -102,7 +102,7 @@ Invoke-RestMethod http://127.0.0.1:3003/
 
 Kết quả hiện tại là `Hello World!`. Nếu chạy nhiều service, dùng terminal riêng hoặc đặt PORT đúng workspace; biến PORT trong cùng terminal được giữ lại cho lệnh tiếp theo.
 
-Các `.env.example` chỉ là cấu hình dự kiến. Copy sang `.env` chưa làm ứng dụng tự load: owner cần triển khai config loader/validation trước integration. Chỉ PORT hiện được đọc trực tiếp từ process environment. Không commit `.env`, khóa JWT, token hoặc database credentials.
+Course đã nạp env/config cho bản mẫu tạo khóa học; xem README service trước khi chạy và chỉ bật DB_SYNC trên database dev có thể reset. Các app còn lại mới đọc PORT từ process environment, chưa tự load `.env`. Các integration placeholders chưa đồng nghĩa đã có kết nối. Không commit `.env`, khóa JWT, token hoặc database credentials.
 
 ## 5. Thứ tự triển khai để làm song song
 
