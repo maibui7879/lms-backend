@@ -1,5 +1,9 @@
 # Integration handoff
 
+## Contract baseline — 2026-11-06
+
+The [contract package baseline](../packages/contracts/README.md) now defines the planned HTTP/internal/event surface, runtime validation and generated OpenAPI. Its explicit policies supersede the older contract proposals below: public signup is STUDENT only (Admin provisions Instructor), Course publishing requires Admin review, new result APIs separate attempt/grading state, and versioned enrollment/graded events pin requirements/assessment snapshots. Existing v1 event types and legacy result types remain available. No business endpoints, mock dataset or seed are implemented by this contract change; producer/consumer review and external Function List reconciliation remain required.
+
 ## Local verification — 2026-11-05
 
 Verified on Windows with Node v24.21.0 and npm 11.21.0:
@@ -17,7 +21,7 @@ Install reported 26 dependency vulnerabilities (5 low, 19 moderate, 2 high). Dep
 
 ## Authentication contract
 
-Public registration defaults to `STUDENT`; optional `INSTRUCTOR` is retained for compatibility with the existing contract. `ADMIN` must only be provisioned through a separate trusted administrative process. Identity must validate the HTTP body at runtime, reject `ADMIN` and unknown roles with `400 VALIDATION_ERROR`, and never spread the request body into a user entity. The registration endpoint is still unimplemented; the TypeScript correction alone does not enforce this policy.
+Public registration creates `STUDENT` only; an optional role must also be `STUDENT`. Admin provisions Instructor through the administrative role endpoint. Identity must validate the HTTP body at runtime, reject `ADMIN`, `INSTRUCTOR` and unknown roles with `400 VALIDATION_ERROR`, and never spread the request body into a user entity. The registration endpoint is still unimplemented; consumers must explicitly call the shared runtime parser and enforce authorization in the service.
 
 Identity issues the existing `JwtClaims` (`sub`, `email`, `role`, `iss`, `iat`, `exp`). Proposed verification baseline: RS256, issuer `identity-service`, explicit algorithm allowlist, signature and expiry verification at Gateway and each service, with the original Bearer token forwarded internally. Validate claim shapes; missing/invalid credentials return 401, role or ownership failures return 403. Never trust client `X-User-Id`/`X-Role` headers. Internal service calls need a separate service credential policy before deployment; a user token is not service authentication.
 

@@ -4,6 +4,8 @@
 > **Phạm vi:** `lms-backend` (NestJS monorepo), frontend Next.js dự kiến triển khai riêng.  
 > **Trạng thái:** Tài liệu thiết kế đề xuất, **không khẳng định các tính năng đã được hiện thực**.
 
+> **Cập nhật contracts 06/11/2026:** Xem [đặc tả baseline và migration](../packages/contracts/README.md) cho DTO, runtime schemas, endpoint catalog và OpenAPI hiện có. Các nhận định bên dưới rằng package còn thiếu course approval, versioned events hoặc resume contracts là thông tin lịch sử. ADR vẫn cần owner review; chưa có business endpoint hoặc mock data được triển khai từ baseline này.
+
 ## 0. Cách đọc và nguồn yêu cầu
 
 Tài liệu phân biệt:
@@ -299,6 +301,8 @@ Trước khi các thành viên code, nhóm cần chốt:
 `400` validation; `401` chưa xác thực; `403` không có quyền; `404` không tìm thấy; `409` xung đột trạng thái; `422` dữ liệu hợp lệ về cú pháp nhưng vi phạm quy tắc miền; `503` dependency unavailable; `504` dependency timeout. Không biến mọi lỗi thành `500`.
 
 ## 12. REST contract theo service (đề xuất)
+
+> Cập nhật 2026-11-06: [baseline contracts](../packages/contracts/README.md) và [OpenAPI sinh từ DTO](../packages/contracts/openapi.json) là đặc tả cụ thể để review trước triển khai. Các bảng rút gọn bên dưới là đề xuất lịch sử; route Instructor publish trực tiếp đã được thay bằng submit-review/Admin review. Baseline chưa đồng nghĩa ADR đã được owner duyệt và chưa phải API đang chạy.
 
 > Route hiển thị dưới đây là **public API** qua Gateway, version `/api/v1`. Các service có thể dùng cùng đường dẫn sau khi Gateway loại prefix; cần chốt một quy tắc trước khi viết client.
 
