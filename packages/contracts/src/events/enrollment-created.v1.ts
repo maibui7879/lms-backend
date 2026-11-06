@@ -3,7 +3,8 @@ import type { EnrollmentStatus } from '../http/enrollment';
 import type { EventEnvelope } from './envelope';
 
 export const ENROLLMENT_CREATED_EVENT = 'course.enrollment.created' as const;
-export const ENROLLMENT_CREATED_ROUTING_KEY = 'course.enrollment.created.v1' as const;
+export const ENROLLMENT_CREATED_ROUTING_KEY =
+  'course.enrollment.created.v1' as const;
 
 export interface EnrollmentCreatedPayload {
   enrollmentId: Uuid;
