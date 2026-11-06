@@ -26,6 +26,8 @@ Mỗi app hiện chỉ có `GET /` trả `Hello World!`. Build hoặc scaffold t
 
 TV1–TV4 là nhãn phân công, không phải tên người đã xác nhận. Cập nhật tên owner trong bảng khi nhận việc. Mọi nhánh chứa toàn bộ monorepo; không xóa thư mục service khác, không giới hạn checkout chỉ còn phần mình làm.
 
+README bốn business services chia thành sáu giai đoạn, Gateway có năm giai đoạn phù hợp phạm vi. Mỗi giai đoạn dùng cùng cấu trúc: **Mục tiêu → Công việc cụ thể → Giải thích thuật ngữ → Kết quả cần đạt → Cách kiểm thử**. Đây là lộ trình cần thực hiện, không phải báo cáo các tính năng đã chạy.
+
 Trước khi code, đọc [baseline contracts](packages/contracts/README.md), [handoff](docs/HANDOFF.md), rồi README của service mình nhận. [Tài liệu thiết kế](docs/LMS_PROJECT_DOCUMENTATION.md) bổ sung kiến trúc và business rules; các đề xuất lịch sử khác baseline phải được nhóm thống nhất trước khi triển khai. Khi dùng coding agent, đọc AGENTS.md trong workspace tương ứng.
 
 ## 3. Quy trình nhận một task
@@ -50,6 +52,22 @@ Dependency giả trong test / phần chưa kiểm chứng:
 ```
 
 Đừng nhận task “làm toàn bộ service” mà không chia milestone. README từng service có thứ tự triển khai và ca nghiệm thu để tách thành các task nhỏ.
+
+### Ghi kết quả sau mỗi giai đoạn
+
+Chạy test phù hợp và cập nhật issue/PR trước khi chuyển bước. Nếu còn dependency giả hoặc lỗi chặn nghiệm thu, ghi rõ thay vì đánh dấu integration đã xong. Các fake adapters và dữ liệu do test tạo được dùng để kiểm thử độc lập; dataset demo/seed vẫn theo bước review contracts của nhóm.
+
+```text
+Service / giai đoạn / người thực hiện:
+Chức năng và operationId đã hoàn thành:
+Lệnh test và kết quả (kèm bằng chứng):
+Provider thật / fake adapter đang dùng:
+Chức năng còn thiếu và lỗi chưa xử lý:
+Điều kiện còn phải đạt trước khi chuyển bước:
+PR / người review:
+```
+
+Mỗi chức năng tuân thủ contracts, không tự đổi payload/route, không truy cập DB service khác và phải kiểm tra quyền ở service sở hữu dữ liệu. Các phần của giai đoạn phụ thuộc provider được kiểm thử độc lập trước; chỉ công bố tích hợp thật khi đã chạy với provider thật.
 
 ## 4. Chuẩn bị máy và chạy local
 
