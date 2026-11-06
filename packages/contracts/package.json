@@ -6,10 +6,16 @@
   "types": "dist/index.d.ts",
   "description": "Shared HTTP and event contracts for the LMS services",
   "scripts": {
+    "generate": "node scripts/generate.cjs",
+    "generate:check": "node scripts/generate.cjs --check",
+    "test": "npm run generate:check && npm run build && node --test test/*.test.cjs",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "ajv": "8.20.0"
   }
 }

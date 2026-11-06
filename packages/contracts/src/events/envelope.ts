@@ -1,9 +1,13 @@
 import type { Uuid } from '../http/common';
 
-export interface EventEnvelope<TType extends string, TPayload> {
+export interface EventEnvelope<
+  TType extends string,
+  TPayload,
+  TVersion extends number = 1,
+> {
   eventId: Uuid;
   eventType: TType;
-  version: 1;
+  version: TVersion;
   occurredAt: string;
   producer: string;
   correlationId: string;
