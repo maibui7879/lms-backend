@@ -35,6 +35,7 @@ export type ApiErrorCode =
   | 'GATEWAY_TIMEOUT';
 
 export type DomainErrorCode =
+  | 'INTERNAL_ERROR'
   | ApiErrorCode
   | 'EMAIL_ALREADY_EXISTS'
   | 'ACCOUNT_INACTIVE'
