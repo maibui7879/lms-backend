@@ -2,6 +2,26 @@ import type { Uuid } from './common';
 import type { ProgressSyncStatus } from './quiz';
 
 export type LearningStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type ChapterAccessStatus = 'LOCKED' | 'UNLOCKED' | 'COMPLETED';
+export type ChapterAccessReason =
+  | 'ENROLLMENT_REQUIRED'
+  | 'COURSE_NOT_PUBLISHED'
+  | 'PREVIOUS_CHAPTER_NOT_COMPLETED'
+  | 'PREREQUISITE_NOT_COMPLETED';
+
+export interface ChapterAccessData {
+  chapterId: Uuid;
+  order: number;
+  contentVersion: number;
+  status: ChapterAccessStatus;
+  reason: ChapterAccessReason | null;
+}
+export interface CourseChapterAccessData {
+  courseId: Uuid;
+  contentVersion: number;
+  chapters: ChapterAccessData[];
+}
+
 export interface ItemProgressData {
   learningItemId: Uuid;
   contentVersion: number;

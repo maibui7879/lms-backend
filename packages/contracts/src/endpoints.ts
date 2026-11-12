@@ -813,6 +813,15 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     success: 200,
   },
   {
+    operationId: 'getCourseChapterAccess',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/chapters/access',
+    access: 'ENROLLED',
+    response: 'CourseChapterAccessData',
+    success: 200,
+  },
+  {
     operationId: 'getResume',
     service: 'learning',
     method: 'get',
