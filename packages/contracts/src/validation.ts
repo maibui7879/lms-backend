@@ -127,11 +127,32 @@ export function parseContract<K extends keyof SchemaTypes>(
     if (
       Array.isArray(row.requiredItemIds) &&
       Array.isArray(row.requiredAssessments) &&
-      row.requiredItemIds.length + row.requiredAssessments.length === 0
+      Array.isArray(row.chapterPolicies) &&
+      row.requiredItemIds.length +
+        row.requiredAssessments.length +
+        row.chapterPolicies.reduce(
+          (total: number, policy: { requiredItemIds?: unknown[]; requiredAssessments?: unknown[] }) =>
+            total +
+            (Array.isArray(policy.requiredItemIds)
+              ? policy.requiredItemIds.length
+              : 0) +
+            (Array.isArray(policy.requiredAssessments)
+              ? policy.requiredAssessments.length
+              : 0),
+          0,
+        ) ===
+        0
     )
       issues.push(
         `${location} empty completion requirements cannot be published`,
       );
+    if (Array.isArray(row.chapterPolicies)) {
+      const chapterIds = row.chapterPolicies.map(
+        (policy: { chapterId?: unknown }) => policy.chapterId,
+      );
+      if (new Set(chapterIds).size !== chapterIds.length)
+        issues.push(`${location} chapterPolicies must contain unique chapterId values`);
+    }
   }
   inspect(value, '');
   if (issues.length) throw new ContractValidationError(name, issues);
