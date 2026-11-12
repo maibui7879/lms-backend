@@ -84,21 +84,6 @@ export function parseContract<K extends keyof SchemaTypes>(
       issues.push(
         `${location} practice cannot be a required graded assessment`,
       );
-    if (row.reviewPolicy === 'AFTER_CLOSE' && row.closesAt === null)
-      issues.push(`${location} AFTER_CLOSE requires closesAt`);
-    if (
-      row.policy &&
-      typeof row.policy === 'object' &&
-      (row.policy as Record<string, unknown>).reviewPolicy === 'AFTER_CLOSE' &&
-      row.closesAt === null
-    )
-      issues.push(`${location} AFTER_CLOSE requires closesAt`);
-    if (
-      typeof row.opensAt === 'string' &&
-      typeof row.closesAt === 'string' &&
-      Date.parse(row.opensAt) >= Date.parse(row.closesAt)
-    )
-      issues.push(`${location} opensAt must precede closesAt`);
     if (Array.isArray(row.choices)) {
       const ids = row.choices.map((c: { id: string }) => c.id);
       if (new Set(ids).size !== ids.length)
@@ -142,11 +127,32 @@ export function parseContract<K extends keyof SchemaTypes>(
     if (
       Array.isArray(row.requiredItemIds) &&
       Array.isArray(row.requiredAssessments) &&
-      row.requiredItemIds.length + row.requiredAssessments.length === 0
+      Array.isArray(row.chapterPolicies) &&
+      row.requiredItemIds.length +
+        row.requiredAssessments.length +
+        row.chapterPolicies.reduce(
+          (total: number, policy: { requiredItemIds?: unknown[]; requiredAssessments?: unknown[] }) =>
+            total +
+            (Array.isArray(policy.requiredItemIds)
+              ? policy.requiredItemIds.length
+              : 0) +
+            (Array.isArray(policy.requiredAssessments)
+              ? policy.requiredAssessments.length
+              : 0),
+          0,
+        ) ===
+        0
     )
       issues.push(
         `${location} empty completion requirements cannot be published`,
       );
+    if (Array.isArray(row.chapterPolicies)) {
+      const chapterIds = row.chapterPolicies.map(
+        (policy: { chapterId?: unknown }) => policy.chapterId,
+      );
+      if (new Set(chapterIds).size !== chapterIds.length)
+        issues.push(`${location} chapterPolicies must contain unique chapterId values`);
+    }
   }
   inspect(value, '');
   if (issues.length) throw new ContractValidationError(name, issues);

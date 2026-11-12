@@ -3,7 +3,7 @@
   "info": {
     "title": "LMS contract baseline",
     "version": "0.2.0",
-    "description": "Contract-first specification. Business endpoints are not implemented by this package. Owner review required for policy decisions."
+    "description": "Đặc tả theo hướng contract-first. Các endpoint nghiệp vụ không được triển khai trong package này. Chủ sở hữu cần xem xét các quyết định về chính sách."
   },
   "paths": {
     "/api/v1/quizzes": {
@@ -12,7 +12,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: INSTRUCTOR. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: INSTRUCTOR. Tạo một quiz DRAFT thuộc chapter của course do instructor sở hữu; learner được phép bắt đầu quiz khi đã hoàn thành lesson/section trước đó và thỏa điều kiện enrollment.",
         "x-access-policy": "INSTRUCTOR",
         "security": [
           {
@@ -33,7 +33,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -56,7 +56,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -66,7 +66,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -76,7 +76,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -86,7 +86,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -96,7 +96,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -106,7 +106,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -116,7 +116,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -126,7 +126,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -154,7 +154,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: ENROLLED. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: ENROLLED. Lấy metadata của quiz mà learner được phép xem, không bao gồm đáp án; việc truy cập được kiểm tra theo enrollment hoặc quyền preview của owner và dùng server clock cho lịch mở/đóng.",
         "x-access-policy": "ENROLLED",
         "security": [
           {
@@ -184,7 +184,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -207,7 +207,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -217,7 +217,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -227,7 +227,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -237,7 +237,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -247,7 +247,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -257,7 +257,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -267,7 +267,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -277,7 +277,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -293,7 +293,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Cập nhật metadata, policy hoặc lịch mở/đóng của quiz DRAFT; yêu cầu expectedVersion khớp và kiểm tra lại policy sau khi merge dữ liệu PATCH.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -323,7 +323,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -346,7 +346,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -356,7 +356,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -366,7 +366,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -376,7 +376,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -386,7 +386,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -396,7 +396,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -406,7 +406,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -416,7 +416,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -442,7 +442,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Xóa quiz chỉ khi quiz còn ở trạng thái DRAFT và không còn Course reference; không xóa các attempt hoặc kết quả lịch sử.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -472,10 +472,10 @@
         ],
         "responses": {
           "204": {
-            "description": "Success"
+            "description": "Thành công"
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -485,7 +485,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -495,7 +495,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -505,7 +505,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -515,7 +515,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -525,7 +525,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -535,7 +535,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -545,7 +545,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -573,7 +573,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Phát hành quiz từ DRAFT sang PUBLISHED sau khi có câu hỏi hợp lệ, tổng điểm lớn hơn 0 và Course reference đúng assessmentVersion; đồng thời đóng băng nội dung và policy.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -603,7 +603,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -626,7 +626,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -636,7 +636,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -646,7 +646,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -656,7 +656,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -666,7 +666,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -676,7 +676,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -686,7 +686,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -696,7 +696,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -724,7 +724,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Lưu trữ quiz từ PUBLISHED sang ARCHIVED để chặn attempt mới; các attempt đang chạy tiếp tục dùng snapshot cũ cho đến khi hết hạn.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -754,7 +754,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -777,7 +777,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -787,7 +787,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -797,7 +797,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -807,7 +807,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -817,7 +817,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -827,7 +827,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -837,7 +837,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -847,7 +847,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -875,7 +875,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Liệt kê các câu hỏi ở chế độ authoring của quiz để owner chỉnh sửa nội dung; hỗ trợ phân trang và không dùng dữ liệu delivery dành cho learner.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -924,7 +924,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -975,7 +975,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -985,7 +985,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -995,7 +995,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1005,7 +1005,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1015,7 +1015,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1025,7 +1025,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1035,7 +1035,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1045,7 +1045,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1061,7 +1061,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -1091,7 +1091,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -1114,7 +1114,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1124,7 +1124,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1134,7 +1134,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1144,7 +1144,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1154,7 +1154,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1164,7 +1164,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1174,7 +1174,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1184,7 +1184,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1212,7 +1212,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Cập nhật câu hỏi authoring thuộc quiz DRAFT; yêu cầu expectedVersion khớp và vẫn phải bảo đảm số lựa chọn, điểm số và tập đáp án đúng hợp lệ.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -1242,7 +1242,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -1265,7 +1265,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1275,7 +1275,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1285,7 +1285,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1295,7 +1295,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1305,7 +1305,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1315,7 +1315,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1325,7 +1325,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1335,7 +1335,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1361,7 +1361,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Xóa câu hỏi authoring khỏi quiz DRAFT khi expectedVersion khớp.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -1391,10 +1391,10 @@
         ],
         "responses": {
           "204": {
-            "description": "Success"
+            "description": "Thành công"
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1404,7 +1404,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1414,7 +1414,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1424,7 +1424,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1434,7 +1434,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1444,7 +1444,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1454,7 +1454,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1464,7 +1464,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1492,7 +1492,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: STUDENT. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: STUDENT. Bắt đầu một attempt cho quiz PUBLISHED khi learner có enrollment/access hợp lệ, đã hoàn thành nội dung bắt buộc trước đó và chưa vượt maxAttempts; server tạo snapshot câu hỏi, policy và version trong cùng transaction.",
         "x-access-policy": "STUDENT",
         "security": [
           {
@@ -1532,7 +1532,7 @@
         ],
         "responses": {
           "201": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -1555,7 +1555,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1565,7 +1565,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1575,7 +1575,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1585,7 +1585,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1595,7 +1595,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1605,7 +1605,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1615,7 +1615,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1625,7 +1625,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1653,7 +1653,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: ATTEMPT_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: ATTEMPT_OWNER. Lấy lại attempt của chính learner, gồm thứ tự câu hỏi/lựa chọn đã snapshot, các câu trả lời hiện có, expiresAt và serverTime; không shuffle lại khi đọc.",
         "x-access-policy": "ATTEMPT_OWNER",
         "security": [
           {
@@ -1683,7 +1683,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -1706,7 +1706,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1716,7 +1716,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1726,7 +1726,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1736,7 +1736,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1746,7 +1746,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1756,7 +1756,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1766,7 +1766,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1776,7 +1776,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1794,7 +1794,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: ATTEMPT_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: ATTEMPT_OWNER. Lưu thay thế toàn bộ tập câu trả lời của attempt đang IN_PROGRESS khi chưa hết hạn và revision khớp; server tăng revision, còn câu bị bỏ khỏi request sẽ bị xóa câu trả lời.",
         "x-access-policy": "ATTEMPT_OWNER",
         "security": [
           {
@@ -1824,7 +1824,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -1847,7 +1847,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1857,7 +1857,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1867,7 +1867,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1877,7 +1877,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1887,7 +1887,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1897,7 +1897,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1907,7 +1907,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1917,7 +1917,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1945,7 +1945,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: ATTEMPT_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: ATTEMPT_OWNER. Nộp attempt bằng các câu trả lời đã lưu khi revision khớp; server khóa attempt, tự chấm trên snapshot, lưu kết quả và outbox trong cùng transaction, không tin score/passed từ client.",
         "x-access-policy": "ATTEMPT_OWNER",
         "security": [
           {
@@ -1985,7 +1985,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -2008,7 +2008,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2018,7 +2018,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2028,7 +2028,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2038,7 +2038,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2048,7 +2048,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2058,7 +2058,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2068,7 +2068,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2078,7 +2078,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2106,7 +2106,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: ATTEMPT_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: ATTEMPT_OWNER. Lấy kết quả của attempt thuộc learner; khi chưa chấm, các trường score, maxScore, passed và gradedAt là null; khi đã chấm, trả đầy đủ kết quả đã lưu.",
         "x-access-policy": "ATTEMPT_OWNER",
         "security": [
           {
@@ -2136,7 +2136,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -2159,7 +2159,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2169,7 +2169,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2179,7 +2179,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2189,7 +2189,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2199,7 +2199,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2209,7 +2209,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2219,7 +2219,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2229,7 +2229,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2247,7 +2247,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: ATTEMPT_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: ATTEMPT_OWNER. Lấy phần review câu hỏi và đáp án của attempt sau khi chấm nếu reviewPolicy là AFTER_SUBMISSION; NEVER luôn từ chối.",
         "x-access-policy": "ATTEMPT_OWNER",
         "security": [
           {
@@ -2277,7 +2277,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -2300,7 +2300,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2310,7 +2310,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2320,7 +2320,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2330,7 +2330,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2340,7 +2340,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2350,7 +2350,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2360,7 +2360,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2370,7 +2370,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2388,7 +2388,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: AUTHENTICATED. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: AUTHENTICATED. Liệt kê các attempt của chính user, có thể lọc theo quizId và phân trang; response không chứa đáp án chi tiết.",
         "x-access-policy": "AUTHENTICATED",
         "security": [
           {
@@ -2437,7 +2437,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -2488,7 +2488,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2498,7 +2498,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2508,7 +2508,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2518,7 +2518,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2528,7 +2528,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2538,7 +2538,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2548,7 +2548,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2558,7 +2558,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2576,7 +2576,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Lấy thống kê kết quả graded của quiz theo assessmentVersion, phục vụ course owner theo dõi learner; không tính điểm của practice quiz như kết quả graded.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -2606,7 +2606,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -2629,7 +2629,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2639,7 +2639,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2649,7 +2649,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2659,7 +2659,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2669,7 +2669,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2679,7 +2679,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2689,7 +2689,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2699,7 +2699,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2717,7 +2717,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: COURSE_OWNER. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: COURSE_OWNER. Liệt kê assessment summary của learner trong course theo assessmentVersion, chỉ dành cho course owner hoặc admin và không thay thế dữ liệu điểm bằng giá trị 0 khi chưa có kết quả.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -2766,7 +2766,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -2817,7 +2817,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2827,7 +2827,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2837,7 +2837,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2847,7 +2847,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2857,7 +2857,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2867,7 +2867,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2877,7 +2877,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2887,7 +2887,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2905,7 +2905,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: INTERNAL. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: INTERNAL. Cung cấp cho service nội bộ summary kết quả graded của attempt để đồng bộ sang Learning, gồm assessmentVersion và dữ liệu điểm đã chấm.",
         "x-access-policy": "INTERNAL",
         "security": [
           {
@@ -2935,7 +2935,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -2958,7 +2958,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2968,7 +2968,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2978,7 +2978,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2988,7 +2988,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2998,7 +2998,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3008,7 +3008,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3018,7 +3018,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3028,7 +3028,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3046,7 +3046,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: INTERNAL. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: INTERNAL. Cung cấp cho service nội bộ thông tin quyền truy cập và ownership của attempt để service khác kiểm tra trước khi xử lý.",
         "x-access-policy": "INTERNAL",
         "security": [
           {
@@ -3076,7 +3076,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -3099,7 +3099,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3109,7 +3109,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3119,7 +3119,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3129,7 +3129,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3139,7 +3139,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3149,7 +3149,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3159,7 +3159,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3169,7 +3169,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3187,7 +3187,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Access policy: INTERNAL. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: INTERNAL. Cung cấp cho service nội bộ danh sách assessment summary của learner trong course để phục vụ tiến độ và điều kiện hoàn thành.",
         "x-access-policy": "INTERNAL",
         "security": [
           {
@@ -3236,7 +3236,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -3287,7 +3287,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3297,7 +3297,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3307,7 +3307,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3317,7 +3317,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3327,7 +3327,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3337,7 +3337,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3347,7 +3347,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -3357,7 +3357,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4110,6 +4110,35 @@
         ],
         "additionalProperties": false
       },
+      "ChapterCompletionPolicy": {
+        "type": "object",
+        "properties": {
+          "chapterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requiredItemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "requiredAssessments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequiredAssessment"
+            }
+          }
+        },
+        "required": [
+          "chapterId",
+          "requiredItemIds",
+          "requiredAssessments"
+        ],
+        "additionalProperties": false
+      },
       "ChapterData": {
         "type": "object",
         "properties": {
@@ -4118,6 +4147,10 @@
             "format": "uuid"
           },
           "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
             "type": "string",
             "format": "uuid"
           },
@@ -4133,14 +4166,26 @@
           "version": {
             "type": "integer",
             "minimum": 1
+          },
+          "endSectionQuiz": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SectionEndQuizRef"
+              }
+            ]
           }
         },
         "required": [
           "id",
           "courseId",
+          "revisionId",
           "title",
           "order",
-          "version"
+          "version",
+          "endSectionQuiz"
         ],
         "additionalProperties": false
       },
@@ -4161,6 +4206,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string",
             "minLength": 1,
@@ -4173,15 +4222,27 @@
           "version": {
             "type": "integer",
             "minimum": 1
+          },
+          "endSectionQuiz": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SectionEndQuizRef"
+              }
+            ]
           }
         },
         "required": [
           "lessons",
           "id",
           "courseId",
+          "revisionId",
           "title",
           "order",
-          "version"
+          "version",
+          "endSectionQuiz"
         ],
         "additionalProperties": false
       },
@@ -4433,6 +4494,12 @@
               "$ref": "#/components/schemas/RequiredAssessment"
             }
           },
+          "chapterPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChapterCompletionPolicy"
+            }
+          },
           "sequence": {
             "anyOf": [
               {
@@ -4458,6 +4525,7 @@
           "contentVersion",
           "requiredItemIds",
           "requiredAssessments",
+          "chapterPolicies",
           "sequence",
           "assessmentRule",
           "certificateEnabled"
@@ -4700,6 +4768,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "contentVersion": {
             "type": "integer",
             "minimum": 1
@@ -4713,6 +4785,7 @@
         },
         "required": [
           "courseId",
+          "revisionId",
           "contentVersion",
           "chapters"
         ],
@@ -5109,6 +5182,120 @@
         ],
         "additionalProperties": false
       },
+      "CourseRevisionData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "baseContentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "contentVersion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "minimum": 1
+              }
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "DRAFT"
+              },
+              {
+                "type": "string",
+                "const": "IN_REVIEW"
+              },
+              {
+                "type": "string",
+                "const": "PUBLISHED"
+              },
+              {
+                "type": "string",
+                "const": "REJECTED"
+              }
+            ]
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "submittedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "baseContentVersion",
+          "contentVersion",
+          "status",
+          "createdBy",
+          "createdAt",
+          "submittedAt",
+          "publishedAt",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "CourseRevisionStatus": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "DRAFT"
+          },
+          {
+            "type": "string",
+            "const": "IN_REVIEW"
+          },
+          {
+            "type": "string",
+            "const": "PUBLISHED"
+          },
+          {
+            "type": "string",
+            "const": "REJECTED"
+          }
+        ]
+      },
       "CourseStatus": {
         "anyOf": [
           {
@@ -5132,13 +5319,28 @@
       "CreateChapterRequest": {
         "type": "object",
         "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "endSectionQuiz": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SectionEndQuizRef"
+              }
+            ]
           }
         },
         "required": [
+          "revisionId",
           "title"
         ],
         "additionalProperties": false
@@ -5169,6 +5371,19 @@
         "required": [
           "title",
           "description"
+        ],
+        "additionalProperties": false
+      },
+      "CreateCourseRevisionRequest": {
+        "type": "object",
+        "properties": {
+          "baseContentVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "baseContentVersion"
         ],
         "additionalProperties": false
       },
@@ -5233,6 +5448,10 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
+              },
               "title": {
                 "type": "string",
                 "minLength": 1,
@@ -5246,6 +5465,7 @@
               "type",
               "videoUrl",
               "durationSeconds",
+              "revisionId",
               "title",
               "required"
             ],
@@ -5262,6 +5482,10 @@
                 "type": "string",
                 "minLength": 1
               },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
+              },
               "title": {
                 "type": "string",
                 "minLength": 1,
@@ -5274,6 +5498,7 @@
             "required": [
               "type",
               "body",
+              "revisionId",
               "title",
               "required"
             ],
@@ -5294,6 +5519,10 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
+              },
               "title": {
                 "type": "string",
                 "minLength": 1,
@@ -5307,6 +5536,7 @@
               "type",
               "quizId",
               "assessmentVersion",
+              "revisionId",
               "title",
               "required"
             ],
@@ -5317,6 +5547,10 @@
       "CreateLessonRequest": {
         "type": "object",
         "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string",
             "minLength": 1,
@@ -5324,6 +5558,7 @@
           }
         },
         "required": [
+          "revisionId",
           "title"
         ],
         "additionalProperties": false
@@ -5399,13 +5634,92 @@
         "additionalProperties": false
       },
       "CreateQuizRequest": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "courseId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "chapterId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "policy": {
+                "$ref": "#/components/schemas/QuizPolicy"
+              },
+              "placement": {
+                "type": "string",
+                "const": "LESSON"
+              },
+              "lessonId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "courseId",
+              "chapterId",
+              "title",
+              "policy",
+              "placement",
+              "lessonId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "courseId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "chapterId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "policy": {
+                "$ref": "#/components/schemas/QuizPolicy"
+              },
+              "placement": {
+                "type": "string",
+                "const": "SECTION_END"
+              },
+              "lessonId": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "courseId",
+              "chapterId",
+              "title",
+              "policy",
+              "placement",
+              "lessonId"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "CreateQuizRequestBase": {
         "type": "object",
         "properties": {
           "courseId": {
             "type": "string",
             "format": "uuid"
           },
-          "lessonId": {
+          "chapterId": {
             "type": "string",
             "format": "uuid"
           },
@@ -5416,37 +5730,13 @@
           },
           "policy": {
             "$ref": "#/components/schemas/QuizPolicy"
-          },
-          "opensAt": {
-            "anyOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "format": "date-time"
-              }
-            ]
-          },
-          "closesAt": {
-            "anyOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "format": "date-time"
-              }
-            ]
           }
         },
         "required": [
           "courseId",
-          "lessonId",
+          "chapterId",
           "title",
-          "policy",
-          "opensAt",
-          "closesAt"
+          "policy"
         ],
         "additionalProperties": false
       },
@@ -5713,6 +6003,9 @@
             ]
           },
           "path": {
+            "type": "string"
+          },
+          "description": {
             "type": "string"
           },
           "access": {
@@ -6683,6 +6976,10 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
+              },
               "title": {
                 "type": "string",
                 "minLength": 1,
@@ -6720,6 +7017,7 @@
               "type",
               "videoUrl",
               "durationSeconds",
+              "revisionId",
               "title",
               "required",
               "id",
@@ -6741,6 +7039,10 @@
               "body": {
                 "type": "string",
                 "minLength": 1
+              },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
               },
               "title": {
                 "type": "string",
@@ -6778,6 +7080,7 @@
             "required": [
               "type",
               "body",
+              "revisionId",
               "title",
               "required",
               "id",
@@ -6803,6 +7106,10 @@
               "assessmentVersion": {
                 "type": "integer",
                 "minimum": 1
+              },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
               },
               "title": {
                 "type": "string",
@@ -6841,6 +7148,7 @@
               "type",
               "quizId",
               "assessmentVersion",
+              "revisionId",
               "title",
               "required",
               "id",
@@ -7051,6 +7359,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "chapterId": {
             "type": "string",
             "format": "uuid"
@@ -7072,6 +7384,7 @@
         "required": [
           "id",
           "courseId",
+          "revisionId",
           "chapterId",
           "title",
           "order",
@@ -7100,6 +7413,10 @@
                     "durationSeconds": {
                       "type": "integer",
                       "minimum": 1
+                    },
+                    "revisionId": {
+                      "type": "string",
+                      "format": "uuid"
                     },
                     "title": {
                       "type": "string",
@@ -7138,6 +7455,7 @@
                     "type",
                     "videoUrl",
                     "durationSeconds",
+                    "revisionId",
                     "title",
                     "required",
                     "id",
@@ -7159,6 +7477,10 @@
                     "body": {
                       "type": "string",
                       "minLength": 1
+                    },
+                    "revisionId": {
+                      "type": "string",
+                      "format": "uuid"
                     },
                     "title": {
                       "type": "string",
@@ -7196,6 +7518,7 @@
                   "required": [
                     "type",
                     "body",
+                    "revisionId",
                     "title",
                     "required",
                     "id",
@@ -7221,6 +7544,10 @@
                     "assessmentVersion": {
                       "type": "integer",
                       "minimum": 1
+                    },
+                    "revisionId": {
+                      "type": "string",
+                      "format": "uuid"
                     },
                     "title": {
                       "type": "string",
@@ -7259,6 +7586,7 @@
                     "type",
                     "quizId",
                     "assessmentVersion",
+                    "revisionId",
                     "title",
                     "required",
                     "id",
@@ -7278,6 +7606,10 @@
             "format": "uuid"
           },
           "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
             "type": "string",
             "format": "uuid"
           },
@@ -7303,6 +7635,7 @@
           "items",
           "id",
           "courseId",
+          "revisionId",
           "chapterId",
           "title",
           "order",
@@ -8046,93 +8379,196 @@
         ]
       },
       "QuizData": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "instructorId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "status": {
-            "anyOf": [
-              {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "courseId": {
                 "type": "string",
-                "const": "DRAFT"
+                "format": "uuid"
               },
-              {
+              "chapterId": {
                 "type": "string",
-                "const": "PUBLISHED"
+                "format": "uuid"
               },
-              {
+              "title": {
                 "type": "string",
-                "const": "ARCHIVED"
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "policy": {
+                "$ref": "#/components/schemas/QuizPolicy"
+              },
+              "placement": {
+                "type": "string",
+                "const": "LESSON"
+              },
+              "lessonId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "instructorId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "DRAFT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "PUBLISHED"
+                  },
+                  {
+                    "type": "string",
+                    "const": "ARCHIVED"
+                  }
+                ]
+              },
+              "assessmentVersion": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
               }
-            ]
+            },
+            "required": [
+              "courseId",
+              "chapterId",
+              "title",
+              "policy",
+              "placement",
+              "lessonId",
+              "id",
+              "instructorId",
+              "status",
+              "assessmentVersion",
+              "version"
+            ],
+            "additionalProperties": false
           },
-          "assessmentVersion": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "courseId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "lessonId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "title": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "policy": {
-            "$ref": "#/components/schemas/QuizPolicy"
-          },
-          "opensAt": {
-            "anyOf": [
-              {
+          {
+            "type": "object",
+            "properties": {
+              "courseId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "chapterId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "policy": {
+                "$ref": "#/components/schemas/QuizPolicy"
+              },
+              "placement": {
+                "type": "string",
+                "const": "SECTION_END"
+              },
+              "lessonId": {
                 "type": "null"
               },
-              {
+              "id": {
                 "type": "string",
-                "format": "date-time"
-              }
-            ]
-          },
-          "closesAt": {
-            "anyOf": [
-              {
-                "type": "null"
+                "format": "uuid"
               },
-              {
+              "instructorId": {
                 "type": "string",
-                "format": "date-time"
+                "format": "uuid"
+              },
+              "status": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "DRAFT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "PUBLISHED"
+                  },
+                  {
+                    "type": "string",
+                    "const": "ARCHIVED"
+                  }
+                ]
+              },
+              "assessmentVersion": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
               }
-            ]
+            },
+            "required": [
+              "courseId",
+              "chapterId",
+              "title",
+              "policy",
+              "placement",
+              "lessonId",
+              "id",
+              "instructorId",
+              "status",
+              "assessmentVersion",
+              "version"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "id",
-          "instructorId",
-          "status",
-          "assessmentVersion",
-          "version",
-          "courseId",
-          "lessonId",
-          "title",
-          "policy",
-          "opensAt",
-          "closesAt"
-        ],
-        "additionalProperties": false
+        ]
+      },
+      "QuizPlacement": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "placement": {
+                "type": "string",
+                "const": "LESSON"
+              },
+              "lessonId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "placement",
+              "lessonId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "placement": {
+                "type": "string",
+                "const": "SECTION_END"
+              },
+              "lessonId": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "placement",
+              "lessonId"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "QuizPolicy": {
         "type": "object",
@@ -8176,10 +8612,6 @@
               {
                 "type": "string",
                 "const": "AFTER_SUBMISSION"
-              },
-              {
-                "type": "string",
-                "const": "AFTER_CLOSE"
               },
               {
                 "type": "string",
@@ -8917,6 +9349,81 @@
           }
         ]
       },
+      "ReviewCourseRevisionRequest": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "APPROVE"
+              },
+              {
+                "type": "string",
+                "const": "REJECT"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "decision",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "RevisionReorderRequest": {
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderedIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "revisionId",
+          "orderedIds",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "RevisionVersionRequest": {
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "revisionId",
+          "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
       "SaveAnswersRequest": {
         "type": "object",
         "properties": {
@@ -8974,6 +9481,30 @@
           "contentVersion",
           "positionSeconds",
           "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "SectionEndQuizRef": {
+        "type": "object",
+        "properties": {
+          "quizId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "passingScorePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "quizId",
+          "assessmentVersion",
+          "passingScorePercent"
         ],
         "additionalProperties": false
       },
@@ -9205,6 +9736,20 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "endSectionQuiz": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SectionEndQuizRef"
+              }
+            ]
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "expectedVersion": {
             "type": "integer",
             "minimum": 1
@@ -9212,6 +9757,7 @@
         },
         "required": [
           "title",
+          "revisionId",
           "expectedVersion"
         ],
         "additionalProperties": false
@@ -9240,6 +9786,12 @@
               "$ref": "#/components/schemas/RequiredAssessment"
             }
           },
+          "chapterPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChapterCompletionPolicy"
+            }
+          },
           "expectedVersion": {
             "type": "integer",
             "minimum": 1
@@ -9249,6 +9801,7 @@
           "sequence",
           "certificateEnabled",
           "requiredAssessments",
+          "chapterPolicies",
           "expectedVersion"
         ],
         "additionalProperties": false
@@ -9320,6 +9873,10 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
+              },
               "title": {
                 "type": "string",
                 "minLength": 1,
@@ -9337,6 +9894,7 @@
               "type",
               "videoUrl",
               "durationSeconds",
+              "revisionId",
               "title",
               "required",
               "expectedVersion"
@@ -9354,6 +9912,10 @@
                 "type": "string",
                 "minLength": 1
               },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
+              },
               "title": {
                 "type": "string",
                 "minLength": 1,
@@ -9370,6 +9932,7 @@
             "required": [
               "type",
               "body",
+              "revisionId",
               "title",
               "required",
               "expectedVersion"
@@ -9391,6 +9954,10 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "revisionId": {
+                "type": "string",
+                "format": "uuid"
+              },
               "title": {
                 "type": "string",
                 "minLength": 1,
@@ -9408,6 +9975,7 @@
               "type",
               "quizId",
               "assessmentVersion",
+              "revisionId",
               "title",
               "required",
               "expectedVersion"
@@ -9424,6 +9992,10 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "expectedVersion": {
             "type": "integer",
             "minimum": 1
@@ -9431,6 +10003,7 @@
         },
         "required": [
           "title",
+          "revisionId",
           "expectedVersion"
         ],
         "additionalProperties": false
@@ -9559,28 +10132,6 @@
           },
           "policy": {
             "$ref": "#/components/schemas/QuizPolicy"
-          },
-          "opensAt": {
-            "anyOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "format": "date-time"
-              }
-            ]
-          },
-          "closesAt": {
-            "anyOf": [
-              {
-                "type": "null"
-              },
-              {
-                "type": "string",
-                "format": "date-time"
-              }
-            ]
           },
           "expectedVersion": {
             "type": "integer",
@@ -9902,7 +10453,7 @@
       "serviceAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Separate service JWT: service issuer/audience/scope; never accept a public user token as a service credential."
+        "description": "JWT riêng cho service: bao gồm issuer/audience/scope của service; không bao giờ chấp nhận token người dùng công khai làm thông tin xác thực của service."
       }
     }
   }
