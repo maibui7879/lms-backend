@@ -18,8 +18,12 @@ import type {
   AuthUser,
   CourseQuery,
   CourseData,
+  CourseLearnerData,
+  CourseOutlineData,
   CreateCourseRequest,
   PageData,
+  PageQuery,
+  InstructorCourseQuery,
   UpdateCourseRequest,
   VersionRequest,
 } from '@lms/contracts';
@@ -28,6 +32,7 @@ import { CoursesService } from './courses.service';
 import { CreateCoursePipe } from './dto/create-course.dto';
 import {
   CourseQueryPipe,
+  InstructorCourseQueryPipe,
   UpdateCoursePipe,
   VersionRequestPipe,
   validateCourseId,
@@ -56,6 +61,33 @@ export class CoursesController {
   ): Promise<ApiResponse<PageData<CourseData>>> {
     return {
       data: await this.courses.list(query),
+      meta: { requestId: String(request.headers['x-request-id']) },
+    };
+  }
+
+  @Get(':id/outline')
+  @UseGuards(MockAuthGuard)
+  async outline(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ): Promise<ApiResponse<CourseOutlineData>> {
+    return {
+      data: await this.courses.outline(validateCourseId(id), user),
+      meta: { requestId: String(request.headers['x-request-id']) },
+    };
+  }
+
+  @Get(':id/learners')
+  @UseGuards(MockAuthGuard)
+  async learners(
+    @Param('id') id: string,
+    @Query(new CourseQueryPipe()) query: PageQuery,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ): Promise<ApiResponse<PageData<CourseLearnerData>>> {
+    return {
+      data: await this.courses.listLearners(validateCourseId(id), query, user),
       meta: { requestId: String(request.headers['x-request-id']) },
     };
   }
@@ -94,5 +126,23 @@ export class CoursesController {
     @CurrentUser() user: AuthUser,
   ): Promise<void> {
     await this.courses.remove(validateCourseId(id), body, user);
+  }
+}
+
+@Controller('api/v1/instructor')
+export class InstructorCoursesController {
+  constructor(private readonly courses: CoursesService) {}
+
+  @Get('courses')
+  @UseGuards(MockAuthGuard)
+  async list(
+    @Query(new InstructorCourseQueryPipe()) query: InstructorCourseQuery,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ): Promise<ApiResponse<PageData<CourseData>>> {
+    return {
+      data: await this.courses.listInstructorCourses(query, user),
+      meta: { requestId: String(request.headers['x-request-id']) },
+    };
   }
 }

@@ -44,7 +44,10 @@ export class LessonsController {
     @CurrentUser() user: AuthUser,
     @Req() request: Request,
   ): Promise<ApiResponse<LessonData>> {
-    return { data: await this.lessons.create(validateChapterId(chapterId), body, user), meta: { requestId: String(request.headers['x-request-id']) } };
+    return {
+      data: await this.lessons.create(validateChapterId(chapterId), body, user),
+      meta: { requestId: String(request.headers['x-request-id']) },
+    };
   }
 
   @Patch('lessons/:id')
@@ -54,7 +57,10 @@ export class LessonsController {
     @CurrentUser() user: AuthUser,
     @Req() request: Request,
   ): Promise<ApiResponse<LessonData>> {
-    return { data: await this.lessons.update(validateLessonId(id), body, user), meta: { requestId: String(request.headers['x-request-id']) } };
+    return {
+      data: await this.lessons.update(validateLessonId(id), body, user),
+      meta: { requestId: String(request.headers['x-request-id']) },
+    };
   }
 
   @Delete('lessons/:id')
@@ -74,6 +80,13 @@ export class LessonsController {
     @CurrentUser() user: AuthUser,
     @Req() request: Request,
   ): Promise<ApiResponse<LessonData[]>> {
-    return { data: await this.lessons.reorder(validateChapterId(chapterId), body, user), meta: { requestId: String(request.headers['x-request-id']) } };
+    return {
+      data: await this.lessons.reorder(
+        validateChapterId(chapterId),
+        body,
+        user,
+      ),
+      meta: { requestId: String(request.headers['x-request-id']) },
+    };
   }
 }

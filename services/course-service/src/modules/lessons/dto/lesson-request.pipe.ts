@@ -18,36 +18,64 @@ function validationError(error: unknown): never {
   throw error;
 }
 
-export class CreateLessonPipe implements PipeTransform<unknown, CreateLessonRequest> {
+export class CreateLessonPipe implements PipeTransform<
+  unknown,
+  CreateLessonRequest
+> {
   transform(value: unknown): CreateLessonRequest {
-    try { return parseContract('CreateLessonRequest', value); }
-    catch (error) { return validationError(error); }
+    try {
+      return parseContract('CreateLessonRequest', value);
+    } catch (error) {
+      return validationError(error);
+    }
   }
 }
 
-export class UpdateLessonPipe implements PipeTransform<unknown, UpdateLessonRequest> {
+export class UpdateLessonPipe implements PipeTransform<
+  unknown,
+  UpdateLessonRequest
+> {
   transform(value: unknown): UpdateLessonRequest {
-    try { return parseContract('UpdateLessonRequest', value); }
-    catch (error) { return validationError(error); }
+    try {
+      return parseContract('UpdateLessonRequest', value);
+    } catch (error) {
+      return validationError(error);
+    }
   }
 }
 
-export class ReorderLessonPipe implements PipeTransform<unknown, ReorderRequest> {
+export class ReorderLessonPipe implements PipeTransform<
+  unknown,
+  ReorderRequest
+> {
   transform(value: unknown): ReorderRequest {
-    try { return parseContract('ReorderRequest', value); }
-    catch (error) { return validationError(error); }
+    try {
+      return parseContract('ReorderRequest', value);
+    } catch (error) {
+      return validationError(error);
+    }
   }
 }
 
-export class LessonVersionRequestPipe implements PipeTransform<unknown, VersionRequest> {
+export class LessonVersionRequestPipe implements PipeTransform<
+  unknown,
+  VersionRequest
+> {
   transform(value: unknown): VersionRequest {
-    try { return parseContract('VersionRequest', value); }
-    catch (error) { return validationError(error); }
+    try {
+      return parseContract('VersionRequest', value);
+    } catch (error) {
+      return validationError(error);
+    }
   }
 }
 
 export function validateLessonId(value: string): string {
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[4-9][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value))
+  if (
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[4-9][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    )
+  )
     return value;
   throw new BadRequestException({
     code: 'VALIDATION_ERROR',

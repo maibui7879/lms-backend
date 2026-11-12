@@ -6,6 +6,7 @@ import ids from '@lms/contracts/fixtures/ids.json';
 import { Course } from '../src/modules/courses/entities/course.entity';
 import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
 import { Lesson } from '../src/modules/lessons/entities/lesson.entity';
+import { LearningItem } from '../src/modules/learning-items/entities/learning-item.entity';
 import { seedCourse } from '../src/database/seeds/course.seed';
 
 const testUrl = process.env.TEST_DATABASE_URL;
@@ -19,6 +20,7 @@ suite(
     const created: string[] = [];
     const createdChapters: string[] = [];
     const createdLessons: string[] = [];
+    const createdItems: string[] = [];
     const oldEnv = { ...process.env };
     beforeAll(async () => {
       const parsedUrl = new URL(testUrl!);
@@ -48,6 +50,8 @@ suite(
     }, 30000);
     afterAll(async () => {
       if (source?.isInitialized) {
+        for (const id of createdItems)
+          await source.getRepository(LearningItem).delete(id);
         for (const id of createdChapters)
           await source.getRepository(Chapter).delete(id);
         for (const id of createdLessons)
@@ -103,6 +107,49 @@ suite(
         title: 'Database lesson',
         order: 1,
         version: 1,
+      });
+
+      const item = await request(app.getHttpServer())
+        .post(`/api/v1/lessons/${lesson.body.data.id}/items`)
+        .set('x-mock-user', 'instructorA')
+        .send({
+          type: 'READING',
+          title: 'Database item',
+          body: 'Database body',
+          required: true,
+        })
+        .expect(201);
+      createdItems.push(item.body.data.id);
+      expect(item.body.data).toMatchObject({
+        courseId: created[0],
+        lessonId: lesson.body.data.id,
+        type: 'READING',
+        order: 1,
+        version: 1,
+      });
+      const itemRow = await source
+        .getRepository(LearningItem)
+        .findOneByOrFail({ id: item.body.data.id });
+      expect(itemRow.body).toBe('Database body');
+
+      const outline = await request(app.getHttpServer())
+        .get(`/api/v1/courses/${created[0]}/outline`)
+        .set('x-mock-user', 'instructorA')
+        .expect(200);
+      expect(outline.body.data).toMatchObject({
+        courseId: created[0],
+        contentVersion: 3,
+        chapters: [
+          {
+            id: chapter.body.data.id,
+            lessons: [
+              {
+                id: lesson.body.data.id,
+                items: [{ id: item.body.data.id, type: 'READING' }],
+              },
+            ],
+          },
+        ],
       });
     });
     it('seeds twice without overwriting existing records or POST-created courses', async () => {

@@ -36,9 +36,16 @@ export class ChaptersService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async create(courseId: string, dto: CreateChapterRequest, user: AuthUser): Promise<ChapterData> {
+  async create(
+    courseId: string,
+    dto: CreateChapterRequest,
+    user: AuthUser,
+  ): Promise<ChapterData> {
     const course = await this.assertEditableCourse(courseId, user);
-    const last = await this.chapters.findOne({ where: { courseId }, order: { order: 'DESC' } });
+    const last = await this.chapters.findOne({
+      where: { courseId },
+      order: { order: 'DESC' },
+    });
     const chapter = this.chapters.create({
       courseId,
       title: dto.title,
@@ -50,7 +57,11 @@ export class ChaptersService {
     return chapterData(saved);
   }
 
-  async update(id: string, dto: UpdateChapterRequest, user: AuthUser): Promise<ChapterData> {
+  async update(
+    id: string,
+    dto: UpdateChapterRequest,
+    user: AuthUser,
+  ): Promise<ChapterData> {
     const chapter = await this.findChapter(id);
     const course = await this.assertEditableCourse(chapter.courseId, user);
     this.assertChapterVersion(chapter, dto.expectedVersion);
@@ -58,7 +69,8 @@ export class ChaptersService {
       { id, version: dto.expectedVersion },
       { title: dto.title, version: dto.expectedVersion + 1 },
     );
-    if (!result.affected) throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
+    if (!result.affected)
+      throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
     await this.bumpCourse(course);
     return chapterData(await this.chapters.findOneByOrFail({ id }));
   }
@@ -67,8 +79,12 @@ export class ChaptersService {
     const chapter = await this.findChapter(id);
     const course = await this.assertEditableCourse(chapter.courseId, user);
     this.assertChapterVersion(chapter, dto.expectedVersion);
-    const result = await this.chapters.delete({ id, version: dto.expectedVersion });
-    if (!result.affected) throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
+    const result = await this.chapters.delete({
+      id,
+      version: dto.expectedVersion,
+    });
+    if (!result.affected)
+      throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
     await this.chapters
       .createQueryBuilder()
       .update(Chapter)
@@ -81,36 +97,60 @@ export class ChaptersService {
     await this.bumpCourse(course);
   }
 
-  async reorder(courseId: string, dto: ReorderRequest, user: AuthUser): Promise<CourseOutlineData> {
+  async reorder(
+    courseId: string,
+    dto: ReorderRequest,
+    user: AuthUser,
+  ): Promise<CourseOutlineData> {
     const course = await this.assertEditableCourse(courseId, user);
     if (course.version !== dto.expectedVersion)
       throw this.versionConflict(dto.expectedVersion, course.version);
-    const chapters = await this.chapters.find({ where: { courseId }, order: { order: 'ASC' } });
-    const actualIds = new Set(chapters.map(chapter => chapter.id));
-    if (dto.orderedIds.length !== chapters.length || dto.orderedIds.some(id => !actualIds.has(id)))
+    const chapters = await this.chapters.find({
+      where: { courseId },
+      order: { order: 'ASC' },
+    });
+    const actualIds = new Set(chapters.map((chapter) => chapter.id));
+    if (
+      dto.orderedIds.length !== chapters.length ||
+      dto.orderedIds.some((id) => !actualIds.has(id))
+    )
       throw new ConflictException({
         code: 'VALIDATION_ERROR',
         message: 'orderedIds must contain every chapter exactly once',
         details: {},
       });
-    await this.dataSource.transaction(async manager => {
+    await this.dataSource.transaction(async (manager) => {
       for (const [index, id] of dto.orderedIds.entries()) {
-        const chapter = chapters.find(item => item.id === id)!;
-        await manager.update(Chapter, { id, courseId }, {
-          order: index + 1,
-          version: chapter.version + 1,
-        });
+        const chapter = chapters.find((item) => item.id === id)!;
+        await manager.update(
+          Chapter,
+          { id, courseId },
+          {
+            order: index + 1,
+            version: chapter.version + 1,
+          },
+        );
       }
-      await manager.update(Course, { id: courseId, version: dto.expectedVersion }, {
-        version: dto.expectedVersion + 1,
-        contentVersion: course.contentVersion + 1,
-      });
+      await manager.update(
+        Course,
+        { id: courseId, version: dto.expectedVersion },
+        {
+          version: dto.expectedVersion + 1,
+          contentVersion: course.contentVersion + 1,
+        },
+      );
     });
-    const ordered = await this.chapters.find({ where: { courseId }, order: { order: 'ASC' } });
+    const ordered = await this.chapters.find({
+      where: { courseId },
+      order: { order: 'ASC' },
+    });
     return {
       courseId,
       contentVersion: course.contentVersion + 1,
-      chapters: ordered.map(chapter => ({ ...chapterData(chapter), lessons: [] })),
+      chapters: ordered.map((chapter) => ({
+        ...chapterData(chapter),
+        lessons: [],
+      })),
     };
   }
 
@@ -120,12 +160,16 @@ export class ChaptersService {
     return chapter;
   }
 
-  private async assertEditableCourse(courseId: string, user: AuthUser): Promise<Course> {
+  private async assertEditableCourse(
+    courseId: string,
+    user: AuthUser,
+  ): Promise<Course> {
     if (user.role !== 'INSTRUCTOR' || user.status !== 'ACTIVE')
       throw new ForbiddenException('Active instructor account required');
     const course = await this.courses.findOneBy({ id: courseId });
     if (!course) throw new NotFoundException('Course not found');
-    if (course.instructorId !== user.id) throw new ForbiddenException('Course ownership required');
+    if (course.instructorId !== user.id)
+      throw new ForbiddenException('Course ownership required');
     if (course.status === 'PUBLISHED')
       throw new ConflictException({
         code: 'INVALID_COURSE_TRANSITION',
@@ -135,7 +179,10 @@ export class ChaptersService {
     return course;
   }
 
-  private assertChapterVersion(chapter: Chapter, expectedVersion: number): void {
+  private assertChapterVersion(
+    chapter: Chapter,
+    expectedVersion: number,
+  ): void {
     if (chapter.version !== expectedVersion)
       throw this.versionConflict(expectedVersion, chapter.version);
   }
@@ -143,9 +190,13 @@ export class ChaptersService {
   private async bumpCourse(course: Course): Promise<void> {
     const result = await this.courses.update(
       { id: course.id, version: course.version },
-      { version: course.version + 1, contentVersion: course.contentVersion + 1 },
+      {
+        version: course.version + 1,
+        contentVersion: course.contentVersion + 1,
+      },
     );
-    if (!result.affected) throw this.versionConflict(course.version, course.version + 1);
+    if (!result.affected)
+      throw this.versionConflict(course.version, course.version + 1);
   }
 
   private versionConflict(expectedVersion: number, currentVersion: number) {

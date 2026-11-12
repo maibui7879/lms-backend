@@ -9,33 +9,33 @@ import type { CourseStatus } from '@lms/contracts';
 
 @Entity('courses')
 export class Course {
-  @PrimaryGeneratedColumn('uuid') 
+  @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'uuid' }) 
+  @Column({ type: 'uuid' })
   instructorId!: string;
 
-  @Column({ type: 'varchar', length: 200 }) 
+  @Column({ type: 'varchar', length: 200 })
   title!: string;
 
-  @Column({ type: 'text' }) 
+  @Column({ type: 'text' })
   description!: string;
 
-  @Column({ type: 'text', nullable: true }) 
+  @Column({ type: 'text', nullable: true })
   thumbnailUrl!: string | null;
 
   @Column({ type: 'varchar', length: 20, default: 'DRAFT' })
   status!: CourseStatus;
 
-  @Column({ type: 'integer', default: 1 }) 
+  @Column({ type: 'integer', default: 1 })
   version!: number;
 
-  @Column({ type: 'integer', default: 1 }) 
+  @Column({ type: 'integer', default: 1 })
   contentVersion!: number;
 
-  @CreateDateColumn({ type: 'timestamptz' }) 
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamptz' }) 
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt!: Date;
 }

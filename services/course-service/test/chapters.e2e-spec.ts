@@ -35,7 +35,9 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
   };
   const manager = { update: jest.fn() };
   const dataSource = {
-    transaction: jest.fn(async (callback: (value: typeof manager) => unknown) => callback(manager)),
+    transaction: jest.fn(async (callback: (value: typeof manager) => unknown) =>
+      callback(manager),
+    ),
   };
 
   const course = () => ({
@@ -71,8 +73,7 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
         { provide: getRepositoryToken(Course), useValue: courseRepository },
         { provide: DataSource, useValue: dataSource },
       ],
-    })
-      .compile();
+    }).compile();
     app = module.createNestApplication();
     app.use(requestContext);
     app.useGlobalFilters(new HttpExceptionFilter());
@@ -85,20 +86,26 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
     courseRepository.update.mockResolvedValue({ affected: 1 });
     chapterRepository.findOne.mockResolvedValue(null);
     chapterRepository.findOneBy.mockResolvedValue(null);
-    chapterRepository.findOneByOrFail.mockResolvedValue(chapter(chapterA, 1, 2));
+    chapterRepository.findOneByOrFail.mockResolvedValue(
+      chapter(chapterA, 1, 2),
+    );
     chapterRepository.find.mockResolvedValue([]);
-    chapterRepository.save.mockImplementation(async (value: Record<string, unknown>) => ({
-      ...value,
-      id: chapterA,
-      createdAt: new Date('2026-01-01T00:00:00.000Z'),
-      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-    }));
+    chapterRepository.save.mockImplementation(
+      async (value: Record<string, unknown>) => ({
+        ...value,
+        id: chapterA,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      }),
+    );
     chapterRepository.update.mockResolvedValue({ affected: 1 });
     chapterRepository.delete.mockResolvedValue({ affected: 1 });
     chapterRepository.createQueryBuilder.mockReturnValue({
       update: () => ({
         set: () => ({
-          where: () => ({ execute: jest.fn().mockResolvedValue({ affected: 0 }) }),
+          where: () => ({
+            execute: jest.fn().mockResolvedValue({ affected: 0 }),
+          }),
         }),
       }),
     });
@@ -126,7 +133,9 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
 
   it('updates and deletes a chapter with ownership and version checks', async () => {
     chapterRepository.findOneBy.mockResolvedValue(chapter(chapterA, 1));
-    chapterRepository.findOneByOrFail.mockResolvedValue(chapter(chapterA, 1, 2));
+    chapterRepository.findOneByOrFail.mockResolvedValue(
+      chapter(chapterA, 1, 2),
+    );
     const updated = await request(app.getHttpServer())
       .patch(`/api/v1/chapters/${chapterA}`)
       .set('x-mock-user', 'instructorA')
@@ -148,8 +157,12 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
   });
 
   it('reorders every chapter and returns a course outline', async () => {
-    chapterRepository.find.mockResolvedValueOnce([chapter(chapterA, 1), chapter(chapterB, 2)])
-      .mockResolvedValueOnce([chapter(chapterB, 1, 2), chapter(chapterA, 2, 2)]);
+    chapterRepository.find
+      .mockResolvedValueOnce([chapter(chapterA, 1), chapter(chapterB, 2)])
+      .mockResolvedValueOnce([
+        chapter(chapterB, 1, 2),
+        chapter(chapterA, 2, 2),
+      ]);
     const result = await request(app.getHttpServer())
       .put(`/api/v1/courses/${courseId}/chapters/order`)
       .set('x-mock-user', 'instructorA')
@@ -157,8 +170,9 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
       .expect(200);
     expect(dataSource.transaction).toHaveBeenCalled();
     expect(result.body.data).toMatchObject({ courseId, contentVersion: 2 });
-    expect(result.body.data.chapters.map((item: { id: string }) => item.id))
-      .toEqual([chapterB, chapterA]);
+    expect(
+      result.body.data.chapters.map((item: { id: string }) => item.id),
+    ).toEqual([chapterB, chapterA]);
   });
 
   it('rejects invalid payloads, non-owners and published courses', async () => {
@@ -172,7 +186,10 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
       .set('x-mock-user', 'instructorA')
       .send({ title: '' })
       .expect(400);
-    courseRepository.findOneBy.mockResolvedValue({ ...course(), status: 'PUBLISHED' });
+    courseRepository.findOneBy.mockResolvedValue({
+      ...course(),
+      status: 'PUBLISHED',
+    });
     await request(app.getHttpServer())
       .post(`/api/v1/courses/${courseId}/chapters`)
       .set('x-mock-user', 'instructorA')

@@ -1,11 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import type { PipeTransform } from '@nestjs/common';
-import {
-  ContractValidationError,
-  parseContract,
-} from '@lms/contracts';
+import { ContractValidationError, parseContract } from '@lms/contracts';
 import type {
   CourseQuery,
+  InstructorCourseQuery,
   UpdateCourseRequest,
   VersionRequest,
 } from '@lms/contracts';
@@ -48,15 +46,37 @@ export class VersionRequestPipe implements PipeTransform<
 
 export class CourseQueryPipe implements PipeTransform<unknown, CourseQuery> {
   transform(value: unknown): CourseQuery {
-    const input = value && typeof value === 'object'
-      ? { ...(value as Record<string, unknown>) }
-      : {};
+    const input =
+      value && typeof value === 'object'
+        ? { ...(value as Record<string, unknown>) }
+        : {};
     for (const key of ['page', 'limit']) {
       if (typeof input[key] === 'string' && input[key] !== '')
         input[key] = Number(input[key]);
     }
     try {
       return parseContract('CourseQuery', input);
+    } catch (error) {
+      return validationError(error);
+    }
+  }
+}
+
+export class InstructorCourseQueryPipe implements PipeTransform<
+  unknown,
+  InstructorCourseQuery
+> {
+  transform(value: unknown): InstructorCourseQuery {
+    const input =
+      value && typeof value === 'object'
+        ? { ...(value as Record<string, unknown>) }
+        : {};
+    for (const key of ['page', 'limit']) {
+      if (typeof input[key] === 'string' && input[key] !== '')
+        input[key] = Number(input[key]);
+    }
+    try {
+      return parseContract('InstructorCourseQuery', input);
     } catch (error) {
       return validationError(error);
     }

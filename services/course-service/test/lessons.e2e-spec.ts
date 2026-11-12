@@ -93,18 +93,22 @@ describe('Lesson endpoints (HTTP with repository test doubles)', () => {
     lessonRepository.findOneBy.mockResolvedValue(null);
     lessonRepository.findOneByOrFail.mockResolvedValue(lesson(lessonA, 1, 2));
     lessonRepository.find.mockResolvedValue([]);
-    lessonRepository.save.mockImplementation(async (value: Record<string, unknown>) => ({
-      ...value,
-      id: lessonA,
-      createdAt: new Date('2026-01-01T00:00:00.000Z'),
-      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-    }));
+    lessonRepository.save.mockImplementation(
+      async (value: Record<string, unknown>) => ({
+        ...value,
+        id: lessonA,
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      }),
+    );
     lessonRepository.update.mockResolvedValue({ affected: 1 });
     lessonRepository.delete.mockResolvedValue({ affected: 1 });
     lessonRepository.createQueryBuilder.mockReturnValue({
       update: () => ({
         set: () => ({
-          where: () => ({ execute: jest.fn().mockResolvedValue({ affected: 0 }) }),
+          where: () => ({
+            execute: jest.fn().mockResolvedValue({ affected: 0 }),
+          }),
         }),
       }),
     });
@@ -126,7 +130,12 @@ describe('Lesson endpoints (HTTP with repository test doubles)', () => {
       order: 2,
       version: 1,
     });
-    expect(result.body.data).toMatchObject({ courseId, chapterId, order: 2, version: 1 });
+    expect(result.body.data).toMatchObject({
+      courseId,
+      chapterId,
+      order: 2,
+      version: 1,
+    });
     parseContract('LessonData', result.body.data);
   });
 
@@ -154,15 +163,18 @@ describe('Lesson endpoints (HTTP with repository test doubles)', () => {
   });
 
   it('reorders all lessons in the chapter', async () => {
-    lessonRepository.find.mockResolvedValueOnce([lesson(lessonA, 1), lesson(lessonB, 2)])
+    lessonRepository.find
+      .mockResolvedValueOnce([lesson(lessonA, 1), lesson(lessonB, 2)])
       .mockResolvedValueOnce([lesson(lessonB, 1, 2), lesson(lessonA, 2, 2)]);
     const result = await request(app.getHttpServer())
       .put(`/api/v1/chapters/${chapterId}/lessons/order`)
       .set('x-mock-user', 'instructorA')
       .send({ orderedIds: [lessonB, lessonA], expectedVersion: 1 })
       .expect(200);
-    expect(result.body.data.map((item: { id: string }) => item.id))
-      .toEqual([lessonB, lessonA]);
+    expect(result.body.data.map((item: { id: string }) => item.id)).toEqual([
+      lessonB,
+      lessonA,
+    ]);
   });
 
   it('rejects invalid payloads, non-owners and published courses', async () => {
@@ -176,7 +188,10 @@ describe('Lesson endpoints (HTTP with repository test doubles)', () => {
       .set('x-mock-user', 'instructorA')
       .send({ title: '' })
       .expect(400);
-    courseRepository.findOneBy.mockResolvedValue({ ...course(), status: 'PUBLISHED' });
+    courseRepository.findOneBy.mockResolvedValue({
+      ...course(),
+      status: 'PUBLISHED',
+    });
     await request(app.getHttpServer())
       .post(`/api/v1/chapters/${chapterId}/lessons`)
       .set('x-mock-user', 'instructorA')

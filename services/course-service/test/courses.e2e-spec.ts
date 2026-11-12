@@ -4,6 +4,10 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
 import { CoursesModule } from '../src/modules/courses/courses.module';
 import { Course } from '../src/modules/courses/entities/course.entity';
+import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
+import { Lesson } from '../src/modules/lessons/entities/lesson.entity';
+import { LearningItem } from '../src/modules/learning-items/entities/learning-item.entity';
+import { Enrollment } from '../src/modules/enrollments/entities/enrollment.entity';
 import { HttpExceptionFilter } from '../src/common/http-exception.filter';
 import { requestContext } from '../src/common/request-context';
 import { getMockUser } from '@lms/auth';
@@ -21,6 +25,13 @@ describe('POST courses (HTTP with repository test double)', () => {
     update: jest.fn(),
     delete: jest.fn(),
   };
+  const chapterRepository = { find: jest.fn() };
+  const lessonRepository = { find: jest.fn() };
+  const itemRepository = { find: jest.fn() };
+  const enrollmentRepository = {
+    findOneBy: jest.fn(),
+    findAndCount: jest.fn(),
+  };
   const body = {
     title: 'NestJS Fundamentals',
     description: 'Learn NestJS from scratch',
@@ -32,6 +43,14 @@ describe('POST courses (HTTP with repository test double)', () => {
     const module = await Test.createTestingModule({ imports: [CoursesModule] })
       .overrideProvider(getRepositoryToken(Course))
       .useValue(repository)
+      .overrideProvider(getRepositoryToken(Chapter))
+      .useValue(chapterRepository)
+      .overrideProvider(getRepositoryToken(Lesson))
+      .useValue(lessonRepository)
+      .overrideProvider(getRepositoryToken(LearningItem))
+      .useValue(itemRepository)
+      .overrideProvider(getRepositoryToken(Enrollment))
+      .useValue(enrollmentRepository)
       .compile();
     app = module.createNestApplication();
     app.use(requestContext);
@@ -46,6 +65,11 @@ describe('POST courses (HTTP with repository test double)', () => {
     repository.findOneByOrFail.mockReset();
     repository.update.mockReset();
     repository.delete.mockReset();
+    chapterRepository.find.mockReset();
+    lessonRepository.find.mockReset();
+    itemRepository.find.mockReset();
+    enrollmentRepository.findOneBy.mockReset();
+    enrollmentRepository.findAndCount.mockReset();
     repository.save.mockImplementation((row: Record<string, unknown>) =>
       Promise.resolve({
         ...row,
@@ -59,6 +83,11 @@ describe('POST courses (HTTP with repository test double)', () => {
     repository.findOneByOrFail.mockResolvedValue(null);
     repository.update.mockResolvedValue({ affected: 1 });
     repository.delete.mockResolvedValue({ affected: 1 });
+    chapterRepository.find.mockResolvedValue([]);
+    lessonRepository.find.mockResolvedValue([]);
+    itemRepository.find.mockResolvedValue([]);
+    enrollmentRepository.findOneBy.mockResolvedValue(null);
+    enrollmentRepository.findAndCount.mockResolvedValue([[], 0]);
     process.env.NODE_ENV = 'test';
     process.env.MOCK_AUTH = 'true';
   });
@@ -237,6 +266,128 @@ describe('POST courses (HTTP with repository test double)', () => {
       .expect(400);
   });
 
+  it('returns the nested course outline for an owner preview', async () => {
+    const published = {
+      id: 'abababab-abab-4aba-8aba-abababababab',
+      instructorId: getMockUser('instructorA').id,
+      title: 'Course outline',
+      description: 'Nested content',
+      thumbnailUrl: null,
+      status: 'PUBLISHED',
+      version: 3,
+      contentVersion: 4,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    };
+    const chapterId = 'acacacac-acac-4aca-8aca-acacacacacac';
+    const lessonId = 'adadadad-adad-4ada-8ada-adadadadadad';
+    const itemId = 'aeaeaeae-aeae-4aea-8aea-aeaeaeaeaeae';
+    repository.findOneBy.mockResolvedValueOnce(published);
+    chapterRepository.find.mockResolvedValueOnce([
+      {
+        id: chapterId,
+        courseId: published.id,
+        title: 'Chapter 1',
+        order: 1,
+        version: 1,
+      },
+    ]);
+    lessonRepository.find.mockResolvedValueOnce([
+      {
+        id: lessonId,
+        courseId: published.id,
+        chapterId,
+        title: 'Lesson 1',
+        order: 1,
+        version: 1,
+      },
+    ]);
+    itemRepository.find.mockResolvedValueOnce([
+      {
+        id: itemId,
+        courseId: published.id,
+        lessonId,
+        title: 'Reading 1',
+        type: 'READING',
+        videoUrl: null,
+        durationSeconds: null,
+        body: 'Read this',
+        quizId: null,
+        assessmentVersion: null,
+        required: true,
+        order: 1,
+        contentVersion: published.contentVersion,
+        version: 1,
+      },
+    ]);
+
+    const result = await request(app.getHttpServer())
+      .get(`/api/v1/courses/${published.id}/outline`)
+      .set('x-mock-user', 'instructorA')
+      .expect(200);
+
+    expect(result.body.data).toMatchObject({
+      courseId: published.id,
+      contentVersion: published.contentVersion,
+      chapters: [
+        {
+          id: chapterId,
+          lessons: [{ id: lessonId, items: [{ id: itemId, type: 'READING' }] }],
+        },
+      ],
+    });
+    parseContract('CourseOutlineData', result.body.data);
+  });
+
+  it('lists instructor courses and course learners', async () => {
+    const owned = {
+      id: 'abababab-abab-4aba-8aba-abababababab',
+      instructorId: getMockUser('instructorA').id,
+      title: 'Owned course',
+      description: 'Owned description',
+      thumbnailUrl: null,
+      status: 'PUBLISHED',
+      version: 2,
+      contentVersion: 2,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    };
+    repository.findAndCount.mockResolvedValueOnce([[owned], 1]);
+    const courses = await request(app.getHttpServer())
+      .get('/api/v1/instructor/courses')
+      .query({ status: 'PUBLISHED', search: 'Owned' })
+      .set('x-mock-user', 'instructorA')
+      .expect(200);
+    expect(courses.body.data).toMatchObject({
+      total: 1,
+      items: [{ id: owned.id, status: 'PUBLISHED' }],
+    });
+
+    const enrollment = {
+      id: 'acacacac-acac-4aca-8aca-acacacacacac',
+      courseId: owned.id,
+      userId: getMockUser('studentA').id,
+      status: 'ACTIVE',
+      enrolledAt: new Date('2026-01-03T00:00:00.000Z'),
+      contentVersion: owned.contentVersion,
+    };
+    repository.findOneBy.mockResolvedValueOnce(owned);
+    enrollmentRepository.findAndCount.mockResolvedValueOnce([[enrollment], 1]);
+    const learners = await request(app.getHttpServer())
+      .get(`/api/v1/courses/${owned.id}/learners`)
+      .set('x-mock-user', 'instructorA')
+      .expect(200);
+    expect(learners.body.data).toMatchObject({
+      total: 1,
+      items: [
+        {
+          userId: getMockUser('studentA').id,
+          enrollment: { enrollmentId: enrollment.id, status: 'ACTIVE' },
+        },
+      ],
+    });
+  });
+
   it('updates an owned draft with the expected version and increments version', async () => {
     const current = {
       id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
@@ -292,7 +443,11 @@ describe('POST courses (HTTP with repository test double)', () => {
       .send({ title: 'Changed', expectedVersion: 1 })
       .expect(409);
 
-    repository.findOneBy.mockResolvedValue({ ...base, version: 1, status: 'PUBLISHED' });
+    repository.findOneBy.mockResolvedValue({
+      ...base,
+      version: 1,
+      status: 'PUBLISHED',
+    });
     await request(app.getHttpServer())
       .patch(`/api/v1/courses/${base.id}`)
       .set('x-mock-user', 'instructorA')
@@ -351,7 +506,11 @@ describe('POST courses (HTTP with repository test double)', () => {
       .send({ expectedVersion: 1 })
       .expect(409);
 
-    repository.findOneBy.mockResolvedValue({ ...draft, version: 1, status: 'PUBLISHED' });
+    repository.findOneBy.mockResolvedValue({
+      ...draft,
+      version: 1,
+      status: 'PUBLISHED',
+    });
     await request(app.getHttpServer())
       .delete(`/api/v1/courses/${draft.id}`)
       .set('x-mock-user', 'instructorA')
