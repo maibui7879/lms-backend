@@ -18,6 +18,9 @@ export interface SchemaTypes {
   CertificateIssuedEvent: Contracts.CertificateIssuedEvent;
   CertificateIssuedPayload: Contracts.CertificateIssuedPayload;
   CertificateVerificationData: Contracts.CertificateVerificationData;
+  ChapterAccessData: Contracts.ChapterAccessData;
+  ChapterAccessReason: Contracts.ChapterAccessReason;
+  ChapterAccessStatus: Contracts.ChapterAccessStatus;
   ChapterCompletionPolicy: Contracts.ChapterCompletionPolicy;
   ChapterData: Contracts.ChapterData;
   ChapterOutline: Contracts.ChapterOutline;
@@ -27,6 +30,7 @@ export interface SchemaTypes {
   ContentVersionQuery: Contracts.ContentVersionQuery;
   CourseAccessData: Contracts.CourseAccessData;
   CourseAccessQuery: Contracts.CourseAccessQuery;
+  CourseChapterAccessData: Contracts.CourseChapterAccessData;
   CourseCompletedEvent: Contracts.CourseCompletedEvent;
   CourseCompletedPayload: Contracts.CourseCompletedPayload;
   CourseCompletionPolicy: Contracts.CourseCompletionPolicy;

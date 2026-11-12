@@ -82,7 +82,7 @@ Không có endpoint Instructor publish trực tiếp. Invalid course transition 
 
 Thứ tự item bắt đầu 0, không trùng trong parent. VIDEO có durationSeconds nguyên dương và videoUrl; READING có body không rỗng; QUIZ chỉ tham chiếu quizId/assessmentVersion, không copy đáp án. Input HTML/Markdown phải được sanitize ở service/rendering boundary, schema không thay thế xử lý nội dung.
 
-Enrollment pin contentVersion tại lúc đăng ký. Không có implicit migration khi course thay đổi. Baseline này **chặn sửa nội dung PUBLISHED**; versioning revision/review lại và migration enrollment hiện không có endpoint. ContentUpdatedEvent chỉ dành trường hợp sau này có workflow revision được review; không phát event này từ draft save và không tự reset progress cũ. Re-enroll enrollment CANCELLED chưa hỗ trợ, trả ALREADY_ENROLLED; cần policy riêng nếu mở lại.
+Enrollment pin contentVersion tại lúc đăng ký. Không có implicit migration khi course thay đổi. Baseline này **chặn sửa nội dung PUBLISHED**; versioning revision/review lại và migration enrollment hiện không có endpoint. ContentUpdatedEvent chỉ dành trường hợp sau này có workflow revision được review; không phát event này từ draft save và không tự reset progress cũ. Learning đọc chapter access theo snapshot: `LOCKED` khi prerequisite chưa đạt, `UNLOCKED` khi chapter được phép học, và `COMPLETED` khi toàn bộ criteria của chapter đạt. `GET /api/v1/learning/courses/{id}/chapters/access` trả trạng thái và lý do khóa cho từng chapter. Re-enroll enrollment CANCELLED chưa hỗ trợ, trả ALREADY_ENROLLED; cần policy riêng nếu mở lại.
 
 ## Quiz, câu hỏi, attempt và kết quả
 

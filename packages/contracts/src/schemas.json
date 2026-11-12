@@ -739,6 +739,110 @@
       ],
       "additionalProperties": false
     },
+    "ChapterAccessData": {
+      "type": "object",
+      "properties": {
+        "chapterId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contentVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "COMPLETED"
+            },
+            {
+              "type": "string",
+              "const": "LOCKED"
+            },
+            {
+              "type": "string",
+              "const": "UNLOCKED"
+            }
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "const": "COURSE_NOT_PUBLISHED",
+              "minLength": 1
+            },
+            {
+              "type": "string",
+              "const": "ENROLLMENT_REQUIRED",
+              "minLength": 1
+            },
+            {
+              "type": "string",
+              "const": "PREREQUISITE_NOT_COMPLETED",
+              "minLength": 1
+            },
+            {
+              "type": "string",
+              "const": "PREVIOUS_CHAPTER_NOT_COMPLETED",
+              "minLength": 1
+            }
+          ]
+        }
+      },
+      "required": [
+        "chapterId",
+        "order",
+        "contentVersion",
+        "status",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "ChapterAccessReason": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "COURSE_NOT_PUBLISHED"
+        },
+        {
+          "type": "string",
+          "const": "ENROLLMENT_REQUIRED"
+        },
+        {
+          "type": "string",
+          "const": "PREREQUISITE_NOT_COMPLETED"
+        },
+        {
+          "type": "string",
+          "const": "PREVIOUS_CHAPTER_NOT_COMPLETED"
+        }
+      ]
+    },
+    "ChapterAccessStatus": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "COMPLETED"
+        },
+        {
+          "type": "string",
+          "const": "LOCKED"
+        },
+        {
+          "type": "string",
+          "const": "UNLOCKED"
+        }
+      ]
+    },
     "ChapterCompletionPolicy": {
       "type": "object",
       "properties": {
@@ -989,6 +1093,31 @@
       "required": [
         "userId",
         "courseId"
+      ],
+      "additionalProperties": false
+    },
+    "CourseChapterAccessData": {
+      "type": "object",
+      "properties": {
+        "courseId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "contentVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "chapters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ChapterAccessData"
+          }
+        }
+      },
+      "required": [
+        "courseId",
+        "contentVersion",
+        "chapters"
       ],
       "additionalProperties": false
     },
