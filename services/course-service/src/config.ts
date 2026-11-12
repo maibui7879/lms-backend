@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { Course } from './courses/entities/course.entity';
+import { Course } from './modules/courses/entities/course.entity';
 
 export const envFiles = [
   resolve(__dirname, '../.env'),

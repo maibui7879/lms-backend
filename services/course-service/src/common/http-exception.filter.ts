@@ -20,6 +20,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       401: 'UNAUTHORIZED',
       403: 'FORBIDDEN',
       404: 'NOT_FOUND',
+      409: 'VERSION_CONFLICT',
       503: 'SERVICE_UNAVAILABLE',
     };
     const requestId = String(request.headers['x-request-id'] ?? randomUUID());

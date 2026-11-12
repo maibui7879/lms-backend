@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 import request from 'supertest';
 import ids from '@lms/contracts/fixtures/ids.json';
-import { Course } from '../src/courses/entities/course.entity';
+import { Course } from '../src/modules/courses/entities/course.entity';
 import { seedCourse } from '../src/database/seeds/course.seed';
 
 const testUrl = process.env.TEST_DATABASE_URL;
@@ -17,9 +17,15 @@ suite(
     const created: string[] = [];
     const oldEnv = { ...process.env };
     beforeAll(async () => {
-      if (!new URL(testUrl!).pathname.endsWith('_test'))
+      const parsedUrl = new URL(testUrl!);
+      const databaseName = parsedUrl.pathname.slice(1);
+      const isLocalSupabase =
+        ['127.0.0.1', 'localhost'].includes(parsedUrl.hostname) &&
+        parsedUrl.port === '54322' &&
+        databaseName === 'postgres';
+      if (!databaseName.endsWith('_test') && !isLocalSupabase)
         throw new Error(
-          'TEST_DATABASE_URL must name a disposable *_test database',
+          'TEST_DATABASE_URL must name a disposable *_test database or Supabase local postgres',
         );
       process.env.DATABASE_URL = testUrl;
       process.env.NODE_ENV = 'development';
