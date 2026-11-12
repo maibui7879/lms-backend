@@ -6636,6 +6636,35 @@
         ],
         "additionalProperties": false
       },
+      "ChapterCompletionPolicy": {
+        "type": "object",
+        "properties": {
+          "chapterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requiredItemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "requiredAssessments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequiredAssessment"
+            }
+          }
+        },
+        "required": [
+          "chapterId",
+          "requiredItemIds",
+          "requiredAssessments"
+        ],
+        "additionalProperties": false
+      },
       "ChapterData": {
         "type": "object",
         "properties": {
@@ -6959,6 +6988,12 @@
               "$ref": "#/components/schemas/RequiredAssessment"
             }
           },
+          "chapterPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChapterCompletionPolicy"
+            }
+          },
           "sequence": {
             "anyOf": [
               {
@@ -6984,6 +7019,7 @@
           "contentVersion",
           "requiredItemIds",
           "requiredAssessments",
+          "chapterPolicies",
           "sequence",
           "assessmentRule",
           "certificateEnabled"
@@ -11766,6 +11802,12 @@
               "$ref": "#/components/schemas/RequiredAssessment"
             }
           },
+          "chapterPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChapterCompletionPolicy"
+            }
+          },
           "expectedVersion": {
             "type": "integer",
             "minimum": 1
@@ -11775,6 +11817,7 @@
           "sequence",
           "certificateEnabled",
           "requiredAssessments",
+          "chapterPolicies",
           "expectedVersion"
         ],
         "additionalProperties": false

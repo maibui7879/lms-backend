@@ -739,6 +739,35 @@
       ],
       "additionalProperties": false
     },
+    "ChapterCompletionPolicy": {
+      "type": "object",
+      "properties": {
+        "chapterId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "requiredItemIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "uniqueItems": true
+        },
+        "requiredAssessments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RequiredAssessment"
+          }
+        }
+      },
+      "required": [
+        "chapterId",
+        "requiredItemIds",
+        "requiredAssessments"
+      ],
+      "additionalProperties": false
+    },
     "ChapterData": {
       "type": "object",
       "properties": {
@@ -1062,6 +1091,12 @@
             "$ref": "#/definitions/RequiredAssessment"
           }
         },
+        "chapterPolicies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ChapterCompletionPolicy"
+          }
+        },
         "sequence": {
           "anyOf": [
             {
@@ -1087,6 +1122,7 @@
         "contentVersion",
         "requiredItemIds",
         "requiredAssessments",
+        "chapterPolicies",
         "sequence",
         "assessmentRule",
         "certificateEnabled"
@@ -5869,6 +5905,12 @@
             "$ref": "#/definitions/RequiredAssessment"
           }
         },
+        "chapterPolicies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ChapterCompletionPolicy"
+          }
+        },
         "expectedVersion": {
           "type": "integer",
           "minimum": 1
@@ -5878,6 +5920,7 @@
         "sequence",
         "certificateEnabled",
         "requiredAssessments",
+        "chapterPolicies",
         "expectedVersion"
       ],
       "additionalProperties": false

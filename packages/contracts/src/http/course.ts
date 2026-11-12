@@ -110,12 +110,18 @@ export interface RequiredAssessment {
   assessmentVersion: number;
   passingScorePercent: number;
 }
+export interface ChapterCompletionPolicy {
+  chapterId: Uuid;
+  requiredItemIds: Uuid[];
+  requiredAssessments: RequiredAssessment[];
+}
 /** Immutable once published; an enrollment pins this snapshot. */
 export interface CourseCompletionPolicy {
   courseId: Uuid;
   contentVersion: number;
   requiredItemIds: Uuid[];
   requiredAssessments: RequiredAssessment[];
+  chapterPolicies: ChapterCompletionPolicy[];
   sequence: 'FREE' | 'SEQUENTIAL';
   assessmentRule: 'ANY_PASSED_ATTEMPT_SAME_VERSION';
   certificateEnabled: boolean;
@@ -124,6 +130,7 @@ export interface UpdateCompletionPolicyRequest extends VersionRequest {
   sequence: 'FREE' | 'SEQUENTIAL';
   certificateEnabled: boolean;
   requiredAssessments: RequiredAssessment[];
+  chapterPolicies: ChapterCompletionPolicy[];
 }
 export interface EnrolledCourseData {
   enrollment: EnrollmentSnapshotData;

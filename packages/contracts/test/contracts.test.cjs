@@ -285,7 +285,20 @@ test('new enrollments require pinned snapshots and the correct event producer', 
     contentVersion: 1,
     requiredItemIds: [],
     requiredAssessments: [],
+    chapterPolicies: [],
     sequence: 'FREE',
+    assessmentRule: 'ANY_PASSED_ATTEMPT_SAME_VERSION',
+    certificateEnabled: true,
+  });
+  parseContract('CourseCompletionPolicy', {
+    courseId: id,
+    contentVersion: 1,
+    requiredItemIds: [id],
+    requiredAssessments: [],
+    chapterPolicies: [
+      { chapterId: id2, requiredItemIds: [id], requiredAssessments: [] },
+    ],
+    sequence: 'SEQUENTIAL',
     assessmentRule: 'ANY_PASSED_ATTEMPT_SAME_VERSION',
     certificateEnabled: true,
   });
