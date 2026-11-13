@@ -4,6 +4,8 @@ import { DataSource } from 'typeorm';
 import { apiError } from '../common/api-error';
 import { AssessmentAttempt } from '../modules/progress-sync/entities/assessment-attempt.entity';
 import { AssessmentSyncReceipt } from '../modules/progress-sync/entities/assessment-sync-receipt.entity';
+import { ItemCompletion } from '../modules/progress/entities/item-completion.entity';
+import { CreateItemCompletions1794528000000 } from './migrations/1794528000000-create-item-completions';
 import { CreateAssessmentAttempts1794528000001 } from './migrations/1794528000001-create-assessment-attempts';
 import { CreateAssessmentSyncReceipts1794528000002 } from './migrations/1794528000002-create-assessment-sync-receipts';
 import { BindSyncReceiptToAssessmentVersion1794528000003 } from './migrations/1794528000003-bind-sync-receipt-to-assessment-version';
@@ -13,8 +15,9 @@ export function createLearningDataSource(url: string | undefined): DataSource {
   return new DataSource({
     type: 'postgres',
     url,
-    entities: [AssessmentAttempt, AssessmentSyncReceipt],
+    entities: [ItemCompletion, AssessmentAttempt, AssessmentSyncReceipt],
     migrations: [
+      CreateItemCompletions1794528000000,
       CreateAssessmentAttempts1794528000001,
       CreateAssessmentSyncReceipts1794528000002,
       BindSyncReceiptToAssessmentVersion1794528000003,
