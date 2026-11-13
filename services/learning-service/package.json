@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "migration:run": "node ../../node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
     "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -21,6 +22,7 @@
     "test:e2e": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@lms/auth": "0.1.0",
     "@lms/contracts": "0.1.0",
     "@nestjs/axios": "12.0.1",
     "@nestjs/common": "^12.0.1",
