@@ -22,6 +22,7 @@ export function lessonData(lesson: Lesson): LessonData {
   return {
     id: lesson.id,
     courseId: lesson.courseId,
+    revisionId: lesson.courseId,
     chapterId: lesson.chapterId,
     title: lesson.title,
     order: lesson.order,

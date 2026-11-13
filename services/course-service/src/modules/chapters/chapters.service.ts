@@ -22,9 +22,11 @@ export function chapterData(chapter: Chapter): ChapterData {
   return {
     id: chapter.id,
     courseId: chapter.courseId,
+    revisionId: chapter.courseId,
     title: chapter.title,
     order: chapter.order,
     version: chapter.version,
+    endSectionQuiz: null,
   };
 }
 
@@ -146,6 +148,7 @@ export class ChaptersService {
     });
     return {
       courseId,
+      revisionId: course.id,
       contentVersion: course.contentVersion + 1,
       chapters: ordered.map((chapter) => ({
         ...chapterData(chapter),

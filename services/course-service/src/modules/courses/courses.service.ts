@@ -69,6 +69,7 @@ export class CoursesService {
     ]);
     return {
       courseId: id,
+      revisionId: id,
       contentVersion: course.contentVersion,
       chapters: chapters.map((chapter) => ({
         ...chapterData(chapter),

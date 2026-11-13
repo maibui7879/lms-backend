@@ -25,6 +25,7 @@ export function learningItemData(item: LearningItem): LearningItemData {
     id: item.id,
     courseId: item.courseId,
     lessonId: item.lessonId,
+    revisionId: item.courseId,
     title: item.title,
     required: item.required,
     order: item.order,
@@ -198,18 +199,22 @@ export class LearningItemsService {
     });
     return {
       courseId,
+      revisionId: courseId,
       contentVersion,
       chapters: chapters.map((chapter) => ({
         id: chapter.id,
         courseId,
+        revisionId: courseId,
         title: chapter.title,
         order: chapter.order,
         version: chapter.version,
+        endSectionQuiz: null,
         lessons: lessons
           .filter((lesson) => lesson.chapterId === chapter.id)
           .map((lesson) => ({
             id: lesson.id,
             courseId,
+            revisionId: courseId,
             chapterId: lesson.chapterId,
             title: lesson.title,
             order: lesson.order,
