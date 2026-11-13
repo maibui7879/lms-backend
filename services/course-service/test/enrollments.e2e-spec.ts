@@ -11,6 +11,7 @@ import { EnrollmentsService } from '../src/modules/enrollments/enrollments.servi
 import { Enrollment } from '../src/modules/enrollments/entities/enrollment.entity';
 import { Course } from '../src/modules/courses/entities/course.entity';
 import { InternalController } from '../src/modules/internal/internal.controller';
+import { InternalService } from '../src/modules/internal/internal.service';
 
 describe('Enrollment endpoints (HTTP with repository test doubles)', () => {
   let app: INestApplication;
@@ -51,6 +52,10 @@ describe('Enrollment endpoints (HTTP with repository test doubles)', () => {
           useValue: enrollmentRepository,
         },
         { provide: getRepositoryToken(Course), useValue: courseRepository },
+        {
+          provide: InternalService,
+          useValue: { checkCourseAccess: jest.fn() },
+        },
       ],
     }).compile();
     app = module.createNestApplication();

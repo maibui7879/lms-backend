@@ -34,6 +34,30 @@ export class CompletionPolicyService {
 
   async get(courseId: string, user: AuthUser): Promise<CourseCompletionPolicy> {
     const course = await this.findReadableCourse(courseId, user);
+    return this.getForCourse(course);
+  }
+
+  async getForInternal(
+    courseId: string,
+    contentVersion: number,
+  ): Promise<CourseCompletionPolicy> {
+    const course = await this.courses.findOneBy({ id: courseId });
+    if (!course) throw new NotFoundException('Course not found');
+    if (course.contentVersion !== contentVersion)
+      throw new ConflictException({
+        code: 'CONTENT_VERSION_UNAVAILABLE',
+        message: 'Requested course content version is not available',
+        details: {
+          courseId,
+          contentVersion,
+          currentVersion: course.contentVersion,
+        },
+      });
+    return this.getForCourse(course);
+  }
+
+  private async getForCourse(course: Course): Promise<CourseCompletionPolicy> {
+    const { id: courseId } = course;
     const policy = await this.policies.findOneBy({ courseId });
     const content = await this.loadContent(courseId);
     if (policy) return this.toContract(course, policy);
