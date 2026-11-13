@@ -3,7 +3,10 @@ import { Test } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 import request from 'supertest';
 import ids from '@lms/contracts/fixtures/ids.json';
-import { Course } from '../src/courses/entities/course.entity';
+import { Course } from '../src/modules/courses/entities/course.entity';
+import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
+import { Lesson } from '../src/modules/lessons/entities/lesson.entity';
+import { LearningItem } from '../src/modules/learning-items/entities/learning-item.entity';
 import { seedCourse } from '../src/database/seeds/course.seed';
 
 const testUrl = process.env.TEST_DATABASE_URL;
@@ -15,11 +18,20 @@ suite(
     let source: DataSource;
     let hadSeed = false;
     const created: string[] = [];
+    const createdChapters: string[] = [];
+    const createdLessons: string[] = [];
+    const createdItems: string[] = [];
     const oldEnv = { ...process.env };
     beforeAll(async () => {
-      if (!new URL(testUrl!).pathname.endsWith('_test'))
+      const parsedUrl = new URL(testUrl!);
+      const databaseName = parsedUrl.pathname.slice(1);
+      const isLocalSupabase =
+        ['127.0.0.1', 'localhost'].includes(parsedUrl.hostname) &&
+        parsedUrl.port === '54322' &&
+        databaseName === 'postgres';
+      if (!databaseName.endsWith('_test') && !isLocalSupabase)
         throw new Error(
-          'TEST_DATABASE_URL must name a disposable *_test database',
+          'TEST_DATABASE_URL must name a disposable *_test database or Supabase local postgres',
         );
       process.env.DATABASE_URL = testUrl;
       process.env.NODE_ENV = 'development';
@@ -38,6 +50,12 @@ suite(
     }, 30000);
     afterAll(async () => {
       if (source?.isInitialized) {
+        for (const id of createdItems)
+          await source.getRepository(LearningItem).delete(id);
+        for (const id of createdChapters)
+          await source.getRepository(Chapter).delete(id);
+        for (const id of createdLessons)
+          await source.getRepository(Lesson).delete(id);
         for (const id of created) await source.getRepository(Course).delete(id);
         if (!hadSeed)
           await source.getRepository(Course).delete(ids.courses.draftCourse);
@@ -63,6 +81,76 @@ suite(
       expect(row.status).toBe('DRAFT');
       expect(row.createdAt).toBeInstanceOf(Date);
       expect(row.id).not.toBe(ids.courses.draftCourse);
+
+      const chapter = await request(app.getHttpServer())
+        .post(`/api/v1/courses/${created[0]}/chapters`)
+        .set('x-mock-user', 'instructorA')
+        .send({ title: 'Database chapter' })
+        .expect(201);
+      createdChapters.push(chapter.body.data.id);
+      expect(chapter.body.data).toMatchObject({
+        courseId: created[0],
+        title: 'Database chapter',
+        order: 1,
+        version: 1,
+      });
+
+      const lesson = await request(app.getHttpServer())
+        .post(`/api/v1/chapters/${chapter.body.data.id}/lessons`)
+        .set('x-mock-user', 'instructorA')
+        .send({ title: 'Database lesson' })
+        .expect(201);
+      createdLessons.push(lesson.body.data.id);
+      expect(lesson.body.data).toMatchObject({
+        courseId: created[0],
+        chapterId: chapter.body.data.id,
+        title: 'Database lesson',
+        order: 1,
+        version: 1,
+      });
+
+      const item = await request(app.getHttpServer())
+        .post(`/api/v1/lessons/${lesson.body.data.id}/items`)
+        .set('x-mock-user', 'instructorA')
+        .send({
+          type: 'READING',
+          title: 'Database item',
+          body: 'Database body',
+          required: true,
+        })
+        .expect(201);
+      createdItems.push(item.body.data.id);
+      expect(item.body.data).toMatchObject({
+        courseId: created[0],
+        lessonId: lesson.body.data.id,
+        type: 'READING',
+        order: 1,
+        version: 1,
+      });
+      const itemRow = await source
+        .getRepository(LearningItem)
+        .findOneByOrFail({ id: item.body.data.id });
+      expect(itemRow.body).toBe('Database body');
+
+      const outline = await request(app.getHttpServer())
+        .get(`/api/v1/courses/${created[0]}/outline`)
+        .set('x-mock-user', 'instructorA')
+        .expect(200);
+      expect(outline.body.data).toMatchObject({
+        courseId: created[0],
+        contentVersion: 3,
+        chapters: [
+          {
+            id: chapter.body.data.id,
+            lessons: [
+              {
+                id: lesson.body.data.id,
+                items: [{ id: item.body.data.id, type: 'READING' }],
+              },
+            ],
+          },
+        ],
+      });
     });
     it('seeds twice without overwriting existing records or POST-created courses', async () => {
       await seedCourse(source);

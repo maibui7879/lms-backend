@@ -62,7 +62,7 @@ Kiểm tra cả biến môi trường PowerShell đang giữ vì chúng ưu tiê
 HTTP tests mặc định dùng repository test double và được ghi tên rõ; test ghi PostgreSQL thật chạy riêng bằng database **disposable có tên kết thúc `_test`**:
 
 ```powershell
-$env:TEST_DATABASE_URL='postgresql://TEST_USER:TEST_PASSWORD@127.0.0.1:5432/course_endpoint_test'
+$env:TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 npm.cmd run test:db -w @lms/course-service
 Remove-Item Env:TEST_DATABASE_URL
 ```

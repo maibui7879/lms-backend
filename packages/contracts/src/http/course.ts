@@ -20,10 +20,7 @@ export interface CourseData {
   updatedAt: string;
 }
 export type CourseRevisionStatus =
-  | 'DRAFT'
-  | 'IN_REVIEW'
-  | 'PUBLISHED'
-  | 'REJECTED';
+  'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'REJECTED';
 export interface CourseRevisionData {
   id: Uuid;
   courseId: Uuid;
@@ -44,10 +41,12 @@ export interface ReviewCourseRevisionRequest extends VersionRequest {
   reason?: string;
 }
 export interface RevisionVersionRequest extends VersionRequest {
-  revisionId: Uuid;
+  /** Chỉ bắt buộc khi thao tác trên một CourseRevision cụ thể. */
+  revisionId?: Uuid;
 }
 export interface RevisionReorderRequest extends ReorderRequest {
-  revisionId: Uuid;
+  /** Chỉ bắt buộc khi reorder nội dung thuộc một CourseRevision cụ thể. */
+  revisionId?: Uuid;
 }
 export interface CreateCourseRequest {
   title: string;
@@ -98,7 +97,7 @@ export interface SectionEndQuizRef {
   passingScorePercent: number;
 }
 export interface CreateChapterRequest {
-  revisionId: Uuid;
+  revisionId?: Uuid;
   title: string;
   endSectionQuiz?: SectionEndQuizRef | null;
 }
@@ -116,7 +115,7 @@ export interface LessonData {
   version: number;
 }
 export interface CreateLessonRequest {
-  revisionId: Uuid;
+  revisionId?: Uuid;
   title: string;
 }
 export interface UpdateLessonRequest extends RevisionVersionRequest {
@@ -127,7 +126,7 @@ export type LearningItemContent =
   | { type: 'READING'; body: string }
   | { type: 'QUIZ'; quizId: Uuid; assessmentVersion: number };
 export type CreateLearningItemRequest = LearningItemContent & {
-  revisionId: Uuid;
+  revisionId?: Uuid;
   title: string;
   required: boolean;
 };
