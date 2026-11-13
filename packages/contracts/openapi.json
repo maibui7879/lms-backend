@@ -11077,7 +11077,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Access policy: ENROLLED. See packages/contracts/README.md for ownership, state transitions and side effects.",
+        "description": "Role sử dụng: ENROLLED. Xem packages/contracts/README.md để biết quyền sở hữu, chuyển trạng thái và các tác động phụ.",
         "x-access-policy": "ENROLLED",
         "security": [
           {
@@ -11107,7 +11107,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Success",
+            "description": "Thành công",
             "content": {
               "application/json": {
                 "schema": {
@@ -11130,7 +11130,7 @@
             }
           },
           "400": {
-            "description": "See shared error rules (400)",
+            "description": "Xem quy tắc lỗi dùng chung (400)",
             "content": {
               "application/json": {
                 "schema": {
@@ -11140,7 +11140,7 @@
             }
           },
           "401": {
-            "description": "See shared error rules (401)",
+            "description": "Xem quy tắc lỗi dùng chung (401)",
             "content": {
               "application/json": {
                 "schema": {
@@ -11150,7 +11150,7 @@
             }
           },
           "403": {
-            "description": "See shared error rules (403)",
+            "description": "Xem quy tắc lỗi dùng chung (403)",
             "content": {
               "application/json": {
                 "schema": {
@@ -11160,7 +11160,7 @@
             }
           },
           "404": {
-            "description": "See shared error rules (404)",
+            "description": "Xem quy tắc lỗi dùng chung (404)",
             "content": {
               "application/json": {
                 "schema": {
@@ -11170,7 +11170,7 @@
             }
           },
           "409": {
-            "description": "See shared error rules (409)",
+            "description": "Xem quy tắc lỗi dùng chung (409)",
             "content": {
               "application/json": {
                 "schema": {
@@ -11180,7 +11180,7 @@
             }
           },
           "422": {
-            "description": "See shared error rules (422)",
+            "description": "Xem quy tắc lỗi dùng chung (422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -11190,7 +11190,7 @@
             }
           },
           "503": {
-            "description": "See shared error rules (503)",
+            "description": "Xem quy tắc lỗi dùng chung (503)",
             "content": {
               "application/json": {
                 "schema": {
@@ -11200,148 +11200,7 @@
             }
           },
           "504": {
-            "description": "See shared error rules (504)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/learning/courses/{id}/chapters/access": {
-      "get": {
-        "operationId": "getCourseChapterAccess",
-        "tags": [
-          "learning"
-        ],
-        "description": "Access policy: ENROLLED. See packages/contracts/README.md for ownership, state transitions and side effects.",
-        "x-access-policy": "ENROLLED",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "X-Request-Id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "data",
-                    "meta"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/CourseChapterAccessData"
-                    },
-                    "meta": {
-                      "$ref": "#/components/schemas/ApiMeta"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "See shared error rules (400)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "See shared error rules (401)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "See shared error rules (403)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "See shared error rules (404)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "See shared error rules (409)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "See shared error rules (422)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "See shared error rules (503)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
-          },
-          "504": {
-            "description": "See shared error rules (504)",
+            "description": "Xem quy tắc lỗi dùng chung (504)",
             "content": {
               "application/json": {
                 "schema": {
