@@ -2098,7 +2098,6 @@
         }
       },
       "required": [
-        "revisionId",
         "title"
       ],
       "additionalProperties": false
@@ -2223,7 +2222,6 @@
             "type",
             "videoUrl",
             "durationSeconds",
-            "revisionId",
             "title",
             "required"
           ],
@@ -2256,7 +2254,6 @@
           "required": [
             "type",
             "body",
-            "revisionId",
             "title",
             "required"
           ],
@@ -2294,7 +2291,6 @@
             "type",
             "quizId",
             "assessmentVersion",
-            "revisionId",
             "title",
             "required"
           ],
@@ -2316,7 +2312,6 @@
         }
       },
       "required": [
-        "revisionId",
         "title"
       ],
       "additionalProperties": false
@@ -3775,7 +3770,6 @@
             "type",
             "videoUrl",
             "durationSeconds",
-            "revisionId",
             "title",
             "required",
             "id",
@@ -3838,7 +3832,6 @@
           "required": [
             "type",
             "body",
-            "revisionId",
             "title",
             "required",
             "id",
@@ -3906,7 +3899,6 @@
             "type",
             "quizId",
             "assessmentVersion",
-            "revisionId",
             "title",
             "required",
             "id",
@@ -4213,7 +4205,6 @@
                   "type",
                   "videoUrl",
                   "durationSeconds",
-                  "revisionId",
                   "title",
                   "required",
                   "id",
@@ -4276,7 +4267,6 @@
                 "required": [
                   "type",
                   "body",
-                  "revisionId",
                   "title",
                   "required",
                   "id",
@@ -4344,7 +4334,6 @@
                   "type",
                   "quizId",
                   "assessmentVersion",
-                  "revisionId",
                   "title",
                   "required",
                   "id",
@@ -6158,7 +6147,6 @@
         }
       },
       "required": [
-        "revisionId",
         "orderedIds",
         "expectedVersion"
       ],
@@ -6177,7 +6165,6 @@
         }
       },
       "required": [
-        "revisionId",
         "expectedVersion"
       ],
       "additionalProperties": false
@@ -6515,7 +6502,6 @@
       },
       "required": [
         "title",
-        "revisionId",
         "expectedVersion"
       ],
       "additionalProperties": false
@@ -6652,7 +6638,6 @@
             "type",
             "videoUrl",
             "durationSeconds",
-            "revisionId",
             "title",
             "required",
             "expectedVersion"
@@ -6690,7 +6675,6 @@
           "required": [
             "type",
             "body",
-            "revisionId",
             "title",
             "required",
             "expectedVersion"
@@ -6733,7 +6717,6 @@
             "type",
             "quizId",
             "assessmentVersion",
-            "revisionId",
             "title",
             "required",
             "expectedVersion"
@@ -6761,7 +6744,6 @@
       },
       "required": [
         "title",
-        "revisionId",
         "expectedVersion"
       ],
       "additionalProperties": false
