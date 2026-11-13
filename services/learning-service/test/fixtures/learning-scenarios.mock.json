@@ -1,0 +1,627 @@
+{
+  "notes": [
+    "Mỗi kịch bản có trạng thái ban đầu riêng. Tham chiếu trong given, actor, body, query, event và expected trỏ tới khóa trong hai tệp JSON. Event được liệt kê trong given là kết quả đã được Learning áp dụng.",
+    "Giữ thời gian cố định cho các snapshot. Với kết quả chỉ liệt kê một số trường, kiểm tra các trường được nêu.",
+    "Người tạo khóa cấu hình chapterPolicies. Mốc 80 của chương 1 chỉ là ví dụ. Chương 2 chỉ yêu cầu hoàn thành bài đọc. Bài đánh giá cấp khóa có ngưỡng 70.",
+    "Trạng thái halfway đã hoàn thành video. waitingForQuiz đã đạt quiz chương 1 và hoàn thành bài đọc ở chương 2. completed đã áp dụng thêm kết quả đạt bài đánh giá cấp khóa.",
+    "Quiz trong bộ mẫu nằm ngoài mẫu số item bắt buộc. Các trường totalRequiredAssessments và passedRequiredAssessments trong expected minh họa danh sách requiredAssessments cấp khóa.",
+    "fixtureOverrides thay giá trị theo đường dẫn trên bản dữ liệu riêng của kịch bản. Ca ngưỡng 75 là cấu hình thay thế được đặt trước khi xuất bản. action.overrides thay các trường nêu rõ trong event hoặc payload.",
+    "Các ca sync FAILED và replay bắt đầu từ receipt lỗi đã được lưu."
+  ],
+  "requests": {
+    "completeItem": {
+      "completed": true,
+      "contentVersion": 1
+    },
+    "wrongContentVersion": {
+      "completed": true,
+      "contentVersion": 2
+    },
+    "saveResume": {
+      "lessonId": "00000000-0000-4000-8000-000000000211",
+      "learningItemId": "00000000-0000-4000-8000-000000000221",
+      "contentVersion": 1,
+      "positionSeconds": 60,
+      "expectedRevision": 0
+    },
+    "checkChapter2Access": {
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "learningItemId": "00000000-0000-4000-8000-000000000222"
+    },
+    "resumeChapter2": {
+      "lessonId": "00000000-0000-4000-8000-000000000212",
+      "learningItemId": "00000000-0000-4000-8000-000000000222",
+      "contentVersion": 1,
+      "positionSeconds": null,
+      "expectedRevision": 0
+    }
+  },
+  "expected": {
+    "initial": {
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "enrollmentId": "00000000-0000-4000-8000-000000000401",
+      "contentVersion": 1,
+      "status": "NOT_STARTED",
+      "completedRequiredItems": 0,
+      "totalRequiredItems": 2,
+      "progressPercent": 0,
+      "passedRequiredAssessments": 0,
+      "totalRequiredAssessments": 1,
+      "completedAt": null,
+      "updatedAt": "2026-01-15T09:00:00Z"
+    },
+    "halfway": {
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "enrollmentId": "00000000-0000-4000-8000-000000000401",
+      "contentVersion": 1,
+      "status": "IN_PROGRESS",
+      "completedRequiredItems": 1,
+      "totalRequiredItems": 2,
+      "progressPercent": 50,
+      "passedRequiredAssessments": 0,
+      "totalRequiredAssessments": 1,
+      "completedAt": null,
+      "updatedAt": "2026-01-15T09:02:00Z"
+    },
+    "waitingForQuiz": {
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "enrollmentId": "00000000-0000-4000-8000-000000000401",
+      "contentVersion": 1,
+      "status": "IN_PROGRESS",
+      "completedRequiredItems": 2,
+      "totalRequiredItems": 2,
+      "progressPercent": 100,
+      "passedRequiredAssessments": 0,
+      "totalRequiredAssessments": 1,
+      "completedAt": null,
+      "updatedAt": "2026-01-15T09:04:00Z"
+    },
+    "completed": {
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "enrollmentId": "00000000-0000-4000-8000-000000000401",
+      "contentVersion": 1,
+      "status": "COMPLETED",
+      "completedRequiredItems": 2,
+      "totalRequiredItems": 2,
+      "progressPercent": 100,
+      "passedRequiredAssessments": 1,
+      "totalRequiredAssessments": 1,
+      "completedAt": "2026-01-15T09:11:00Z",
+      "updatedAt": "2026-01-15T09:11:00Z"
+    },
+    "videoCompleted": {
+      "learningItemId": "00000000-0000-4000-8000-000000000221",
+      "contentVersion": 1,
+      "status": "COMPLETED",
+      "completedAt": "2026-01-15T09:02:00Z"
+    },
+    "lessonCompleted": {
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "lessonId": "00000000-0000-4000-8000-000000000211",
+      "contentVersion": 1,
+      "status": "COMPLETED",
+      "completedAt": "2026-01-15T09:02:30Z",
+      "items": [
+        {
+          "learningItemId": "00000000-0000-4000-8000-000000000221",
+          "contentVersion": 1,
+          "status": "COMPLETED",
+          "completedAt": "2026-01-15T09:02:00Z"
+        },
+        {
+          "learningItemId": "00000000-0000-4000-8000-000000000223",
+          "contentVersion": 1,
+          "status": "NOT_STARTED",
+          "completedAt": null
+        },
+        {
+          "learningItemId": "00000000-0000-4000-8000-000000000224",
+          "contentVersion": 1,
+          "status": "NOT_STARTED",
+          "completedAt": null
+        }
+      ]
+    },
+    "checkpoint": {
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "lessonId": "00000000-0000-4000-8000-000000000211",
+      "learningItemId": "00000000-0000-4000-8000-000000000221",
+      "contentVersion": 1,
+      "positionSeconds": 60,
+      "revision": 1,
+      "updatedAt": "2026-01-15T09:01:00Z"
+    },
+    "syncPending": {
+      "attemptId": "00000000-0000-4000-8000-000000000501",
+      "eventId": "00000000-0000-4000-8000-000000000601",
+      "status": "PENDING",
+      "updatedAt": null,
+      "error": null
+    },
+    "syncFailed": {
+      "attemptId": "00000000-0000-4000-8000-000000000501",
+      "eventId": "00000000-0000-4000-8000-000000000601",
+      "status": "FAILED",
+      "updatedAt": "2026-01-15T09:10:35Z",
+      "error": {
+        "code": "PROJECTION_FAILED",
+        "message": "Learning chưa áp dụng được kết quả chấm."
+      }
+    },
+    "syncSucceeded": {
+      "attemptId": "00000000-0000-4000-8000-000000000501",
+      "eventId": "00000000-0000-4000-8000-000000000601",
+      "status": "SYNCED",
+      "updatedAt": "2026-01-15T09:11:00Z",
+      "error": null
+    }
+  },
+  "scenarios": [
+    {
+      "id": "enrollment-initializes-progress",
+      "title": "Ghi danh khởi tạo tiến độ 0%",
+      "given": ["course.structure"],
+      "action": {
+        "routingKey": "course.enrollment.created.v2",
+        "event": "course.enrollmentCreated"
+      },
+      "expected": {
+        "courseProgress": "expected.initial"
+      }
+    },
+    {
+      "id": "enrollment-replay-preserves-progress",
+      "title": "Nhận lại cùng event ghi danh sau khi đã học",
+      "given": ["expected.halfway"],
+      "action": {
+        "routingKey": "course.enrollment.created.v2",
+        "event": "course.enrollmentCreated"
+      },
+      "expected": {
+        "courseProgress": "expected.halfway"
+      }
+    },
+    {
+      "id": "video-completes",
+      "title": "Hoàn thành một trong hai item bắt buộc",
+      "given": ["expected.initial"],
+      "action": {
+        "operationId": "completeItem",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000221",
+        "body": "requests.completeItem"
+      },
+      "expected": {
+        "httpStatus": 200,
+        "itemProgress": "expected.videoCompleted",
+        "courseProgress": "expected.halfway"
+      }
+    },
+    {
+      "id": "video-request-retry",
+      "title": "Gửi lại yêu cầu hoàn thành video",
+      "given": ["expected.halfway", "expected.videoCompleted"],
+      "action": {
+        "operationId": "completeItem",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000221",
+        "body": "requests.completeItem"
+      },
+      "expected": {
+        "httpStatus": 200,
+        "itemProgress": "expected.videoCompleted",
+        "courseProgress": "expected.halfway"
+      }
+    },
+    {
+      "id": "optional-item-excluded",
+      "title": "Hoàn thành bài đọc tùy chọn",
+      "given": ["expected.halfway"],
+      "action": {
+        "operationId": "completeItem",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000223",
+        "body": "requests.completeItem"
+      },
+      "expected": {
+        "httpStatus": 200,
+        "progressPercent": 50,
+        "completedRequiredItems": 1
+      }
+    },
+    {
+      "id": "sequential-item-locked",
+      "title": "Chương 2 còn khóa khi video bắt buộc ở chương 1 chưa xong",
+      "given": ["expected.initial"],
+      "action": {
+        "operationId": "completeItem",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000222",
+        "body": "requests.completeItem"
+      },
+      "expected": {
+        "httpStatus": 403,
+        "errorCode": "PREREQUISITE_NOT_COMPLETED",
+        "courseProgress": "expected.initial"
+      }
+    },
+    {
+      "id": "wrong-content-version",
+      "title": "Yêu cầu gửi contentVersion khác enrollment",
+      "given": ["expected.initial"],
+      "action": {
+        "operationId": "completeItem",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000221",
+        "body": "requests.wrongContentVersion"
+      },
+      "expected": {
+        "httpStatus": 409,
+        "errorCode": "CONTENT_VERSION_MISMATCH",
+        "courseProgress": "expected.initial"
+      }
+    },
+    {
+      "id": "other-student-cannot-read",
+      "title": "Student A chưa ghi danh khóa của Student B",
+      "given": ["course.accessDenied"],
+      "action": {
+        "operationId": "getCourseProgress",
+        "actor": "identity.studentA",
+        "resourceId": "33333333-3333-4333-8333-333333333333"
+      },
+      "expected": {
+        "httpStatus": 403,
+        "errorCode": "ENROLLMENT_REQUIRED"
+      }
+    },
+    {
+      "id": "cancelled-enrollment-cannot-write",
+      "title": "Enrollment đã bị Course hủy",
+      "given": [
+        "expected.halfway",
+        "quiz.chapterAttempt80",
+        "course.enrollmentCancelled"
+      ],
+      "action": {
+        "operationId": "completeItem",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000222",
+        "body": "requests.completeItem"
+      },
+      "expected": {
+        "httpStatus": 403,
+        "errorCode": "ENROLLMENT_REQUIRED",
+        "retainHistory": true
+      }
+    },
+    {
+      "id": "lesson-requires-its-required-items",
+      "title": "Yêu cầu hoàn thành lesson khi video bắt buộc chưa xong",
+      "given": ["expected.initial"],
+      "action": {
+        "operationId": "completeLesson",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000211",
+        "body": "requests.completeItem"
+      },
+      "expected": {
+        "rejected": true,
+        "courseProgress": "expected.initial"
+      }
+    },
+    {
+      "id": "lesson-completes-with-optional-items-unfinished",
+      "title": "Hoàn thành lesson sau khi video bắt buộc đã xong",
+      "given": ["expected.halfway", "expected.videoCompleted"],
+      "action": {
+        "operationId": "completeLesson",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000211",
+        "body": "requests.completeItem"
+      },
+      "expected": {
+        "httpStatus": 200,
+        "lessonProgress": "expected.lessonCompleted",
+        "completedRequiredItems": 1,
+        "progressPercent": 50
+      }
+    },
+    {
+      "id": "quiz-cannot-be-completed-manually",
+      "title": "Client tự gửi yêu cầu hoàn thành quiz",
+      "given": ["expected.halfway"],
+      "action": {
+        "operationId": "completeItem",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000224",
+        "body": "requests.completeItem"
+      },
+      "expected": {
+        "rejected": true,
+        "noProgressChange": true
+      }
+    },
+    {
+      "id": "resume-does-not-complete-item",
+      "title": "Lưu checkpoint tại giây 60 trước khi xem xong video",
+      "given": ["expected.initial"],
+      "action": {
+        "operationId": "saveResume",
+        "actor": "identity.studentB",
+        "resourceId": "33333333-3333-4333-8333-333333333333",
+        "body": "requests.saveResume"
+      },
+      "expected": {
+        "httpStatus": 200,
+        "checkpoint": "expected.checkpoint",
+        "completedRequiredItems": 0,
+        "progressPercent": 0
+      }
+    },
+    {
+      "id": "stale-resume-revision",
+      "title": "Ghi lại checkpoint bằng revision cũ",
+      "given": ["expected.checkpoint"],
+      "action": {
+        "operationId": "saveResume",
+        "actor": "identity.studentB",
+        "resourceId": "33333333-3333-4333-8333-333333333333",
+        "body": "requests.saveResume"
+      },
+      "expected": {
+        "httpStatus": 409,
+        "errorCode": "REVISION_CONFLICT",
+        "checkpoint": "expected.checkpoint"
+      }
+    },
+    {
+      "id": "chapter2-stays-locked-after-video",
+      "title": "Xong video nhưng chưa đạt quiz cuối chương",
+      "given": ["expected.halfway"],
+      "action": {
+        "operationId": "checkCourseAccess",
+        "query": "requests.checkChapter2Access"
+      },
+      "expected": {
+        "httpStatus": 200,
+        "accessResult": "course.accessPrerequisiteNotCompleted"
+      }
+    },
+    {
+      "id": "chapter-quiz-below-configured-threshold",
+      "title": "Quiz 79 điểm dưới ngưỡng 80 do người tạo cấu hình",
+      "given": ["expected.halfway"],
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.chapterAttempt79"
+      },
+      "expected": {
+        "chapterStatus": "IN_PROGRESS",
+        "accessResult": "course.accessPrerequisiteNotCompleted",
+        "progressPercent": 50
+      }
+    },
+    {
+      "id": "chapter-quiz-meets-configured-threshold",
+      "title": "Quiz đạt đúng ngưỡng 80 và mở chương 2",
+      "given": ["expected.halfway", "quiz.chapterAttempt79"],
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.chapterAttempt80"
+      },
+      "expected": {
+        "chapterStatus": "COMPLETED",
+        "accessResult": "course.accessAllowed",
+        "courseStatus": "IN_PROGRESS",
+        "progressPercent": 50
+      }
+    },
+    {
+      "id": "chapter-quiz-uses-configured-threshold",
+      "title": "Cùng 79 điểm nhưng đạt khi người tạo cấu hình ngưỡng 75",
+      "given": ["expected.halfway"],
+      "fixtureOverrides": {
+        "course.structure.outline.chapters.0.endSectionQuiz.passingScorePercent": 75,
+        "course.structure.completionPolicy.chapterPolicies.0.requiredAssessments.0.passingScorePercent": 75,
+        "quiz.chapterEndQuiz.policy.passingScorePercent": 75
+      },
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.chapterAttempt79",
+        "overrides": {
+          "payload": {
+            "passingScorePercent": 75,
+            "passed": true
+          }
+        }
+      },
+      "expected": {
+        "chapterStatus": "COMPLETED",
+        "accessResult": "course.accessAllowed",
+        "courseStatus": "IN_PROGRESS",
+        "progressPercent": 50
+      }
+    },
+    {
+      "id": "chapter2-access-allowed-after-pass",
+      "title": "Course có thể cho phép học item chương 2 sau khi Learning áp dụng lượt đạt",
+      "given": ["expected.halfway", "quiz.chapterAttempt80"],
+      "action": {
+        "operationId": "checkCourseAccess",
+        "query": "requests.checkChapter2Access"
+      },
+      "expected": {
+        "httpStatus": 200,
+        "accessResult": "course.accessAllowed"
+      }
+    },
+    {
+      "id": "chapter-pass-wrong-assessment-version",
+      "title": "Lượt đạt của phiên bản quiz cũ chưa mở được chương 2",
+      "given": ["expected.halfway"],
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.chapterAttempt80",
+        "overrides": {
+          "eventId": "00000000-0000-4000-8000-000000000607",
+          "payload": {
+            "attemptId": "00000000-0000-4000-8000-000000000504",
+            "assessmentVersion": 1
+          }
+        }
+      },
+      "expected": {
+        "chapterStatus": "IN_PROGRESS",
+        "accessResult": "course.accessPrerequisiteNotCompleted",
+        "progressPercent": 50
+      }
+    },
+    {
+      "id": "duplicate-chapter-pass",
+      "title": "Phát lại cùng lượt đạt không ghi nhận completion thêm lần nữa",
+      "given": ["expected.halfway", "quiz.chapterAttempt80"],
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.chapterAttempt80"
+      },
+      "expected": {
+        "chapterStatus": "COMPLETED",
+        "accessResult": "course.accessAllowed",
+        "courseStatus": "IN_PROGRESS",
+        "progressPercent": 50,
+        "noProgressChange": true
+      }
+    },
+    {
+      "id": "late-chapter-fail-does-not-relock",
+      "title": "Lượt 79 điểm đến trễ sau lượt đạt không khóa lại chương 2",
+      "given": ["expected.halfway", "quiz.chapterAttempt80"],
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.chapterAttempt79"
+      },
+      "expected": {
+        "chapterStatus": "COMPLETED",
+        "accessResult": "course.accessAllowed",
+        "courseStatus": "IN_PROGRESS",
+        "progressPercent": 50
+      }
+    },
+    {
+      "id": "resume-rejects-locked-chapter",
+      "title": "Lưu vị trí học tiếp ở chương 2 khi chương còn bị khóa",
+      "given": ["expected.halfway"],
+      "action": {
+        "operationId": "saveResume",
+        "actor": "identity.studentB",
+        "resourceId": "33333333-3333-4333-8333-333333333333",
+        "body": "requests.resumeChapter2"
+      },
+      "expected": {
+        "httpStatus": 403,
+        "errorCode": "PREREQUISITE_NOT_COMPLETED",
+        "checkpoint": null
+      }
+    },
+    {
+      "id": "all-items-await-graded-quiz",
+      "title": "Đủ nội dung và đạt quiz của chương, còn chờ bài đánh giá cấp khóa",
+      "given": ["expected.halfway", "quiz.chapterAttempt80"],
+      "action": {
+        "operationId": "completeItem",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000222",
+        "body": "requests.completeItem"
+      },
+      "expected": {
+        "httpStatus": 200,
+        "courseProgress": "expected.waitingForQuiz"
+      }
+    },
+    {
+      "id": "graded-but-not-synced",
+      "title": "Quiz cấp khóa đã chấm, Learning chưa có receipt",
+      "given": [
+        "quiz.gradedResult",
+        "quiz.attemptAccess",
+        "expected.waitingForQuiz"
+      ],
+      "action": {
+        "operationId": "getProgressSync",
+        "actor": "identity.studentB",
+        "resourceId": "00000000-0000-4000-8000-000000000501"
+      },
+      "expected": {
+        "httpStatus": 200,
+        "receipt": "expected.syncPending"
+      }
+    },
+    {
+      "id": "graded-event-completes-course",
+      "title": "Quiz cấp khóa đạt và đúng assessmentVersion",
+      "given": ["expected.waitingForQuiz"],
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.attemptGraded"
+      },
+      "expected": {
+        "receipt": "expected.syncSucceeded",
+        "courseProgress": "expected.completed"
+      }
+    },
+    {
+      "id": "duplicate-graded-event",
+      "title": "Broker giao lại đúng event đã xử lý",
+      "given": ["expected.completed", "expected.syncSucceeded"],
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.attemptGraded"
+      },
+      "expected": {
+        "receipt": "expected.syncSucceeded",
+        "courseProgress": "expected.completed"
+      }
+    },
+    {
+      "id": "graded-event-from-another-version",
+      "title": "Event hợp lệ về schema nhưng khác phiên bản bài đánh giá",
+      "given": ["expected.waitingForQuiz"],
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.attemptGraded",
+        "overrides": {
+          "eventId": "00000000-0000-4000-8000-000000000604",
+          "payload": {
+            "assessmentVersion": 2,
+            "attemptId": "00000000-0000-4000-8000-000000000505"
+          }
+        }
+      },
+      "expected": {
+        "passedRequiredAssessments": 0,
+        "courseProgress": "expected.waitingForQuiz"
+      }
+    },
+    {
+      "id": "failed-receipt-replay",
+      "title": "Sau khi xử lý được lỗi, phát lại cùng event từ DLQ",
+      "given": ["expected.syncFailed", "expected.waitingForQuiz"],
+      "action": {
+        "routingKey": "quiz.attempt.graded.v2",
+        "event": "quiz.attemptGraded"
+      },
+      "expected": {
+        "receipt": "expected.syncSucceeded",
+        "courseProgress": "expected.completed"
+      }
+    }
+  ]
+}

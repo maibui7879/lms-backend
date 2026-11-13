@@ -1,0 +1,410 @@
+{
+  "identity": {
+    "studentB": {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "email": "studentB@example.test",
+      "role": "STUDENT",
+      "status": "ACTIVE"
+    },
+    "studentA": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "email": "studentA@example.test",
+      "role": "STUDENT",
+      "status": "ACTIVE"
+    },
+    "instructorA": {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "email": "instructorA@example.test",
+      "role": "INSTRUCTOR",
+      "status": "ACTIVE"
+    }
+  },
+  "course": {
+    "publishedCourse": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "instructorId": "22222222-2222-4222-8222-222222222222",
+      "title": "NestJS căn bản",
+      "description": "Khóa mẫu về module và controller trong NestJS.",
+      "thumbnailUrl": null,
+      "status": "PUBLISHED",
+      "version": 1,
+      "contentVersion": 1,
+      "createdAt": "2026-01-15T08:00:00Z",
+      "updatedAt": "2026-01-15T08:50:00Z"
+    },
+    "structure": {
+      "outline": {
+        "courseId": "33333333-3333-4333-8333-333333333333",
+        "contentVersion": 1,
+        "chapters": [
+          {
+            "id": "00000000-0000-4000-8000-000000000201",
+            "courseId": "33333333-3333-4333-8333-333333333333",
+            "title": "Nhập môn NestJS",
+            "order": 0,
+            "version": 1,
+            "lessons": [
+              {
+                "id": "00000000-0000-4000-8000-000000000211",
+                "courseId": "33333333-3333-4333-8333-333333333333",
+                "chapterId": "00000000-0000-4000-8000-000000000201",
+                "title": "Giới thiệu module",
+                "order": 0,
+                "version": 1,
+                "items": [
+                  {
+                    "id": "00000000-0000-4000-8000-000000000221",
+                    "courseId": "33333333-3333-4333-8333-333333333333",
+                    "lessonId": "00000000-0000-4000-8000-000000000211",
+                    "contentVersion": 1,
+                    "version": 1,
+                    "title": "Module hoạt động thế nào?",
+                    "order": 0,
+                    "required": true,
+                    "type": "VIDEO",
+                    "videoUrl": "https://example.test/videos/nestjs-module.mp4",
+                    "durationSeconds": 180,
+                    "revisionId": "00000000-0000-4000-8000-000000000801"
+                  },
+                  {
+                    "id": "00000000-0000-4000-8000-000000000223",
+                    "courseId": "33333333-3333-4333-8333-333333333333",
+                    "lessonId": "00000000-0000-4000-8000-000000000211",
+                    "contentVersion": 1,
+                    "version": 1,
+                    "title": "Thuật ngữ tham khảo",
+                    "order": 1,
+                    "required": false,
+                    "type": "READING",
+                    "body": "Đọc thêm về provider và dependency injection.",
+                    "revisionId": "00000000-0000-4000-8000-000000000801"
+                  },
+                  {
+                    "id": "00000000-0000-4000-8000-000000000224",
+                    "courseId": "33333333-3333-4333-8333-333333333333",
+                    "lessonId": "00000000-0000-4000-8000-000000000211",
+                    "contentVersion": 1,
+                    "version": 1,
+                    "title": "Quiz đánh giá module",
+                    "order": 2,
+                    "required": false,
+                    "type": "QUIZ",
+                    "quizId": "44444444-4444-4444-8444-444444444444",
+                    "assessmentVersion": 1,
+                    "revisionId": "00000000-0000-4000-8000-000000000801"
+                  }
+                ],
+                "revisionId": "00000000-0000-4000-8000-000000000801"
+              }
+            ],
+            "revisionId": "00000000-0000-4000-8000-000000000801",
+            "endSectionQuiz": {
+              "quizId": "00000000-0000-4000-8000-000000000302",
+              "assessmentVersion": 2,
+              "passingScorePercent": 80
+            }
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000202",
+            "courseId": "33333333-3333-4333-8333-333333333333",
+            "revisionId": "00000000-0000-4000-8000-000000000801",
+            "title": "Controller và route",
+            "order": 1,
+            "version": 1,
+            "endSectionQuiz": null,
+            "lessons": [
+              {
+                "id": "00000000-0000-4000-8000-000000000212",
+                "courseId": "33333333-3333-4333-8333-333333333333",
+                "chapterId": "00000000-0000-4000-8000-000000000202",
+                "title": "Controller và route",
+                "order": 0,
+                "version": 1,
+                "items": [
+                  {
+                    "id": "00000000-0000-4000-8000-000000000222",
+                    "courseId": "33333333-3333-4333-8333-333333333333",
+                    "lessonId": "00000000-0000-4000-8000-000000000212",
+                    "contentVersion": 1,
+                    "version": 1,
+                    "title": "Đọc về controller",
+                    "order": 0,
+                    "required": true,
+                    "type": "READING",
+                    "body": "Controller nhận request HTTP và gọi service xử lý nghiệp vụ.",
+                    "revisionId": "00000000-0000-4000-8000-000000000801"
+                  }
+                ],
+                "revisionId": "00000000-0000-4000-8000-000000000801"
+              }
+            ]
+          }
+        ],
+        "revisionId": "00000000-0000-4000-8000-000000000801"
+      },
+      "completionPolicy": {
+        "courseId": "33333333-3333-4333-8333-333333333333",
+        "contentVersion": 1,
+        "requiredItemIds": [
+          "00000000-0000-4000-8000-000000000221",
+          "00000000-0000-4000-8000-000000000222"
+        ],
+        "requiredAssessments": [
+          {
+            "quizId": "44444444-4444-4444-8444-444444444444",
+            "assessmentVersion": 1,
+            "passingScorePercent": 70
+          }
+        ],
+        "sequence": "SEQUENTIAL",
+        "assessmentRule": "ANY_PASSED_ATTEMPT_SAME_VERSION",
+        "certificateEnabled": true,
+        "chapterPolicies": [
+          {
+            "chapterId": "00000000-0000-4000-8000-000000000201",
+            "requiredItemIds": ["00000000-0000-4000-8000-000000000221"],
+            "requiredAssessments": [
+              {
+                "quizId": "00000000-0000-4000-8000-000000000302",
+                "assessmentVersion": 2,
+                "passingScorePercent": 80
+              }
+            ]
+          },
+          {
+            "chapterId": "00000000-0000-4000-8000-000000000202",
+            "requiredItemIds": ["00000000-0000-4000-8000-000000000222"],
+            "requiredAssessments": []
+          }
+        ]
+      }
+    },
+    "enrollment": {
+      "enrollmentId": "00000000-0000-4000-8000-000000000401",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "status": "ACTIVE",
+      "enrolledAt": "2026-01-15T09:00:00Z",
+      "contentVersion": 1
+    },
+    "accessAllowed": {
+      "allowed": true,
+      "enrollmentId": "00000000-0000-4000-8000-000000000401",
+      "contentVersion": 1
+    },
+    "accessDenied": {
+      "allowed": false,
+      "reason": "ENROLLMENT_REQUIRED"
+    },
+    "enrollmentCreated": {
+      "eventId": "00000000-0000-4000-8000-000000000602",
+      "eventType": "course.enrollment.created",
+      "version": 2,
+      "occurredAt": "2026-01-15T09:00:00Z",
+      "producer": "course-service",
+      "correlationId": "mock-learning-enrollment",
+      "payload": {
+        "enrollmentId": "00000000-0000-4000-8000-000000000401",
+        "courseId": "33333333-3333-4333-8333-333333333333",
+        "userId": "00000000-0000-4000-8000-000000000002",
+        "status": "ACTIVE",
+        "enrolledAt": "2026-01-15T09:00:00Z",
+        "contentVersion": 1
+      }
+    },
+    "enrollmentCancelled": {
+      "eventId": "00000000-0000-4000-8000-000000000603",
+      "eventType": "course.enrollment.cancelled",
+      "version": 1,
+      "occurredAt": "2026-01-15T09:20:00Z",
+      "producer": "course-service",
+      "correlationId": "mock-learning-cancellation",
+      "payload": {
+        "enrollmentId": "00000000-0000-4000-8000-000000000401",
+        "courseId": "33333333-3333-4333-8333-333333333333",
+        "userId": "00000000-0000-4000-8000-000000000002",
+        "cancelledAt": "2026-01-15T09:20:00Z"
+      }
+    },
+    "accessPrerequisiteNotCompleted": {
+      "allowed": false,
+      "reason": "PREREQUISITE_NOT_COMPLETED"
+    }
+  },
+  "quiz": {
+    "publishedQuiz": {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "lessonId": "00000000-0000-4000-8000-000000000211",
+      "instructorId": "22222222-2222-4222-8222-222222222222",
+      "title": "Bài đánh giá cấp khóa",
+      "policy": {
+        "quizType": "GRADED",
+        "durationSeconds": 600,
+        "passingScorePercent": 70,
+        "maxAttempts": 3,
+        "requiredForCompletion": true,
+        "shuffleQuestions": false,
+        "shuffleChoices": false,
+        "reviewPolicy": "AFTER_SUBMISSION"
+      },
+      "status": "PUBLISHED",
+      "assessmentVersion": 1,
+      "version": 1,
+      "chapterId": "00000000-0000-4000-8000-000000000201",
+      "placement": "LESSON"
+    },
+    "startAttempt": {
+      "attemptId": "00000000-0000-4000-8000-000000000501",
+      "quizId": "44444444-4444-4444-8444-444444444444",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "assessmentVersion": 1,
+      "policySnapshot": {
+        "quizType": "GRADED",
+        "durationSeconds": 600,
+        "passingScorePercent": 70,
+        "maxAttempts": 3,
+        "requiredForCompletion": true,
+        "shuffleQuestions": false,
+        "shuffleChoices": false,
+        "reviewPolicy": "AFTER_SUBMISSION"
+      },
+      "attemptStatus": "IN_PROGRESS",
+      "gradingStatus": "NOT_GRADED",
+      "startedAt": "2026-01-15T09:06:00Z",
+      "expiresAt": "2026-01-15T09:16:00Z",
+      "submittedAt": null,
+      "revision": 0,
+      "answers": [],
+      "questions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000311",
+          "type": "SINGLE_CHOICE",
+          "prompt": "Module dùng để tổ chức thành phần nào?",
+          "choices": [
+            {
+              "id": "00000000-0000-4000-8000-000000000701",
+              "text": "Controller và provider"
+            },
+            {
+              "id": "00000000-0000-4000-8000-000000000702",
+              "text": "Chỉ các tệp HTML"
+            }
+          ],
+          "points": 10
+        }
+      ],
+      "serverTime": "2026-01-15T09:06:00Z"
+    },
+    "gradedResult": {
+      "attemptId": "00000000-0000-4000-8000-000000000501",
+      "quizId": "44444444-4444-4444-8444-444444444444",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "assessmentVersion": 1,
+      "attemptStatus": "SUBMITTED",
+      "gradingStatus": "GRADED",
+      "score": 10,
+      "maxScore": 10,
+      "passed": true,
+      "gradedAt": "2026-01-15T09:10:01Z"
+    },
+    "attemptAccess": {
+      "attemptId": "00000000-0000-4000-8000-000000000501",
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "eventId": "00000000-0000-4000-8000-000000000601",
+      "attemptStatus": "SUBMITTED",
+      "gradingStatus": "GRADED"
+    },
+    "attemptGraded": {
+      "eventId": "00000000-0000-4000-8000-000000000601",
+      "eventType": "quiz.attempt.graded",
+      "version": 2,
+      "occurredAt": "2026-01-15T09:10:02Z",
+      "producer": "quiz-service",
+      "correlationId": "mock-learning-grading",
+      "payload": {
+        "attemptId": "00000000-0000-4000-8000-000000000501",
+        "quizId": "44444444-4444-4444-8444-444444444444",
+        "courseId": "33333333-3333-4333-8333-333333333333",
+        "userId": "00000000-0000-4000-8000-000000000002",
+        "assessmentVersion": 1,
+        "quizType": "GRADED",
+        "passingScorePercent": 70,
+        "score": 10,
+        "maxScore": 10,
+        "passed": true,
+        "gradedAt": "2026-01-15T09:10:01Z",
+        "skillScores": []
+      }
+    },
+    "chapterEndQuiz": {
+      "id": "00000000-0000-4000-8000-000000000302",
+      "courseId": "33333333-3333-4333-8333-333333333333",
+      "lessonId": null,
+      "instructorId": "22222222-2222-4222-8222-222222222222",
+      "title": "Quiz cuối chương Nhập môn NestJS",
+      "policy": {
+        "quizType": "GRADED",
+        "durationSeconds": 600,
+        "passingScorePercent": 80,
+        "maxAttempts": 3,
+        "requiredForCompletion": true,
+        "shuffleQuestions": false,
+        "shuffleChoices": false,
+        "reviewPolicy": "AFTER_SUBMISSION"
+      },
+      "status": "PUBLISHED",
+      "assessmentVersion": 2,
+      "version": 1,
+      "chapterId": "00000000-0000-4000-8000-000000000201",
+      "placement": "SECTION_END"
+    },
+    "chapterAttempt79": {
+      "eventId": "00000000-0000-4000-8000-000000000605",
+      "eventType": "quiz.attempt.graded",
+      "version": 2,
+      "occurredAt": "2026-01-15T09:03:01Z",
+      "producer": "quiz-service",
+      "correlationId": "mock-learning-chapter-grade-502",
+      "payload": {
+        "attemptId": "00000000-0000-4000-8000-000000000502",
+        "quizId": "00000000-0000-4000-8000-000000000302",
+        "courseId": "33333333-3333-4333-8333-333333333333",
+        "userId": "00000000-0000-4000-8000-000000000002",
+        "assessmentVersion": 2,
+        "quizType": "GRADED",
+        "passingScorePercent": 80,
+        "score": 79,
+        "maxScore": 100,
+        "passed": false,
+        "gradedAt": "2026-01-15T09:03:00Z",
+        "skillScores": []
+      }
+    },
+    "chapterAttempt80": {
+      "eventId": "00000000-0000-4000-8000-000000000606",
+      "eventType": "quiz.attempt.graded",
+      "version": 2,
+      "occurredAt": "2026-01-15T09:03:31Z",
+      "producer": "quiz-service",
+      "correlationId": "mock-learning-chapter-grade-503",
+      "payload": {
+        "attemptId": "00000000-0000-4000-8000-000000000503",
+        "quizId": "00000000-0000-4000-8000-000000000302",
+        "courseId": "33333333-3333-4333-8333-333333333333",
+        "userId": "00000000-0000-4000-8000-000000000002",
+        "assessmentVersion": 2,
+        "quizType": "GRADED",
+        "passingScorePercent": 80,
+        "score": 80,
+        "maxScore": 100,
+        "passed": true,
+        "gradedAt": "2026-01-15T09:03:30Z",
+        "skillScores": []
+      }
+    }
+  }
+}

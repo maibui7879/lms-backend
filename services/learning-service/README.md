@@ -4,7 +4,7 @@ Owner: chưa chốt tên. Workspace `@lms/learning-service`, port mặc định 
 
 ## Trạng thái và phạm vi
 
-Hiện chỉ có scaffold `GET /` → `Hello World!`; chưa có progress API, consumer, receipt hoặc DB. Learning sở hữu progress/resume/mastery/certificate và processed_events/receipts trong PostgreSQL riêng. MongoDB Atlas chỉ cho activity/read model phụ trợ, không quyết định completion hay SYNCED.
+Learning có API ghi nhận hoàn thành item, đọc tiến độ khóa và xem trạng thái từng chương với PostgreSQL và xác thực mock cho local/test. Consumer nhận kết quả chấm quiz để áp dụng policy của chương và khóa. Học viên có thể xem trạng thái đồng bộ kết quả quiz (`PRG-06`). Lộ trình tiếp theo bao gồm resume, mastery và certificate. MongoDB Atlas dự kiến phục vụ activity và read model.
 
 Course sở hữu cấu trúc/requirements/enrollment; Quiz sở hữu câu hỏi và kết quả chấm. Learning không tự tạo danh sách required lessons hoặc chấm lại quiz.
 
@@ -283,7 +283,82 @@ npm.cmd run start:dev -w @lms/learning-service
 
 Terminal khác: `Invoke-RestMethod http://127.0.0.1:3004/` chỉ smoke check scaffold.
 
-[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, RABBITMQ_URL, COURSE_URL, MONGODB_URI/MONGODB_DATABASE, JWT_PUBLIC_KEY/JWT_ISSUER. Chỉ PORT đang được đọc. Khi triển khai thêm QUIZ_URL, service credentials, queue/retry settings và config validation; các biến mới phải được ghi vào env example bằng placeholder. `.env` chưa tự load. Mock auth theo [package auth](../../packages/auth/README.md).
+[Env example](.env.example) liệt kê các biến môi trường. Export biến trong terminal vì app chưa tự nạp `.env`.
+
+### Chạy API tiến độ
+
+Dùng PostgreSQL của Learning và một bản Course đã có API ghi danh, outline và completion policy. Bật mock auth trong cả hai service ở chế độ development. Learning gọi Course qua HTTP với danh tính mock đã được guard xác thực. Dùng mã khóa, item và `contentVersion` thuộc enrollment thực của học viên trên Course.
+
+```powershell
+npm.cmd run build -w @lms/contracts -w @lms/auth -w @lms/learning-service
+$env:NODE_ENV='development'
+$env:MOCK_AUTH='true'
+$env:DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/learning'
+$env:COURSE_URL='http://127.0.0.1:3002'
+npm.cmd run migration:run -w @lms/learning-service
+npm.cmd run start:dev -w @lms/learning-service
+```
+
+Thay `DATABASE_URL` bằng kết nối PostgreSQL của Learning trước khi chạy migration. Gửi `X-Mock-User` với tên học viên đã ghi danh.
+
+| Method | Path | Dữ liệu gửi |
+| --- | --- | --- |
+| PUT | `/api/v1/learning/items/{id}/completion` | `{ "completed": true, "contentVersion": 1 }` với phiên bản đã ghi danh |
+| GET | `/api/v1/learning/courses/{id}/progress` | |
+| GET | `/api/v1/learning/courses/{id}/chapters/access` | |
+| GET | `/api/v1/learning/attempts/{id}/sync` | Chỉ chủ lượt làm có quyền xem |
+
+Mỗi item chỉ có một bản ghi hoàn thành theo enrollment và `contentVersion`. Tiến độ phần trăm chỉ đếm item bắt buộc. API trạng thái chương đọc `chapterPolicies` theo phiên bản ghi danh. Chương đã đủ điều kiện trả `COMPLETED`. Khi chương trước còn thiếu điều kiện, chương sau trả `LOCKED` với lý do `PREVIOUS_CHAPTER_NOT_COMPLETED`.
+
+Đặt `RABBITMQ_URL` trước khi khởi động Learning để bật consumer. Quiz gửi JSON `AttemptGradedV2Event` đến exchange topic `lms.events` với routing key `quiz.attempt.graded.v2`. Learning đăng ký queue bền vững `learning.quiz-results.v2` và ACK sau khi lưu kết quả vào PostgreSQL. Khóa duy nhất theo `eventId` và cặp `attemptId`/`assessmentVersion` chống ghi trùng.
+
+Learning dùng kết quả đúng học viên, khóa học, quiz, phiên bản bài đánh giá và ngưỡng điểm trong policy đã chốt của lượt ghi danh. Một lần đạt đủ điều kiện. Lỗi lưu được thử lại sau 1, 5 và 30 giây trong cùng lượt giao. Event không hợp lệ hoặc hết lượt thử được chuyển sang `learning.quiz-results.v2.dlq` với JSON gốc.
+
+### PRG-06 — Đồng bộ tiến độ qua event
+
+`ProgressSyncModule` chứa consumer nhận điểm, repository lưu kết quả và API đọc trạng thái đồng bộ. `ProgressModule` dùng repository này để đọc điểm khi tính tiến độ.
+
+Đặt `QUIZ_URL` và `QUIZ_SERVICE_TOKEN` để Learning gọi `getAttemptAccess` của Quiz qua HTTP với Bearer token nội bộ. Quiz xác minh credential và trả metadata lượt làm. Learning so sánh chủ lượt làm với học viên đang gọi rồi tra receipt theo event. Sai chủ trả `403 NOT_ATTEMPT_OWNER`, lượt làm không tồn tại trả `404`, lỗi kết nối hoặc timeout Quiz trả `503` hoặc `504`.
+
+- `PENDING` khi chưa có receipt hoặc event đang được xử lý lại. `eventId` là `null` nếu Quiz chưa biết mã event.
+- `SYNCED` khi dữ liệu điểm và receipt cùng được commit. Migration bổ sung receipt và phiên bản bài đánh giá cho điểm đã lưu trước đó.
+- `FAILED` khi hết retry và Learning đã lưu được failure receipt. Nếu PostgreSQL vẫn chưa ghi được receipt, trạng thái chờ được giữ.
+
+Khi xử lý lại một event hợp lệ từ DLQ, publish JSON gốc đến `lms.events` với routing key `quiz.attempt.graded.v2`, giữ nguyên `eventId`. Learning chuyển receipt `FAILED` sang `PENDING` khi nhận lại và sang `SYNCED` khi commit.
+
+**PRG-07 — Chống tính trùng event.** Event giao lại giữ nguyên thời điểm đồng bộ của receipt hiện có. Nếu Quiz gửi một event ID mới với cùng lượt làm, phiên bản và dữ liệu điểm, Learning ghi receipt cho mã mới và giữ một bản ghi điểm. Event tái sử dụng mã cho một kết quả khác, hoặc đổi kết quả của lượt làm đã lưu, được đưa vào DLQ với lý do `EVENT_CONFLICT`.
+
+Bộ test `progress.e2e-spec.ts` chạy consumer và API NestJS với Quiz, RabbitMQ, Course và repository giả lập.
+
+### Mock API cho Postman
+
+Sau `npm.cmd ci`, chạy lệnh sau từ thư mục gốc.
+
+```powershell
+npm.cmd run start:mock -w @lms/learning-service
+```
+
+Mock chạy riêng trên `http://127.0.0.1:3104`. Có thể đặt `$env:MOCK_PORT='3105'` trước khi chạy. Server dùng dữ liệu trong [test/fixtures](test/fixtures) và giữ tiến độ trong bộ nhớ. Khởi động lại để đưa dữ liệu về trạng thái ban đầu.
+
+Gửi header `X-Mock-User: studentB` trong Postman. Với `PUT` hoặc `POST`, chọn body JSON. Các route dưới đây giữ nguyên đường dẫn trong [OpenAPI Learning](../../packages/contracts/openapi/learning.json), ngoại trừ route mô phỏng sự kiện `POST /__mock/events`.
+
+| Method | Path | Dữ liệu gửi |
+| --- | --- | --- |
+| GET | `/api/v1/learning/courses/{courseId}/progress` | |
+| GET | `/api/v1/learning/courses/{courseId}/chapters/access` | |
+| PUT | `/api/v1/learning/items/{itemId}/completion` | `{ "completed": true, "contentVersion": 1 }` |
+| GET | `/api/v1/learning/lessons/{lessonId}/progress` | |
+| PUT | `/api/v1/learning/lessons/{lessonId}/completion` | `{ "completed": true, "contentVersion": 1 }` |
+| GET | `/api/v1/learning/courses/{courseId}/resume` | |
+| PUT | `/api/v1/learning/courses/{courseId}/resume` | `requests.saveResume` trong [fixture kịch bản](test/fixtures/learning-scenarios.mock.json) |
+| GET | `/api/v1/learning/attempts/{attemptId}/sync` | |
+| POST | `/__mock/events` | `{ "event": "chapterAttempt79" }`, `{ "event": "chapterAttempt80" }` hoặc `{ "event": "attemptGraded" }` |
+
+Để thử mở khóa chương, dùng `courseId=33333333-3333-4333-8333-333333333333` và hoàn thành video có `itemId=00000000-0000-4000-8000-000000000221`. Gửi event `chapterAttempt79` rồi đọc lại `chapters/access` để thấy chương 2 vẫn khóa. Gửi `chapterAttempt80` và đọc lại để thấy chương 1 `COMPLETED`, chương 2 `UNLOCKED`. Ngưỡng 80 lấy từ policy của bộ dữ liệu mẫu.
+
+```powershell
+npm.cmd run test:mock -w @lms/learning-service
+```
 
 ## Kiểm tra và bàn giao
 
