@@ -82,6 +82,7 @@ function propertyRules(name, schema) {
         'durationSeconds',
         'version',
         'contentVersion',
+        'baseContentVersion',
         'assessmentVersion',
         'expectedVersion',
         'revision',
@@ -105,6 +106,7 @@ function propertyRules(name, schema) {
         'durationSeconds',
         'version',
         'contentVersion',
+        'baseContentVersion',
         'assessmentVersion',
         'expectedVersion',
       ].includes(name)
@@ -261,7 +263,7 @@ for (const e of ENDPOINTS) {
   });
   const responses = {
     [e.success]: {
-      description: 'Success',
+      description: 'Thành công',
       ...(data
         ? {
             content: {
@@ -280,7 +282,7 @@ for (const e of ENDPOINTS) {
   };
   for (const status of [400, 401, 403, 404, 409, 422, 503, 504])
     responses[status] = {
-      description: `See shared error rules (${status})`,
+      description: `Xem quy tắc lỗi dùng chung (${status})`,
       content: { 'application/json': { schema: ref('ApiErrorResponse') } },
     };
   paths[e.path] ??= {};
@@ -288,7 +290,10 @@ for (const e of ENDPOINTS) {
   paths[e.path][e.method] = {
     operationId: e.operationId,
     tags: [e.service],
-    description: `Access policy: ${e.access}. See packages/contracts/README.md for ownership, state transitions and side effects.`,
+    description: `Role sử dụng: ${e.access}. ${
+      e.description ??
+      'Xem packages/contracts/README.md để biết quyền sở hữu, chuyển trạng thái và các tác động phụ.'
+    }`,
     'x-access-policy': e.access,
     security:
       e.access === 'PUBLIC'
@@ -319,7 +324,7 @@ const api = openapiRefs({
     title: 'LMS contract baseline',
     version: '0.2.0',
     description:
-      'Contract-first specification. Business endpoints are not implemented by this package. Owner review required for policy decisions.',
+      'Đặc tả theo hướng contract-first. Các endpoint nghiệp vụ không được triển khai trong package này. Chủ sở hữu cần xem xét các quyết định về chính sách.',
   },
   paths,
   components: {
@@ -330,7 +335,7 @@ const api = openapiRefs({
         type: 'http',
         scheme: 'bearer',
         description:
-          'Separate service JWT: service issuer/audience/scope; never accept a public user token as a service credential.',
+          'JWT riêng cho service: bao gồm issuer/audience/scope của service; không bao giờ chấp nhận token người dùng công khai làm thông tin xác thực của service.',
       },
     },
   },

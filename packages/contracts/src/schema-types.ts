@@ -48,9 +48,12 @@ export interface SchemaTypes {
   CourseQuery: Contracts.CourseQuery;
   CourseReviewData: Contracts.CourseReviewData;
   CourseReviewedEvent: Contracts.CourseReviewedEvent;
+  CourseRevisionData: Contracts.CourseRevisionData;
+  CourseRevisionStatus: Contracts.CourseRevisionStatus;
   CourseStatus: Contracts.CourseStatus;
   CreateChapterRequest: Contracts.CreateChapterRequest;
   CreateCourseRequest: Contracts.CreateCourseRequest;
+  CreateCourseRevisionRequest: Contracts.CreateCourseRevisionRequest;
   CreateDiscussionRequest: Contracts.CreateDiscussionRequest;
   CreateEnrollmentRequest: Contracts.CreateEnrollmentRequest;
   CreateEnrollmentResponse: Contracts.CreateEnrollmentResponse;
@@ -58,6 +61,7 @@ export interface SchemaTypes {
   CreateLessonRequest: Contracts.CreateLessonRequest;
   CreateQuestionRequest: Contracts.CreateQuestionRequest;
   CreateQuizRequest: Contracts.CreateQuizRequest;
+  CreateQuizRequestBase: Contracts.CreateQuizRequestBase;
   DiscussionData: Contracts.DiscussionData;
   DomainErrorCode: Contracts.DomainErrorCode;
   EndpointContract: Contracts.EndpointContract;
@@ -111,6 +115,7 @@ export interface SchemaTypes {
   QuizAttemptData: Contracts.QuizAttemptData;
   QuizAttemptStatus: Contracts.QuizAttemptStatus;
   QuizData: Contracts.QuizData;
+  QuizPlacement: Contracts.QuizPlacement;
   QuizPolicy: Contracts.QuizPolicy;
   QuizResultData: Contracts.QuizResultData;
   QuizResultResponse: Contracts.QuizResultResponse;
@@ -127,8 +132,12 @@ export interface SchemaTypes {
   ReorderRequest: Contracts.ReorderRequest;
   RequiredAssessment: Contracts.RequiredAssessment;
   ReviewCourseRequest: Contracts.ReviewCourseRequest;
+  ReviewCourseRevisionRequest: Contracts.ReviewCourseRevisionRequest;
+  RevisionReorderRequest: Contracts.RevisionReorderRequest;
+  RevisionVersionRequest: Contracts.RevisionVersionRequest;
   SaveAnswersRequest: Contracts.SaveAnswersRequest;
   SaveResumeRequest: Contracts.SaveResumeRequest;
+  SectionEndQuizRef: Contracts.SectionEndQuizRef;
   SessionData: Contracts.SessionData;
   SessionResponse: Contracts.SessionResponse;
   StartAttemptData: Contracts.StartAttemptData;

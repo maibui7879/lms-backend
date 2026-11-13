@@ -84,21 +84,6 @@ export function parseContract<K extends keyof SchemaTypes>(
       issues.push(
         `${location} practice cannot be a required graded assessment`,
       );
-    if (row.reviewPolicy === 'AFTER_CLOSE' && row.closesAt === null)
-      issues.push(`${location} AFTER_CLOSE requires closesAt`);
-    if (
-      row.policy &&
-      typeof row.policy === 'object' &&
-      (row.policy as Record<string, unknown>).reviewPolicy === 'AFTER_CLOSE' &&
-      row.closesAt === null
-    )
-      issues.push(`${location} AFTER_CLOSE requires closesAt`);
-    if (
-      typeof row.opensAt === 'string' &&
-      typeof row.closesAt === 'string' &&
-      Date.parse(row.opensAt) >= Date.parse(row.closesAt)
-    )
-      issues.push(`${location} opensAt must precede closesAt`);
     if (Array.isArray(row.choices)) {
       const ids = row.choices.map((c: { id: string }) => c.id);
       if (new Set(ids).size !== ids.length)
