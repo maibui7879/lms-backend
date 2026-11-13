@@ -20,10 +20,7 @@ export interface CourseData {
   updatedAt: string;
 }
 export type CourseRevisionStatus =
-  | 'DRAFT'
-  | 'IN_REVIEW'
-  | 'PUBLISHED'
-  | 'REJECTED';
+  'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'REJECTED';
 export interface CourseRevisionData {
   id: Uuid;
   courseId: Uuid;
