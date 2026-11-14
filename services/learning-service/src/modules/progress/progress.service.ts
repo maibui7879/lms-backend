@@ -231,6 +231,7 @@ export class ProgressService {
       .filter((date) => date !== undefined);
     const chapterAccess = this.chapterAccess(structure, evidence);
     const courseComplete =
+      completedRequiredLessons === totalRequiredLessons &&
       completedRequiredItems === totalRequiredItems &&
       passedAssessments.length === totalRequiredAssessments &&
       completionPolicy.chapterPolicies.every(({ chapterId }) =>
@@ -242,6 +243,12 @@ export class ProgressService {
     let completedAt: string | null = null;
     if (courseComplete) {
       const completionTimes = [...passedAssessments];
+      const requiredLessonIds = new Set(requiredLessons.map(({ id }) => id));
+      completionTimes.push(
+        ...finishedLessons
+          .filter(({ lessonId }) => requiredLessonIds.has(lessonId))
+          .map(({ completedAt }) => completedAt),
+      );
       for (const [id, time] of evidence.completedItems) {
         if (requiredLessonItems.has(id)) completionTimes.push(time);
       }

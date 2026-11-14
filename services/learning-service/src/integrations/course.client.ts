@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { parseContract } from '@lms/contracts';
 import type {
   CourseData,
@@ -21,12 +21,7 @@ export class CourseClient {
     revisionId: string,
     requestId: string,
   ): Promise<CourseItemMigrationContext> {
-    const token = process.env.COURSE_SERVICE_TOKEN?.trim();
-    if (!token)
-      throw apiError(
-        'SERVICE_UNAVAILABLE',
-        'Course service credential is not configured',
-      );
+    const token = this.serviceToken();
     const data = await this.get(
       `/api/v1/internal/course-revisions/${revisionId}/item-migration-context`,
       { mockUser: '', userId: '', requestId },
@@ -45,6 +40,49 @@ export class CourseClient {
       if (course.id.toLowerCase() !== courseId)
         throw new Error('Unexpected course ID');
       return course;
+    });
+  }
+
+  async requireCourseManagement(
+    courseId: string,
+    context: CourseRequestContext,
+  ): Promise<void> {
+    // Course's owner/Admin review route also authorizes unpublished courses.
+    let data: unknown;
+    try {
+      data = await this.get(
+        `/api/v1/courses/${courseId}/reviews?page=1&limit=1`,
+        context,
+      );
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() === 403) {
+        throw apiError(
+          'NOT_COURSE_OWNER',
+          'Course belongs to another instructor',
+        );
+      }
+      throw error;
+    }
+
+    this.parse(() => {
+      const page = data as Record<string, unknown> | null;
+      if (
+        !page ||
+        page.page !== 1 ||
+        page.limit !== 1 ||
+        typeof page.total !== 'number' ||
+        !Number.isSafeInteger(page.total) ||
+        page.total < 0 ||
+        !Array.isArray(page.items) ||
+        page.items.length !== Math.min(page.total, 1)
+      ) {
+        throw new Error('Unexpected Course review page');
+      }
+      for (const row of page.items) {
+        const review = parseContract('CourseReviewData', row);
+        if (review.courseId.toLowerCase() !== courseId)
+          throw new Error('Unexpected review course');
+      }
     });
   }
 
@@ -107,30 +145,43 @@ export class CourseClient {
     enrollment: EnrollmentSnapshotData,
     context: CourseRequestContext,
   ): Promise<CourseLearningStructure> {
-    const path = `/api/v1/courses/${enrollment.courseId}`;
-    const [outline, completionPolicy] = await Promise.all([
-      this.get(`${path}/outline`, context),
-      this.get(`${path}/completion-policy`, context),
-    ]);
-    const structure = this.parse(() =>
-      parseContract('CourseLearningStructure', { outline, completionPolicy }),
+    const data = await this.get(
+      `/api/v1/internal/courses/${enrollment.courseId}/structure?contentVersion=${enrollment.contentVersion}`,
+      context,
+      this.serviceToken(),
     );
-    const serviceToken = process.env.COURSE_SERVICE_TOKEN;
+    const structure = this.parse(() =>
+      parseContract('CourseLearningStructure', data),
+    );
     if (
-      serviceToken &&
-      (structure.outline.contentVersion !== enrollment.contentVersion ||
-        structure.completionPolicy.contentVersion !== enrollment.contentVersion)
-    ) {
-      const snapshot = await this.get(
-        `/api/v1/internal/courses/${enrollment.courseId}/structure?contentVersion=${enrollment.contentVersion}`,
-        context,
-        serviceToken,
+      structure.outline.courseId.toLowerCase() !==
+        enrollment.courseId.toLowerCase() ||
+      structure.completionPolicy.courseId.toLowerCase() !==
+        enrollment.courseId.toLowerCase()
+    )
+      throw apiError(
+        'SERVICE_UNAVAILABLE',
+        'Course returned the wrong learning structure',
       );
-      return this.parse(() =>
-        parseContract('CourseLearningStructure', snapshot),
+    if (
+      structure.outline.contentVersion !== enrollment.contentVersion ||
+      structure.completionPolicy.contentVersion !== enrollment.contentVersion
+    )
+      throw apiError(
+        'CONTENT_VERSION_MISMATCH',
+        'The enrolled course version is unavailable',
       );
-    }
     return structure;
+  }
+
+  private serviceToken(): string {
+    const token = process.env.COURSE_SERVICE_TOKEN?.trim();
+    if (!token)
+      throw apiError(
+        'SERVICE_UNAVAILABLE',
+        'Course service credential is not configured',
+      );
+    return token;
   }
 
   private async get(

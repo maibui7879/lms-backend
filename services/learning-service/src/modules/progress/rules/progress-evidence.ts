@@ -22,16 +22,24 @@ export function progressEvidence(
   completions: ItemCompletion[],
   attempts: AssessmentAttempt[],
 ) {
-  const quizItems = outline.chapters.flatMap(({ lessons }) =>
-    lessons.flatMap(({ items }) =>
-      items.filter((item) => item.type === 'QUIZ'),
-    ),
+  const items = outline.chapters.flatMap(({ lessons }) =>
+    lessons.flatMap(({ items }) => items),
   );
+  const quizItems = items.filter((item) => item.type === 'QUIZ');
   const requiredAssessments = [
     ...completionPolicy.requiredAssessments,
     ...completionPolicy.chapterPolicies.flatMap(
       ({ requiredAssessments }) => requiredAssessments,
     ),
+    ...items.flatMap((item) => {
+      const assessment = itemMigration(
+        migrations,
+        item.id,
+        outline.contentVersion,
+        'REQUIRE_RECOMPLETION',
+      )?.context.requiredAssessment;
+      return assessment ? [assessment] : [];
+    }),
   ];
   const assessmentKeys = new Set(
     [...quizItems, ...requiredAssessments].map(assessmentKey),
@@ -46,12 +54,8 @@ export function progressEvidence(
     matching.push(attempt);
     attemptsByQuiz.set(key, matching);
   }
-  const items = outline.chapters.flatMap(({ lessons }) =>
-    lessons.flatMap(({ items }) => items),
-  );
   const invalidatedSince = new Map<string, Date>();
   const invalidatedGenerations = new Map<string, number>();
-  const assessmentCutoffs = new Map<string, Date>();
   for (const item of items) {
     const migration = itemMigration(
       migrations,
@@ -62,11 +66,6 @@ export function progressEvidence(
     if (!migration) continue;
     invalidatedSince.set(item.id, migration.appliedAt);
     invalidatedGenerations.set(item.id, migration.generation);
-    if (migration.context.requiredAssessment)
-      assessmentCutoffs.set(
-        assessmentKey(migration.context.requiredAssessment),
-        migration.appliedAt,
-      );
   }
 
   function firstMatch(
@@ -77,13 +76,7 @@ export function progressEvidence(
     for (const { result, gradedAt } of attemptsByQuiz.get(
       assessmentKey(assessment),
     ) ?? []) {
-      const cutoff = assessmentCutoffs.get(assessmentKey(assessment));
-      if (
-        (!cutoff || gradedAt >= cutoff) &&
-        accepts(result) &&
-        (!first || gradedAt < first)
-      )
-        first = gradedAt;
+      if (accepts(result) && (!first || gradedAt < first)) first = gradedAt;
     }
     return first;
   }
@@ -137,20 +130,46 @@ export function progressEvidence(
     const policies = requiredAssessments.filter(
       (assessment) => assessmentKey(assessment) === assessmentKey(item),
     );
-    const completedAt = firstMatch(
-      item,
-      ({ quizType, passed, passingScorePercent, gradedAt }) =>
-        (!invalidatedSince.has(item.id) ||
-          Date.parse(gradedAt) >= invalidatedSince.get(item.id)!.getTime()) &&
-        (policies.length
-          ? quizType === 'GRADED' &&
-            passed &&
-            policies.every(
-              (policy) => policy.passingScorePercent === passingScorePercent,
-            )
-          : quizType === 'PRACTICE' || passed),
-    );
+    const accepts = ({
+      quizType,
+      passed,
+      passingScorePercent,
+    }: GradedAssessmentSummary) =>
+      policies.length
+        ? quizType === 'GRADED' &&
+          passed &&
+          policies.every(
+            (policy) => policy.passingScorePercent === passingScorePercent,
+          )
+        : quizType === 'PRACTICE' || passed;
+    const completedAt = firstMatch(item, accepts);
     if (completedAt) {
+      const notification = itemMigration(
+        migrations,
+        item.id,
+        outline.contentVersion,
+        'NOTIFY_ONLY',
+      );
+      const migration = itemMigration(
+        migrations,
+        item.id,
+        outline.contentVersion,
+        'REQUIRE_RECOMPLETION',
+      );
+      const notificationApplies =
+        notification &&
+        (!migration ||
+          notification.contentVersion > migration.contentVersion ||
+          (notification.contentVersion === migration.contentVersion &&
+            notification.generation > migration.generation));
+      const acknowledged =
+        notification &&
+        firstMatch(
+          item,
+          (result) =>
+            accepts(result) &&
+            Date.parse(result.gradedAt) > notification.appliedAt.getTime(),
+        );
       completedItems.set(item.id, completedAt);
       itemStates.set(item.id, {
         learningItemId: item.id,
@@ -158,7 +177,8 @@ export function progressEvidence(
         status: 'COMPLETED',
         completedAt: completedAt.toISOString(),
         invalidatedAt: null,
-        invalidationReason: null,
+        invalidationReason:
+          notificationApplies && !acknowledged ? notification.reason : null,
       });
     }
   }

@@ -235,6 +235,43 @@ describe('PRG boundary cases through the NestJS APIs', () => {
     await completeItem(nextLesson.items[0].id).expect(200);
   });
 
+  it('PRG-01/02/05 waits for required lesson confirmations after all item and quiz requirements pass', async () => {
+    const first = structure.outline.chapters[0].lessons[0];
+    const second = structure.outline.chapters[1].lessons[0];
+    await completeItem(first.items[0].id).expect(200);
+    addResult(parseContract('GradedAssessmentSummary', providers.quiz.chapterAttempt80.payload));
+    await completeItem(second.items[0].id).expect(200);
+    addResult();
+    const progress = async () =>
+      (await get(`${base}/progress`).expect(200)).body.data;
+    expect(await progress()).toMatchObject({
+      status: 'IN_PROGRESS',
+      progressPercent: 100,
+      lessonProgressPercent: 0,
+      passedRequiredAssessments: 1,
+      completedAt: null,
+    });
+    expect(
+      (await get('/api/v1/learning/me/dashboard').expect(200)).body.data
+        .courses[0].nextStep,
+    ).toMatchObject({ kind: 'COMPLETE_LESSON', lessonId: first.id });
+    await completeLesson(first.id).expect(200);
+    expect(await progress()).toMatchObject({
+      status: 'IN_PROGRESS',
+      lessonProgressPercent: 50,
+    });
+    const last = (await completeLesson(second.id).expect(200)).body.data;
+    expect(await progress()).toMatchObject({
+      status: 'COMPLETED',
+      lessonProgressPercent: 100,
+      completedAt: last.completedAt,
+    });
+    expect(
+      (await get('/api/v1/learning/me/dashboard').expect(200)).body.data
+        .courses[0].nextStep,
+    ).toBeNull();
+  });
+
   it('PRG-01/03 ignores a graded quiz result with a threshold from another policy', async () => {
     const lesson = structure.outline.chapters[0].lessons[0];
     const item = lesson.items.find((row) => row.type === 'QUIZ')!;

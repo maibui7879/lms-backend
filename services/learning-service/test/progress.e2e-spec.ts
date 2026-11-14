@@ -566,9 +566,11 @@ describe('Learning progress (e2e)', () => {
     await deliver(courseAttempt);
     const done = await getProgress().expect(200);
     expect(done.body.data).toMatchObject({
-      status: 'COMPLETED',
+      status: 'IN_PROGRESS',
       passedRequiredAssessments: 1,
-      completedAt: new Date(courseAttempt.payload.gradedAt).toISOString(),
+      completedRequiredLessons: 0,
+      lessonProgressPercent: 0,
+      completedAt: null,
     });
   });
 
