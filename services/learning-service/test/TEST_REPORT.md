@@ -2,7 +2,153 @@
 
 Ngày kiểm thử **14/11/2026**. Phạm vi gồm `ProgressModule` và `ProgressSyncModule` trong bản làm việc Learning hiện tại. Luồng chính bắt đầu trước khi học viên ghi danh và kết thúc khi Learning xác nhận hoàn thành khóa.
 
-Sau lần xác nhận lại ngày **14/11/2026**, E2E đạt **40/40 ca**, mock API đạt **9/9** ca, contract đạt **8/8** ca và unit đạt **1/1** ca. Build Learning, TypeScript, lint và kiểm tra OpenAPI đều qua. Luồng học lại dựa trên contract main **0981c48**.
+Sau rà soát chéo ngày **14/11/2026**, bộ đầy đủ đạt **56/56 E2E**, gồm 11 ca HTTP cho snapshot, các ca PostgreSQL/RabbitMQ và năm ca hồi quy bổ sung. Mock API đạt **10/10**. Agent thứ hai tự chạy **32/32 E2E** trong `course-snapshot`, `progress-audit`, `progress`, cùng **10/10 mock**, rồi kiểm tra diff. 32 ca này thuộc bộ 56 ca. Build Learning, TypeScript và lint đều qua; unit **1/1** đạt. Bộ contract **8/8** đã đạt trước các sửa nghiệp vụ lần này; lần này không đổi schema. Luồng học lại dựa trên contract main **0981c48**.
+
+## MST-03 và MST-07 — Số câu Quiz và snapshot
+
+Ba agent kiểm thử độc lập MST-01 đến MST-07 sau khi bổ sung số câu và snapshot. API Learning chạy với PostgreSQL và RabbitMQ thật trên máy kiểm thử. Course và Quiz dùng dữ liệu giả lập.
+
+| Lượt kiểm thử | Kết quả trên bản sửa `updatedAt` |
+| --- | --- |
+| Agent chính | 68/68 E2E Learning, 14/14 mock HTTP, 29/29 unit, 8/8 contract. Build, lint và TypeScript đạt. |
+| Agent kiểm thử số câu | 14/14 mock HTTP và 11 request HTTP độc lập. Trước bản sửa cũng đạt 12/12 E2E MST. |
+| Agent kiểm thử snapshot | 12/12 E2E MST và 14/14 mock HTTP. Trước bản sửa đã gọi thêm 22 request NestJS để kiểm tra quyền, ghi danh lại và đọc đồng thời. |
+
+Lần chạy cả bộ ngay sau bản sửa vượt timeout 5 giây ở ca MST chạy qua broker và làm hai ca Progress tiếp theo thất bại khi dùng chung fixture. Đặt riêng timeout cho ca MST theo các ca broker cùng bộ rồi chạy lại. Lượt cuối đạt 68/68.
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Gọi `getAssessmentSummary` của Quiz giả lập với mã lượt thứ hai. | Trả `200` và `skillScores[].questionCount: 5`. Thiếu token trả 401. Sau khi đọc, mastery vẫn rỗng cho đến khi Learning nhận event. |
+| Phát hai kết quả qua RabbitMQ với điểm 4/10 và 18/20, số câu 3 và 5. | API trả 73,33%, 2 lượt và 8 câu. PostgreSQL có cùng kết quả trong `learning_mastery_current`. Giao lặp cùng lượt giữ nguyên cả hai số đếm. |
+| Có lượt hợp lệ có số câu và lượt cũ thiếu số câu trong cùng kỹ năng. | Điểm vẫn được tính trên cả hai lượt. `questionCount` là `null`. Contract từ chối số câu bằng 0, âm, thập phân, chuỗi hoặc `null` trong event. |
+| Đọc mastery hoặc history sau khi có điểm, đọc lại đồng thời, đổi tên kỹ năng và nhận thêm event đến muộn. | PostgreSQL lưu một snapshot cho mỗi lượt và phiên bản. Hai lượt đọc trả cùng mốc đã lưu. Snapshot cũ giữ điểm, mức, tên, số câu và `recordedAt`. Điểm hiện tại phản ánh dữ liệu mới. |
+| MST-05/06 nhận điểm cũ đến muộn sau khi đã đọc bảng điểm. | Trước khi sửa, điểm và số câu thay đổi nhưng `updatedAt` giữ nguyên. Sau khi sửa, lần đọc lưu bảng điểm mới làm `updatedAt` tăng. Gửi trùng event và đọc lại giữ nguyên toàn bộ bảng điểm. |
+| Migration đổi phiên bản quiz. | Kết quả cũ vẫn tra được trong lịch sử. Điểm hiện tại dùng phiên bản hợp lệ sau migration. |
+| Hủy và ghi danh lại cùng khóa. | API từ chối đọc sau khi hủy, giữ snapshot cũ và đọc bảng điểm riêng cho lần ghi danh mới. |
+
+Hai bảng mới được tạo bằng migration `1794528000008`. Mốc lưu vào lần đọc đầu tiên, nên `recordedAt` có thể sau `gradedAt`. Replay giữ payload gốc. Cần một bước bổ sung dữ liệu riêng nếu muốn điền số câu vào lượt cũ. Khi ghép, Quiz cần phát `questionCount` và xác nhận cách nhận diện lượt làm từ lần ghi danh trước nếu chấm sau khi học viên ghi danh lại. [Ví dụ Postman](../../../WORK.md#mst-07--lịch-sử-mastery)
+
+**Kết luận.** Có thể chốt MST-01 đến MST-07 phía Learning với Course và Quiz giả lập. Kiểm thử tích hợp với hai service thật được theo dõi trong kế hoạch. [Kế hoạch](../../../PLAN.md#mastery-mst-01-đến-mst-07)
+
+## Rà soát MST-01 đến MST-07 trước bản bổ sung số câu và snapshot
+
+Ba agent trực tiếp chạy test code và gọi API. PostgreSQL và RabbitMQ chạy trên môi trường test riêng. Course/Quiz được giả lập, bộ tính sử dụng công thức MST-03 đã chốt.
+
+| Người kiểm thử | Kết quả |
+| --- | --- |
+| Agent chính | 68/68 E2E sau khi sửa sai số, cấu hình và query. Sau khi bổ sung ca sát biên, chạy lại 12/12 E2E MST, 29/29 unit và 14/14 mock HTTP. Build, lint, TypeScript và 8/8 contract đạt. |
+| Agent rà catalog và quyền | 25/25 unit ở bản sửa đầu, 10/10 E2E catalog với PostgreSQL riêng và 14/14 mock HTTP. Gọi trực tiếp API để kiểm tra tên ở lịch sử và query ngoài contract. |
+| Agent rà điểm và lịch sử | 29/29 unit, 12/12 E2E MST với PostgreSQL/RabbitMQ riêng và 14/14 mock HTTP. Gọi trực tiếp cả hai API mastery với bốn ca số thập phân sát biên trên bản sửa cuối. |
+
+Các bộ test có phần trùng nhau. Kết quả của từng người là các lượt chạy độc lập.
+
+| Phạm vi | Kết luận |
+| --- | --- |
+| MST-01/02 | Catalog, quyền theo khóa, sửa đồng thời, tra mã bằng token và kiểm tra các mã kỹ năng gắn mới đều đạt. Luồng tạo/sửa câu hỏi và lưu mapping phía Quiz cần ghép QUIZ-08 thật. |
+| MST-03 | Ca 4/10 và 18/20 trả 73,33%. Lượt trùng, practice, khóa/học viên hoặc phiên bản sai không góp điểm. Function List dòng 127 còn yêu cầu lưu kết quả cùng số lượng câu. Hệ thống đang lưu từng attempt và tính khi đọc. Event chỉ có điểm đạt/tối đa, `evidenceCount` là số lượt. |
+| MST-04 | Phát hiện điểm thập phân đúng 40% hoặc 70% có thể bị xếp thấp vì sai số cộng và chia. Đã sửa và bổ sung hồi quy ở unit lẫn API. Hai ngưỡng cấu hình cấp instance được áp dụng trên current/history. Ngưỡng 45/75 xếp điểm 70% vào `DEVELOPING`. |
+| MST-05/06 | API phục vụ dữ liệu biểu đồ và đọc điểm sau khi event đã commit. Không cộng trùng khi đổi ID event của cùng lượt. API current và danh sách kỹ năng trả 400 cho query ngoài contract giống mock. |
+| MST-07 | Phân trang, quyền và thứ tự lượt đạt. Hai agent gọi HTTP xác nhận mốc cũ có thể đổi tên khi sửa danh mục và đổi điểm khi nhận lượt cũ muộn. Function List dòng 131 yêu cầu lưu snapshot theo thời điểm nên phần này còn mở. |
+
+**Kết luận.** Có thể chốt phần backend đã kiểm thử của MST-01, MST-02, MST-04, MST-05 và MST-06. Chưa đóng toàn bộ MST theo Function List. Cần hoàn thiện MST-03 về lưu kết quả và số câu, MST-07 về snapshot, rồi kiểm tra tích hợp thật.
+
+Tham chiếu `origin/main` tại máy là `0e63d67`. Course đã có truy vấn revision xuất bản theo phiên bản yêu cầu. Controller còn chuyển query `contentVersion` dạng chuỗi vào parser yêu cầu số. Cần xác minh luồng HTTP ghép. Quiz trong tham chiếu này còn scaffold. Kiểm tra hợp đồng ghi danh lại và lượt quiz đang làm trước khi kết luận chính sách về kết quả đến muộn giữa hai lần ghi danh. Kết luận này dựa trên code tham chiếu tại máy và test provider giả lập.
+
+## MST-03 – Tính điểm mastery
+
+**67/67 E2E, 14/14 mock API và 21/21 unit đạt** sau khi nối công thức tổng điểm đạt chia tổng điểm tối đa. Ca RabbitMQ/PostgreSQL dùng bộ tính điểm Learning, với Course/Quiz giả lập.
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Hai lượt của cùng một kỹ năng đạt 4/10 và 18/20. Lượt thứ hai đến trước. | Khi có một lượt 18/20, API trả 90%. Khi cả hai đã lưu, API trả khoảng 73,33%, `PROFICIENT`, 2 lượt và `weighted-score-v1`. Mốc đầu của lịch sử là 40%. |
+| Gửi lại cùng attempt bằng ID event mới, gửi practice, sai phiên bản, khác học viên hoặc kỹ năng thiếu dữ liệu. | Hai lượt hợp lệ vẫn là toàn bộ mẫu được tính. |
+| Học viên đã ghi danh nhưng chưa có dữ liệu. | Hai API thật trả 200 với danh sách rỗng. Học viên chưa ghi danh bị từ chối. |
+
+Mẫu Postman trả cùng kết quả 22/30. `evidenceCount` đếm số lượt đánh giá hợp lệ. Việc có số câu theo kỹ năng phụ thuộc bổ sung dữ liệu từ Quiz. [Luồng RabbitMQ](learning-workflow.db.e2e-spec.ts) · [Mock HTTP](mock-server.test.cjs)
+
+## MST-05 đến MST-07 — Lần kiểm thử trước khi nối MST-03
+
+**67/67 E2E, 14/14 mock API, 21/21 unit và 8/8 contract đạt**. Build, TypeScript và lint đạt. Ba ca E2E mới dùng PostgreSQL thật. Ca đồng bộ dùng RabbitMQ thật. Course, Quiz và công thức tính mastery dùng giả lập.
+
+| Chức năng | Đã xác minh |
+| --- | --- |
+| MST-05 — Biểu đồ năng lực | Học viên đã ghi danh nhận đúng tên kỹ năng, điểm, mức, số lượt và phiên bản bộ tính. Chưa có bằng chứng trả danh sách rỗng khi đã cấu hình bộ tính. Người khác bị từ chối. Khi chưa cài bộ tính, endpoint NestJS trả 503. |
+| MST-06 — Cập nhật sau quiz | API thấy dữ liệu sau commit. Event gửi lại bằng ID mới của cùng lượt không tăng số mẫu. Bỏ qua quiz luyện tập, sai phiên bản, khác học viên và lượt không có điểm kỹ năng. |
+| MST-07 — Lịch sử mastery | Hai mốc theo thời gian chấm, dù event cũ đến sau. Trang 2 với limit=1 trả đúng mốc đầu. Cấm truyền userId để đọc của người khác. |
+| MST-06/07 — Migration quiz | Grade đúng phiên bản mới được dùng khi migration có hiệu lực, kể cả đã đến trước migration. Kết quả phiên bản cũ vẫn có trong lịch sử nếu đã hợp lệ ở thời điểm chấm. Grade bản cũ chấm sau khi bị thay không ảnh hưởng kết quả. |
+
+Ca dùng dữ liệu sự kiện Mastery và PRG từng dùng chung khóa mẫu, khiến hai ca PRG đọc dư điểm trong lượt chạy đầu. Đã dọn bản ghi của ca Mastery sau mỗi lần chạy và xác nhận lại toàn bộ 67 ca.
+
+Lần chạy này dùng bộ tính giả lập. Phần MST-03 ở trên ghi kết quả sau khi nối công thức đã chốt. Lịch sử vẫn dựng lại từ attempt đã commit theo công thức và danh mục hiện hành. [Ca migration](course-items-migration.db.e2e-spec.ts)
+
+## MST-04 — Phân loại mức độ thành thạo
+
+**20/20 ca MST-04 đạt**, tổng bộ unit Learning **21/21**. Build, lint và TypeScript đều đạt.
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Điểm ngay dưới, đúng và trên 40% hoặc 70%. | Xếp đúng mức theo ngưỡng. 69,999% vẫn là `DEVELOPING`. |
+| Điểm 0% có căn cứ và kỹ năng thiếu dữ liệu. | Điểm 0% có dữ liệu là `BEGINNER`. Thiếu bằng chứng trả `null`. |
+| Cùng điểm 70% với hai bộ ngưỡng. | Ngưỡng mặc định xếp `PROFICIENT`. Đổi ngưỡng trên thành 80% thì xếp `DEVELOPING`. |
+| Ngưỡng trùng, đảo thứ tự, vượt giới hạn hoặc điểm/số mẫu sai. | Từ chối bằng `RangeError`. |
+
+[Suite MST-04](../src/modules/mastery/rules/mastery-level.spec.ts) gọi trực tiếp hàm bằng điểm và số mẫu xác định sẵn. Phần MST-03 ở trên xác nhận thêm mức trên dữ liệu API.
+
+## MST-02 — Liên kết câu hỏi với kỹ năng
+
+Bộ Learning đạt **64/64 E2E** và **13/13 mock API**. Contract đạt **8/8**. Build, lint và TypeScript đều đạt.
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Gửi hai mã đang dùng, cùng khóa, trong một request. | `204`, body rỗng và giữ request ID. UUID viết hoa được nhận. |
+| Gửi cùng lúc mã đúng, mã khác khóa, mã đã ngừng dùng và mã không tồn tại. | `422 INVALID_SKILL_REFERENCE`, trả đúng danh sách ba mã bị từ chối. |
+| Dùng token migration, thiếu token, UUID sai, danh sách rỗng, trùng mã khác chữ hoa/thường hoặc vượt 100 mã. | Sai credential trả 401. Sai dữ liệu trả 400. |
+| Quiz giả lập tạo hai phiên bản câu hỏi. Kỹ năng ở bản đầu ngừng dùng trước khi thêm kỹ năng thứ hai. | Xác minh các mã mới trước khi lưu. Lần lưu có mã lỗi bị từ chối. Payload chấm thử của phiên bản đầu vẫn dùng kỹ năng và điểm từ câu hỏi của phiên bản đó. |
+
+[Ca kiểm thử MST-02](course-skills.db.e2e-spec.ts) gọi NestJS thật và truy vấn PostgreSQL thật. Course và thao tác lưu phiên bản câu hỏi của Quiz dùng giả lập. RabbitMQ thật dùng trong bộ hồi quy PRG. [Mock HTTP](mock-server.test.cjs) xác nhận cùng mã trả về khi thử Postman. Khi ghép, cần xác nhận QUIZ-08 gọi API từ luồng tạo/sửa và chấm câu hỏi thật.
+
+## MST-01 — Danh sách kỹ năng khóa học
+
+Kiểm thử ngày **14/11/2026**. Bộ Learning đạt **61/61 E2E**, gồm năm ca MST-01 và 56 ca hồi quy PRG và smoke test. Bộ mock đạt **12/12**, gồm hai ca danh mục kỹ năng. Contract đạt **8/8**, unit đạt **1/1**. Build, lint và TypeScript đều đạt.
+
+| Kịch bản MST-01 | Kết quả thực tế |
+| --- | --- |
+| Chủ khóa tạo, sửa và ngừng sử dụng kỹ năng | Mã giữ nguyên, version tăng. Học viên đã ghi danh chỉ thấy kỹ năng hoạt động. Chủ khóa và API nội bộ vẫn tra được mục cũ. PostgreSQL có một dòng. |
+| Khóa nháp và quyền theo khóa | Chủ khóa thao tác trên khóa nháp. Admin được quản lý. Giảng viên khác, học viên chưa ghi danh hoặc đã hủy ghi danh bị từ chối. Đưa mã kỹ năng khóa khác vào request sửa trả 404. |
+| API lỗi dữ liệu hoặc Course không sẵn sàng | Thiếu danh tính trả 401, UUID sai, tên trống, dữ liệu chứa ký tự không hợp lệ hoặc thêm trường ngoài contract trả 400. Course lỗi trả 503. Không ghi bản ghi mới. |
+| Hai yêu cầu cùng `expectedVersion` | Một trả 200, một trả `409 VERSION_CONFLICT`. PostgreSQL giữ đúng nội dung của lần sửa thành công. |
+| Tra mã bằng credential đọc riêng | Không có token hoặc dùng token migration trả 401. Đúng token nhưng sai khóa trả 404. Token đọc không gọi được API migration. |
+
+[Suite MST-01](course-skills.db.e2e-spec.ts) gọi NestJS qua HTTP, dùng PostgreSQL thật và Course HTTP giả lập theo contract. RabbitMQ thật chạy trong suite hồi quy PRG. [Mock API](mock-server.test.cjs) dùng fixture trong bộ nhớ để kiểm tra luồng Postman. Ghép hệ thống sẽ kiểm tra quyền Course thật và phía gọi của Quiz thuộc MST-02.
+
+## Rà soát và kiểm thử bởi hai agent
+
+Trước bản sửa bổ sung, bộ 51 E2E và 9 mock đều đạt nhưng chưa bao phủ bốn trường hợp bên dưới. Agent thứ hai đọc code độc lập, chạy các suite riêng và tái hiện các lỗi; agent chính cũng tái hiện, sửa và chạy lại bộ đầy đủ. Hai bên đọc lại bản sửa và thống nhất không còn lỗi chặn được phát hiện trong phạm vi Learning với provider giả.
+
+| Chức năng | Trường hợp và lỗi trước sửa | Kết quả API sau sửa |
+| --- | --- | --- |
+| PRG-01/02/05 | Đủ item/quiz nhưng chưa xác nhận bài, khóa đã báo hoàn thành. | `GET .../courses/{id}/progress` giữ `IN_PROGRESS`, `completedAt: null`, tiến độ bài 0%; dashboard trả `COMPLETE_LESSON`. Xác nhận hai bài lần lượt 50%, 100%, cuối cùng `COMPLETED`. Mốc hoàn thành bao gồm xác nhận bài cuối. |
+| PRG-03/06/07 | Kết quả đúng quiz phiên bản mới bị loại khi được chấm trước lúc Learning nhận migration. | Kết quả mới vẫn được tính qua API tiến độ khóa và bài. Kết quả phiên bản cũ đến trễ không thay thế được kết quả mới. Không dùng thời điểm giao migration làm điều kiện đạt quiz. |
+| PRG-01/03 | Video đổi thành quiz yêu cầu 90%, kết quả practice hoặc đạt theo ngưỡng 70% vẫn hoàn thành item. | API tiến độ bài giữ `OUTDATED`, xác nhận bài trả 409. Kết quả GRADED đạt đúng ngưỡng context 90% mới cho phép xác nhận với 200. Test có hai trường hợp riêng cho ngưỡng sai và practice. |
+| PRG-01/05 | Quiz đã đạt bị mất `invalidationReason` khi nhận NOTIFY_ONLY. | API tiến độ bài giữ completion và lý do thông báo. Kết quả cũ đến trễ giữ thông báo; kết quả hợp lệ sau thông báo xóa lý do. REQUIRE_RECOMPLETION mới hơn thay thế notice cũ. |
+
+Các ca bổ sung nằm trong [course-items-migration.db.e2e-spec.ts](course-items-migration.db.e2e-spec.ts), [progress-audit.e2e-spec.ts](progress-audit.e2e-spec.ts) và [mock-server.test.cjs](mock-server.test.cjs). Chúng gọi API HTTP của NestJS hoặc mock, kiểm tra mã HTTP và dữ liệu trả về. Test migration dùng PostgreSQL thật; suite workflow đầy đủ có RabbitMQ thật. Course/Quiz và danh tính vẫn giả lập.
+
+**Quy ước cần giữ khi đổi loại:** QUIZ → READING không tự xóa assessment đã pin trong policy chương/khóa. Context hiện chưa khai báo scope thay đổi requirement; muốn đổi policy phải thống nhất với Course. VIDEO/READING → QUIZ phải thỏa requirement của chính item mới từ context, không tự tạo scope policy mới.
+
+**Kết luận sau đối chiếu:** hoàn thành PRG-01 đến PRG-08 trong phạm vi standalone Learning và mock/provider giả; có thể chuyển sang nhóm tiếp theo. Việc ghép Course/Quiz thật được theo dõi riêng cuối báo cáo. Các sửa của lần rà soát này chưa push.
+
+## Kiểm tra nguồn snapshot
+
+Learning đã đổi `CourseClient.structure()` sang gọi trực tiếp `getLearningStructure` theo `enrollment.contentVersion`. Bộ [course-snapshot.e2e-spec.ts](course-snapshot.e2e-spec.ts) dùng HTTP server cục bộ để kiểm tra 11 trường hợp. Request phải dùng đúng query phiên bản, Bearer credential và request ID. Client kiểm tra khóa và phiên bản của cả outline lẫn policy, xử lý việc thiếu token hoặc snapshot, và lỗi quyền hoặc phụ thuộc.
+
+Suite PostgreSQL và RabbitMQ dùng fake Course chỉ cung cấp API internal cho cấu trúc. Kịch bản Course có bản mới vẫn trả đúng tiến độ của snapshot ghi danh cũ.
+
+Các điểm còn ở Course main 0981c48 khi ghép đã được xác minh từ code:
+
+- `InternalController.parseQuery()` đang chuyển nguyên query vào parser. Giá trị HTTP `contentVersion=1` là chuỗi, còn parser yêu cầu số. Đã chạy thử parser với `"1"` và `1` để xác nhận chuỗi bị từ chối. [Controller trên main](https://github.com/maibui7879/lms-backend/blob/0981c48/services/course-service/src/modules/internal/internal.controller.ts)
+- `InternalService.getLearningStructure()` đang kiểm tra phiên bản được yêu cầu bằng phiên bản hiện tại, nên bản cũ có thể bị từ chối với 409. Course cần lưu và đọc đúng snapshot lịch sử. [Service trên main](https://github.com/maibui7879/lms-backend/blob/0981c48/services/course-service/src/modules/internal/internal.service.ts)
+- Controller internal của Course hiện chưa gắn guard credential và app module chưa có global guard tương ứng. Learning gửi credential theo contract. Course cần kiểm tra credential ở phía nhận.
 
 ## Xác nhận trực tiếp kết quả HTTP
 
@@ -68,6 +214,7 @@ Contract bổ sung `getCourseItemMigrationContext` để Course cung cấp revis
 | [learning-workflow.db.e2e-spec.ts](learning-workflow.db.e2e-spec.ts) | NestJS, các HTTP client của Learning, PostgreSQL 17.12, RabbitMQ 4.4.0 và migration Learning | Course và Quiz là HTTP server cục bộ trả dữ liệu từ fixture. Danh tính dùng `MockAuthGuard`. Event quiz được gửi qua RabbitMQ bằng test publisher. |
 | [progress.e2e-spec.ts](progress.e2e-spec.ts) | NestJS, API Progress và API Progress Sync | Course client, broker và repository giả lập. Quiz được giả lập ở tầng HTTP. |
 | [progress-audit.e2e-spec.ts](progress-audit.e2e-spec.ts) | NestJS, các API Progress, Dashboard và Resume, luật nghiệp vụ Learning | Course và repository giả lập để tạo các ca biên riêng, gồm UUID viết hoa, sai ngưỡng quiz, bài tùy chọn, quiz luyện tập và giới hạn điểm gần đây. |
+| [course-snapshot.e2e-spec.ts](course-snapshot.e2e-spec.ts) | HTTP client Course của Learning, kiểm tra snapshot và ánh xạ lỗi | Fake Course HTTP server nhận credential và query version, có các kịch bản trả sai khóa, sai phiên bản hoặc lỗi. |
 | [course-items-migration.db.e2e-spec.ts](course-items-migration.db.e2e-spec.ts) | API NestJS, PostgreSQL, migration schema, khóa transaction và repository thực | Course cung cấp metadata revision và liên hệ item bằng provider giả lập. RabbitMQ được tắt trong suite này. |
 | [mock-server.test.cjs](mock-server.test.cjs) | Mock HTTP server của Learning | Dữ liệu trong bộ nhớ, gồm cả kịch bản resume mẫu. |
 | [app.controller.spec.ts](../src/app.controller.spec.ts) và [app.e2e-spec.ts](app.e2e-spec.ts) | Unit và HTTP smoke test của NestJS | Route gốc của Learning. |

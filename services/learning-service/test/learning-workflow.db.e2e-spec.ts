@@ -13,6 +13,9 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import type { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
+import { CourseSkill } from '../src/modules/mastery/entities/course-skill.entity';
+import { MasteryCurrent } from '../src/modules/mastery/entities/mastery-current.entity';
+import { MasterySnapshot } from '../src/modules/mastery/entities/mastery-snapshot.entity';
 import { createLearningDataSource } from '../src/database/learning-database';
 import { AssessmentAttempt } from '../src/modules/progress-sync/entities/assessment-attempt.entity';
 import { AssessmentSyncReceipt } from '../src/modules/progress-sync/entities/assessment-sync-receipt.entity';
@@ -21,6 +24,7 @@ import { ItemCompletion } from '../src/modules/progress/entities/item-completion
 import { LearningResume } from '../src/modules/progress/entities/learning-resume.entity';
 import { LessonCompletion } from '../src/modules/progress/entities/lesson-completion.entity';
 import providers from './fixtures/learning-providers.mock.json';
+import masteryFixture from './fixtures/mastery.mock.json';
 import scenarios from './fixtures/learning-scenarios.mock.json';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -84,6 +88,7 @@ suite(
     const coursePath = `/api/v1/courses/${courseId}`;
     const learningPath = `/api/v1/learning/courses/${courseId}`;
     const scoreCourse = { ...courseData, id: randomUUID() };
+    const masterySkillId = randomUUID();
     const scoreEnrollment = {
       ...enrollment,
       courseId: scoreCourse.id,
@@ -103,11 +108,13 @@ suite(
     const [reading] = secondLesson.items;
     const attempts = new Map<string, AttemptGradedV2Event>();
     const events = new Set<string>();
+    const masteryEvents = new Set<string>();
     let enrollmentActive = false;
     let currentEnrollment = enrollment;
     let scoreEnrollmentActive = false;
     let outlineVersion = contentVersion;
-    let oldSnapshotAvailable = false;
+    let oldSnapshotAvailable = true;
+    let publishedVersion = contentVersion;
 
     function makeEvent(fixture: unknown): AttemptGradedV2Event {
       const original = parseContract('AttemptGradedV2Event', fixture);
@@ -153,12 +160,20 @@ suite(
             url.searchParams.get('contentVersion') !== String(contentVersion)
           )
             return res.writeHead(409).end();
-          return json(res, structure);
+          return json(res, {
+            ...structure,
+            outline: { ...structure.outline, contentVersion: outlineVersion },
+          });
         }
         if (url.pathname === '/api/v1/enrollments/me') {
           const progressEnrollment =
             enrollmentActive && req.headers['x-mock-user'] === learner
-              ? [{ enrollment: currentEnrollment, course: courseData }]
+              ? [
+                  {
+                    enrollment: currentEnrollment,
+                    course: { ...courseData, contentVersion: publishedVersion },
+                  },
+                ]
               : [];
           const scoreEnrollments =
             scoreEnrollmentActive && req.headers['x-mock-user'] === learner
@@ -174,24 +189,24 @@ suite(
         }
         if (url.pathname === `/api/v1/courses/${scoreCourse.id}`)
           return json(res, scoreCourse);
-        if (url.pathname === `/api/v1/courses/${scoreCourse.id}/outline`)
-          return json(res, {
-            ...structure.outline,
-            courseId: scoreCourse.id,
-            chapters: [],
-          });
         if (
-          url.pathname === `/api/v1/courses/${scoreCourse.id}/completion-policy`
-        )
-          return json(res, secondCoursePolicy);
-        if (url.pathname === coursePath) return json(res, courseData);
-        if (url.pathname === `${coursePath}/outline`)
+          url.pathname ===
+          `/api/v1/internal/courses/${scoreCourse.id}/structure`
+        ) {
+          if (req.headers.authorization !== `Bearer ${courseServiceToken}`)
+            return res.writeHead(401).end();
+          if (url.searchParams.get('contentVersion') !== String(contentVersion))
+            return res.writeHead(409).end();
           return json(res, {
-            ...structure.outline,
-            contentVersion: outlineVersion,
+            outline: {
+              ...structure.outline,
+              courseId: scoreCourse.id,
+              chapters: [],
+            },
+            completionPolicy: secondCoursePolicy,
           });
-        if (url.pathname === `${coursePath}/completion-policy`)
-          return json(res, structure.completionPolicy);
+        }
+        if (url.pathname === coursePath) return json(res, courseData);
         res.writeHead(404).end();
       });
       quiz = await listen((req, res) => {
@@ -225,8 +240,11 @@ suite(
       process.env.DATABASE_URL = databaseUrl;
       process.env.RABBITMQ_URL = brokerUrl;
       process.env.COURSE_URL = `http://127.0.0.1:${(course.address() as AddressInfo).port}`;
+      process.env.COURSE_SERVICE_TOKEN = courseServiceToken;
       process.env.QUIZ_URL = `http://127.0.0.1:${(quiz.address() as AddressInfo).port}`;
       process.env.QUIZ_SERVICE_TOKEN = serviceToken;
+      process.env.LEARNING_MASTERY_DEVELOPING_MIN = '40';
+      process.env.LEARNING_MASTERY_PROFICIENT_MIN = '70';
       const testing = await Test.createTestingModule({
         imports: [AppModule],
       }).compile();
@@ -243,8 +261,18 @@ suite(
       );
     }, 20000);
 
-    afterEach(() => {
+    afterEach(async () => {
       scoreEnrollmentActive = false;
+      if (masteryEvents.size && source?.isInitialized) {
+        for (const eventId of masteryEvents) {
+          await source.getRepository(AssessmentSyncReceipt).delete({ eventId });
+          await source.getRepository(AssessmentAttempt).delete({ eventId });
+        }
+        masteryEvents.clear();
+        await source
+          .getRepository(MasteryCurrent)
+          .delete({ enrollmentId: scoreEnrollment.enrollmentId });
+      }
     });
 
     afterAll(async () => {
@@ -255,6 +283,7 @@ suite(
           await new Promise<void>((resolve) => server.close(() => resolve()));
       }
       if (source?.isInitialized) {
+        await source.getRepository(CourseSkill).delete({ id: masterySkillId });
         for (const eventId of events) {
           await source.getRepository(AssessmentSyncReceipt).delete({ eventId });
           await source.getRepository(AssessmentAttempt).delete({ eventId });
@@ -351,6 +380,220 @@ suite(
         return data.status === status ? data : undefined;
       }, status);
     }
+
+    it('MST-03/05/06/07 weights valid RabbitMQ results by max score and pages history in grade order', async () => {
+      scoreEnrollmentActive = true;
+      const path = `/api/v1/learning/courses/${scoreCourse.id}/mastery`;
+      const get = (url = path, actor = learner) =>
+        request(app!.getHttpServer()).get(url).set('X-Mock-User', actor);
+      const current = async () =>
+        parseContract('MasteryData', (await get().expect(200)).body.data);
+      await source!.getRepository(CourseSkill).insert({
+        id: masterySkillId,
+        courseId: scoreCourse.id,
+        name: 'Tổ chức module',
+        description: 'Fixture question mapping',
+        status: 'ACTIVE',
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      expect((await current()).skills).toEqual([]);
+      expect((await get(`${path}/history`).expect(200)).body.data.total).toBe(
+        0,
+      );
+      await get(path, 'studentA').expect(403);
+      await get(`${path}?userId=${providers.identity.studentA.id}`).expect(400);
+      await get(`${path}/history`, 'studentA').expect(403);
+      await get(`${path}/history?userId=${userId}`).expect(400);
+      await get(`${path}/history?page=1&page=2`).expect(400);
+
+      const original = providers.quiz.attemptGraded;
+      function attempt(
+        score: number,
+        gradedAt: string,
+        extras = {},
+        maxScore = 10,
+        questionCount?: number,
+      ) {
+        const event = makeEvent({
+          ...original,
+          payload: {
+            ...original.payload,
+            courseId: scoreCourse.id,
+            gradedAt,
+            score,
+            maxScore,
+            passed:
+              (score / maxScore) * 100 >= original.payload.passingScorePercent,
+            skillScores: [
+              { skillId: masterySkillId, score, maxScore, questionCount },
+            ],
+            ...extras,
+          },
+        });
+        masteryEvents.add(event.eventId);
+        return event;
+      }
+      const [early, late] = masteryFixture.attempts.map(
+        ({ score, maxScore, gradedAt, questionCount }) =>
+          attempt(score, gradedAt, {}, maxScore, questionCount),
+      );
+      await publish(late);
+      await syncStatus(late, 'SYNCED');
+      const initialReport = await current();
+      expect(initialReport.skills).toEqual([
+        {
+          skillId: masterySkillId,
+          skillName: 'Tổ chức module',
+          scorePercent: 90,
+          evidenceCount: 1,
+          level: 'PROFICIENT',
+          questionCount: 5,
+        },
+      ]);
+      const [historyRead, concurrentRead] = await Promise.all([
+        get(`${path}/history`).expect(200),
+        get(`${path}/history`).expect(200),
+      ]);
+      const initialHistory = historyRead.body.data;
+      expect(concurrentRead.body.data).toEqual(initialHistory);
+      const savedLate = parseContract(
+        'MasteryHistoryPoint',
+        initialHistory.items[0],
+      );
+      expect(savedLate.recordedAt).toBeDefined();
+      await source!
+        .getRepository(CourseSkill)
+        .update({ id: masterySkillId }, { name: 'Module và provider' });
+      await publish(early);
+      await syncStatus(early, 'SYNCED');
+      const reportAfterEarly = await current();
+      expect(Date.parse(reportAfterEarly.updatedAt)).toBeGreaterThan(
+        Date.parse(initialReport.updatedAt),
+      );
+      const duplicate = { ...late, eventId: randomUUID() };
+      events.add(duplicate.eventId);
+      masteryEvents.add(duplicate.eventId);
+      attempts.set(duplicate.payload.attemptId, duplicate);
+      await publish(duplicate);
+      await syncStatus(duplicate, 'SYNCED');
+      for (const extra of [
+        attempt(10, '2026-01-15T10:20:00Z', { assessmentVersion: 99 }),
+        attempt(10, '2026-01-15T10:21:00Z', { quizType: 'PRACTICE' }),
+        attempt(10, '2026-01-15T10:22:00Z', {
+          userId: providers.identity.studentA.id,
+        }),
+        attempt(10, '2026-01-15T10:23:00Z', { skillScores: [] }),
+        attempt(10, '2026-01-15T10:24:00Z', {
+          skillScores: [{ skillId: randomUUID(), score: 10, maxScore: 10 }],
+        }),
+      ]) {
+        await publish(extra);
+        await waitFor(
+          async () =>
+            (
+              await source!
+                .getRepository(AssessmentSyncReceipt)
+                .findOneBy({ eventId: extra.eventId })
+            )?.status === 'SYNCED'
+              ? true
+              : undefined,
+          'filtered mastery attempt committed',
+        );
+      }
+      const report = await current();
+      expect(report).toEqual(reportAfterEarly);
+      expect(report.skills[0]).toMatchObject({
+        scorePercent: expect.closeTo(73.333333, 6),
+        evidenceCount: 2,
+        questionCount: 8,
+        skillName: 'Module và provider',
+        level: 'PROFICIENT',
+      });
+      expect(report.algorithmVersion).toBe(masteryFixture.algorithmVersion);
+      const history = async (page: number) => {
+        const { data } = (
+          await get(`${path}/history?page=${page}&limit=1`).expect(200)
+        ).body;
+        return {
+          total: data.total,
+          items: (data.items as unknown[]).map((item) =>
+            parseContract('MasteryHistoryPoint', item),
+          ),
+        };
+      };
+      const first = await history(1);
+      const second = await history(2);
+      expect(first.total).toBe(2);
+      expect(first.items[0]).toEqual(savedLate);
+      expect(second.items[0]).toMatchObject({
+        attemptId: early.payload.attemptId,
+        skills: [
+          {
+            scorePercent: 40,
+            evidenceCount: 1,
+            level: 'DEVELOPING',
+            questionCount: 3,
+          },
+        ],
+      });
+      const stored = await source!
+        .getRepository(MasteryCurrent)
+        .findOneByOrFail({
+          enrollmentId: scoreEnrollment.enrollmentId,
+        });
+      expect(stored.data).toEqual(report);
+      const storedPoints = await source!.getRepository(MasterySnapshot).findBy({
+        enrollmentId: scoreEnrollment.enrollmentId,
+      });
+      expect(storedPoints).toHaveLength(2);
+      expect(
+        storedPoints.find(
+          ({ attemptId }) => attemptId === late.payload.attemptId,
+        )?.data,
+      ).toEqual(savedLate);
+      expect((await history(3)).items).toEqual([]);
+
+      const decimalSkillId = randomUUID();
+      await source!.getRepository(CourseSkill).insert({
+        id: decimalSkillId,
+        courseId: scoreCourse.id,
+        name: 'Điểm thập phân',
+        description: '',
+        status: 'ACTIVE',
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      try {
+        for (const [index, score] of [0.03, 0.29].entries()) {
+          const event = attempt(10, `2026-01-15T10:3${index}:00Z`, {
+            skillScores: [
+              {
+                skillId: decimalSkillId,
+                score,
+                maxScore: 0.4,
+                ...(index === 0 ? { questionCount: 2 } : {}),
+              },
+            ],
+          });
+          await publish(event);
+          await syncStatus(event, 'SYNCED');
+        }
+        const decimalSkill = (await current()).skills.find(
+          ({ skillId }) => skillId === decimalSkillId,
+        );
+        expect(decimalSkill).toMatchObject({
+          scorePercent: expect.closeTo(40, 10),
+          level: 'DEVELOPING',
+          evidenceCount: 2,
+          questionCount: null,
+        });
+      } finally {
+        await source!.getRepository(CourseSkill).delete({ id: decimalSkillId });
+      }
+    }, 25000);
 
     it('PRG-04 summarizes synced grades by learner, quiz and version with scoped access', async () => {
       scoreEnrollmentActive = true;
@@ -1046,15 +1289,18 @@ suite(
 
     it('PRG-01/02/03/05 uses a pinned snapshot when Course publishes a new outline', async () => {
       enrollmentActive = true;
-      outlineVersion = contentVersion + 1;
+      publishedVersion = contentVersion + 1;
       const previousToken = process.env.COURSE_SERVICE_TOKEN;
       try {
         delete process.env.COURSE_SERVICE_TOKEN;
-        const result = await progress().expect(409);
-        expect(result.body.error.code).toBe('CONTENT_VERSION_MISMATCH');
-        const lesson = await lessonProgress(firstLesson.id).expect(409);
-        expect(lesson.body.error.code).toBe('CONTENT_VERSION_MISMATCH');
+        const result = await progress().expect(503);
+        expect(result.body.error.code).toBe('SERVICE_UNAVAILABLE');
+        await lessonProgress(firstLesson.id).expect(503);
         process.env.COURSE_SERVICE_TOKEN = courseServiceToken;
+        expect((await progress().expect(200)).body.data.contentVersion).toBe(
+          contentVersion,
+        );
+        oldSnapshotAvailable = false;
         await dashboard().expect(409);
         oldSnapshotAvailable = true;
         expect((await progress().expect(200)).body.data).toMatchObject({
@@ -1068,8 +1314,8 @@ suite(
           lessonProgressPercent: 100,
         });
       } finally {
-        outlineVersion = contentVersion;
-        oldSnapshotAvailable = false;
+        publishedVersion = contentVersion;
+        oldSnapshotAvailable = true;
         if (previousToken === undefined)
           delete process.env.COURSE_SERVICE_TOKEN;
         else process.env.COURSE_SERVICE_TOKEN = previousToken;

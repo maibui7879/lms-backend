@@ -4,6 +4,8 @@ const { test } = require('node:test');
 const { parseContract } = require('@lms/contracts');
 const { createLearningMockServer } = require('./mock-server.cjs');
 const { course, quiz } = require('./fixtures/learning-providers.mock.json');
+const skillFixtures = require('./fixtures/course-skills.mock.json');
+const masteryFixture = require('./fixtures/mastery.mock.json');
 const {
   requests,
   expected,
@@ -61,6 +63,155 @@ async function start(t) {
     return schema ? parseContract(schema, payload.data) : payload.data;
   };
 }
+
+test('MST-01 lets owners update the catalog and students see active skills', async (t) => {
+  const call = await start(t);
+  const path = `${coursePath}/skills`;
+  assert.deepEqual((await call(path)).skills, [skillFixtures.skills[0]]);
+  assert.deepEqual(
+    (await call(path, { user: 'instructorA' })).skills,
+    skillFixtures.skills,
+  );
+  const skill = await call(path, {
+    method: 'POST',
+    user: 'instructorA',
+    status: 201,
+    schema: 'CourseSkillData',
+    body: { name: '  Dependency injection  ', description: '' },
+  });
+  assert.equal(skill.name, 'Dependency injection');
+  const retired = await call(`${path}/${skill.id}`, {
+    method: 'PATCH',
+    user: 'instructorA',
+    body: { status: 'INACTIVE', expectedVersion: 1 },
+  });
+  assert.equal(retired.version, 2);
+  assert.equal(retired.status, 'INACTIVE');
+  assert.equal(
+    (
+      await call(`${path}/${skill.id}`, {
+        method: 'PATCH',
+        user: 'instructorA',
+        body: { name: 'Stale', expectedVersion: 1 },
+        status: 409,
+      })
+    ).code,
+    'VERSION_CONFLICT',
+  );
+  assert.deepEqual((await call(path)).skills, [skillFixtures.skills[0]]);
+  const internal = `/api/v1/internal/courses/${course.enrollment.courseId}/skills/${skill.id}`;
+  await call(internal, { user: 'adminA', status: 401 });
+  assert.deepEqual(
+    await call(internal, {
+      user: '',
+      serviceToken:
+        process.env.LEARNING_SKILL_LOOKUP_TOKEN ?? 'learning-mock-skill-token',
+    }),
+    retired,
+  );
+});
+
+test('MST-01 scopes mock catalogs to the owner and the enrolled course', async (t) => {
+  const call = await start(t);
+  const path = `${coursePath}/skills`;
+  const draft = `${base}/courses/${skillFixtures.secondCourse.id}/skills`;
+  await call(path, { status: 403, user: 'studentA' });
+  await call(path, { user: 'instructorB', status: 403 });
+  await call(draft, { status: 403 });
+  const foreignSkill = await call(draft, {
+    method: 'POST',
+    user: 'instructorB',
+    status: 201,
+    body: { name: 'Dependency injection', description: 'Draft' },
+  });
+  assert.equal(foreignSkill.courseId, skillFixtures.secondCourse.id);
+  await call(`${path}/${foreignSkill.id}`, {
+    method: 'PATCH',
+    user: 'instructorA',
+    status: 404,
+    body: { status: 'INACTIVE', expectedVersion: 1 },
+  });
+});
+
+test('MST-02 validates skill IDs and returns the rejected IDs in mock HTTP', async (t) => {
+  const call = await start(t);
+  const [active, inactive] = skillFixtures.skills;
+  const route = `/api/v1/internal/courses/${active.courseId}/skills/validate`;
+  const auth = {
+    method: 'POST',
+    user: '',
+    serviceToken:
+      process.env.LEARNING_SKILL_LOOKUP_TOKEN ?? 'learning-mock-skill-token',
+  };
+  await call(route, {
+    ...auth,
+    body: { skillIds: [active.id.toUpperCase()] },
+    status: 204,
+  });
+  const invalid = await call(route, {
+    ...auth,
+    body: { skillIds: [active.id, inactive.id] },
+    status: 422,
+  });
+  assert.equal(invalid.code, 'INVALID_SKILL_REFERENCE');
+  assert.deepEqual(invalid.details, { skillIds: [inactive.id] });
+  await call(route, {
+    ...auth,
+    body: { skillIds: [active.id, active.id.toUpperCase()] },
+    status: 400,
+  });
+  await call(route, {
+    method: 'POST',
+    body: { skillIds: [active.id] },
+    status: 401,
+  });
+});
+
+test('MST-03/05/06/07 shows weighted mastery and paginated history from graded results', async (t) => {
+  const call = await start(t);
+  const path = `${coursePath}/mastery`;
+  const read = () => call(path, { schema: 'MasteryData' });
+  const event = (event) =>
+    call('/__mock/events', { method: 'POST', body: { event } });
+  assert.deepEqual((await read()).skills, []);
+  await call(path, { user: 'studentA', status: 403 });
+  await call(`${path}/history`, { user: 'studentA', status: 403 });
+  const sample = masteryFixture.attempts[1];
+  const grade = await call(
+    `/api/v1/internal/attempts/${sample.attemptId}/graded`,
+    {
+      user: '',
+      serviceToken: process.env.QUIZ_SERVICE_TOKEN ?? 'quiz-mock-service-token',
+      schema: 'GradedAssessmentSummary',
+    },
+  );
+  assert.equal(grade.skillScores[0].questionCount, 5);
+  await call(`/api/v1/internal/attempts/${sample.attemptId}/graded`, {
+    status: 401,
+  });
+  assert.deepEqual((await read()).skills, []);
+  await event('masteryAttemptSecond');
+  const recorded = (await call(`${path}/history`)).items[0];
+  assert.equal(recorded.skills[0].questionCount, 5);
+  const beforeLateResult = await read();
+  await event('masteryAttemptFirst');
+  const data = await read();
+  assert.ok(Date.parse(data.updatedAt) > Date.parse(beforeLateResult.updatedAt));
+  await event('masteryAttemptSecond');
+  assert.deepEqual(await read(), data);
+  assert.equal(data.algorithmVersion, masteryFixture.algorithmVersion);
+  assert.equal(data.skills[0].evidenceCount, 2);
+  assert.equal(data.skills[0].questionCount, 8);
+  assert.equal(data.skills[0].level, 'PROFICIENT');
+  assert.ok(Math.abs(data.skills[0].scorePercent - 73.33333333) < 1e-8);
+  const page = await call(`${path}/history?page=2&limit=1`);
+  assert.equal(page.total, 2);
+  assert.equal(page.items[0].attemptId, masteryFixture.attempts[0].attemptId);
+  assert.equal(page.items[0].skills[0].scorePercent, 40);
+  assert.equal(page.items[0].skills[0].level, 'DEVELOPING');
+  assert.equal(page.items[0].skills[0].questionCount, 3);
+  assert.deepEqual((await call(`${path}/history`)).items[0], recorded);
+});
 
 test('PRG-04 shows synced quiz scores to the learner and course owner', async (t) => {
   const call = await start(t);
@@ -144,6 +295,33 @@ test('PRG-05 shows lesson progress, latest activity and a valid next step', asyn
   assert.equal(updated.courses[0].nextStep.kind, 'QUIZ');
   assert.equal(updated.recentQuizzes[0].scorePercent, 79);
   assert.equal(updated.recentQuizzes[0].passed, false);
+});
+
+test('PRG-01/02 waits for lesson confirmation even when all items and quizzes pass', async (t) => {
+  const call = await start(t);
+  const completion = { method: 'PUT', body: requests.completeItem };
+  await call(videoPath, completion);
+  await call('/__mock/events', {
+    method: 'POST',
+    body: { event: 'chapterAttempt80' },
+  });
+  await call(readingPath, completion);
+  await call('/__mock/events', {
+    method: 'POST',
+    body: { event: 'attemptGraded' },
+  });
+  const progress = () => call(`${coursePath}/progress`);
+  assert.equal((await progress()).lessonProgressPercent, 0);
+  assert.equal((await progress()).status, 'IN_PROGRESS');
+  assert.equal((await progress()).completedAt, null);
+  await call(`${lessonPath}/completion`, completion);
+  assert.equal((await progress()).lessonProgressPercent, 50);
+  const last = await call(
+    `${base}/lessons/${chapter2.lessons[0].id}/completion`,
+    completion,
+  );
+  assert.equal((await progress()).status, 'COMPLETED');
+  assert.equal((await progress()).completedAt, last.completedAt);
 });
 
 test('PRG-01 to PRG-08 completes the full Postman workflow with mock providers', async (t) => {
@@ -454,6 +632,12 @@ test('keeps the next chapter locked after a failed grade and opens it after a pa
   );
   const final = await applyGrade('attemptGraded');
   assert.deepEqual(await call(syncPath), final);
+  assert.equal((await call(`${coursePath}/progress`)).status, 'IN_PROGRESS');
+  await call(`${lessonPath}/completion`, completion);
+  await call(
+    `${base}/lessons/${chapter2.lessons[0].id}/completion`,
+    completion,
+  );
   assert.equal((await call(`${coursePath}/progress`)).status, 'COMPLETED');
 });
 

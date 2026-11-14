@@ -7,6 +7,7 @@ import type { DataSource } from 'typeorm';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
+import { CourseSkill } from '../src/modules/mastery/entities/course-skill.entity';
 import { CourseClient } from '../src/integrations/course.client';
 import { createLearningDataSource } from '../src/database/learning-database';
 import { AddItemInvalidations1794528000006 } from '../src/database/migrations/1794528000006-add-item-invalidations';
@@ -29,6 +30,7 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
   let source: DataSource;
   const oldEnv = { ...process.env };
   const courseId = randomUUID();
+  const masterySkillId = randomUUID();
   const enrollment = {
     ...providers.course.enrollment,
     enrollmentId: randomUUID(),
@@ -127,6 +129,7 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
   });
 
   async function clear() {
+    await source.getRepository(CourseSkill).delete({ id: masterySkillId });
     await source.getRepository(CourseItemMigration).delete({ courseId });
     for (const entity of [ItemCompletion, LessonCompletion, LearningResume])
       await source
@@ -161,9 +164,9 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
       .send({ completed: true, contentVersion: 1 });
   }
 
-  function completeLesson() {
+  function completeLesson(id = first.id) {
     return request(app.getHttpServer())
-      .put(`/api/v1/learning/lessons/${first.id}/completion`)
+      .put(`/api/v1/learning/lessons/${id}/completion`)
       .set('X-Mock-User', 'studentB')
       .send({ completed: true, contentVersion: 1 });
   }
@@ -528,11 +531,79 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
     });
   });
 
+  it('MST-06/07 keeps old version history and applies a new result that arrived before migration', async () => {
+    const now = new Date('2026-01-15T08:00:00Z');
+    await source.getRepository(CourseSkill).insert({
+      id: masterySkillId,
+      courseId,
+      name: 'Module',
+      description: '',
+      status: 'ACTIVE',
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const eventFixture = providers.quiz.attemptGraded;
+    const before = await grade(eventFixture, {
+      score: 4,
+      passed: false,
+      skillScores: [{ skillId: masterySkillId, score: 4, maxScore: 10 }],
+    });
+    const earlyNewVersion = await grade(eventFixture, {
+      assessmentVersion: 2,
+      gradedAt: '2026-01-15T10:20:00Z',
+      skillScores: [{ skillId: masterySkillId, score: 10, maxScore: 10 }],
+    });
+    const current = async () =>
+      parseContract(
+        'MasteryData',
+        (await get(`${path}/mastery`).expect(200)).body.data,
+      );
+    const initial = await current();
+    expect(initial.skills[0]).toMatchObject({
+      scorePercent: 40,
+      evidenceCount: 1,
+    });
+    await migrate({ itemIds: [newIds[2]] }).expect(204);
+    const [migration] = await source
+      .getRepository(CourseItemMigration)
+      .findBy({ courseId });
+    await grade(eventFixture, {
+      gradedAt: new Date(migration.appliedAt.getTime() + 1000).toISOString(),
+      skillScores: [{ skillId: masterySkillId, score: 10, maxScore: 10 }],
+    });
+    const migrated = await current();
+    expect(Date.parse(migrated.updatedAt)).toBeGreaterThan(
+      Date.parse(initial.updatedAt),
+    );
+    expect(migrated).toMatchObject({
+      skills: [{ scorePercent: 100, evidenceCount: 1, level: 'PROFICIENT' }],
+    });
+    const history = (await get(`${path}/mastery/history`).expect(200)).body
+      .data;
+    expect(history.total).toBe(2);
+    expect(history.items).toMatchObject([
+      {
+        attemptId: earlyNewVersion.payload.attemptId,
+        assessmentVersion: 2,
+        contentVersion: enrollment.contentVersion,
+        effectiveAt: migration.appliedAt.toISOString(),
+        skills: [{ scorePercent: 100, evidenceCount: 1 }],
+      },
+      {
+        attemptId: before.payload.attemptId,
+        assessmentVersion: 1,
+        skills: [{ scorePercent: 40, evidenceCount: 1 }],
+      },
+    ]);
+  });
+
   it('keeps historical quiz attempts and requires a passed result from the new assessment version', async () => {
     await completeItem().expect(200);
     await completeLesson().expect(200);
     await grade();
     await completeItem(second.items[0].id).expect(200);
+    await completeLesson(second.id).expect(200);
     await grade(providers.quiz.attemptGraded);
     expect((await get(`${path}/progress`).expect(200)).body.data.status).toBe(
       'COMPLETED',
@@ -548,7 +619,7 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
     ).toBe(0);
     await grade(providers.quiz.attemptGraded, {
       assessmentVersion: 2,
-      gradedAt: new Date(Date.now() + 1000).toISOString(),
+      gradedAt: new Date().toISOString(),
     });
     expect((await get(`${path}/progress`).expect(200)).body.data.status).toBe(
       'COMPLETED',
@@ -559,5 +630,113 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
     expect(
       (await get(`${path}/me/quiz-scores`).expect(200)).body.data.items,
     ).toHaveLength(3);
+  });
+
+  it('PRG-03/06 accepts the new quiz version even when its grade arrives before migration', async () => {
+    await grade(providers.quiz.attemptGraded, { assessmentVersion: 2 });
+    await migrate({ itemIds: [newIds[2]], policy: 'NOTIFY_ONLY' }).expect(204);
+    await migrate({ itemIds: [newIds[2]] }).expect(204);
+    const progress = (await get(`${path}/progress`).expect(200)).body.data;
+    expect(progress.passedRequiredAssessments).toBe(1);
+    const lesson = (
+      await get(`/api/v1/learning/lessons/${first.id}/progress`).expect(200)
+    ).body.data;
+    expect(
+      lesson.items.find(
+        (item: { learningItemId: string }) =>
+          item.learningItemId === quizItem.id,
+      ),
+    ).toMatchObject({
+      status: 'COMPLETED',
+      invalidatedAt: null,
+      invalidationReason: null,
+    });
+    await grade(providers.quiz.attemptGraded);
+    expect(
+      (await get(`${path}/progress`).expect(200)).body.data
+        .passedRequiredAssessments,
+    ).toBe(1);
+  });
+
+  it.each([
+    { quizType: 'GRADED', passingScorePercent: 70, score: 80, passed: true },
+    { quizType: 'PRACTICE', passingScorePercent: 90, score: 20, passed: false },
+  ])(
+    'PRG-01/03 enforces the new 90 percent requirement when VIDEO becomes QUIZ: $quizType',
+    async (wrongResult) => {
+      await completeItem().expect(200);
+      const target = context.items[2].item;
+      if (target.type !== 'QUIZ') throw new Error('Expected quiz fixture');
+      const quizId = randomUUID();
+      context.items[0] = {
+        ...context.items[0],
+        item: { ...target, id: newIds[0], quizId },
+        requiredAssessment: {
+          quizId,
+          assessmentVersion: 2,
+          passingScorePercent: 90,
+        },
+      };
+      await migrate().expect(204);
+      await completeItem().expect(403);
+      await grade(providers.quiz.attemptGraded, {
+        quizId,
+        assessmentVersion: 2,
+        maxScore: 100,
+        ...wrongResult,
+      });
+      const lesson = (
+        await get(`/api/v1/learning/lessons/${first.id}/progress`).expect(200)
+      ).body.data;
+      expect(
+        lesson.items.find(
+          (item: { learningItemId: string }) =>
+            item.learningItemId === video.id,
+        ).status,
+      ).toBe('OUTDATED');
+      await completeLesson().expect(409);
+      await grade(providers.quiz.attemptGraded, {
+        quizId,
+        assessmentVersion: 2,
+        passingScorePercent: 90,
+        score: 90,
+        maxScore: 100,
+        passed: true,
+      });
+      await completeLesson().expect(200);
+    },
+  );
+
+  it('PRG-01/05 keeps a quiz notification until a qualifying result follows the notice', async () => {
+    await grade(providers.quiz.attemptGraded);
+    const reason = 'Read changed quiz instructions';
+    await migrate({
+      itemIds: [newIds[2]],
+      policy: 'NOTIFY_ONLY',
+      reason,
+    }).expect(204);
+    const quizState = async () => {
+      const lesson = (
+        await get(`/api/v1/learning/lessons/${first.id}/progress`).expect(200)
+      ).body.data;
+      return lesson.items.find(
+        (item: { learningItemId: string }) =>
+          item.learningItemId === quizItem.id,
+      );
+    };
+    expect(await quizState()).toMatchObject({
+      status: 'COMPLETED',
+      invalidatedAt: null,
+      invalidationReason: reason,
+    });
+    await grade(providers.quiz.attemptGraded);
+    expect((await quizState()).invalidationReason).toBe(reason);
+    await grade(providers.quiz.attemptGraded, {
+      gradedAt: new Date().toISOString(),
+    });
+    expect(await quizState()).toMatchObject({
+      status: 'COMPLETED',
+      invalidationReason: null,
+    });
   });
 });

@@ -4,7 +4,7 @@ Cập nhật ngày **14/11/2026** theo code trên nhánh `feat/learning/progress
 
 Thứ tự triển khai và điều kiện hoàn thành của từng chức năng nằm trong [PLAN.md](PLAN.md).
 
-**Xác nhận lại ngày 14/11/2026.** PRG-01 đến PRG-08 và học lại theo contract main 0981c48 đạt 40/40 E2E, 9/9 mock API và 59/59 request HTTP được gọi trực tiếp. Đã sửa thêm việc giữ checkpoint trong mock và xóa lý do thông báo cũ sau khi học lại. Có thể đóng phạm vi phát triển với mock API và dữ liệu mẫu. Xem [phần học lại](#học-lại-sau-khi-course-sửa-nội-dung) và [báo cáo đối chiếu API](services/learning-service/test/TEST_REPORT.md#xác-nhận-trực-tiếp-kết-quả-http).
+**Cập nhật ngày 14/11/2026 — chốt sau kiểm thử bởi hai agent.** Learning đọc cấu trúc trực tiếp từ API internal theo phiên bản đã ghi danh. Bộ đầy đủ đạt **56/56 E2E**, gồm PostgreSQL và RabbitMQ thật; mock API đạt **10/10**. Agent thứ hai tự chạy **32/32 E2E** trong ba suite và **10/10 mock**, rồi đối chiếu logic và bản sửa. 32 ca này nằm trong bộ 56 ca, không cộng thành số test mới. Lần xác nhận trước đối chiếu 59/59 request HTTP trực tiếp. **Hoàn thành PRG-01 đến PRG-08 trong phạm vi Learning với mock/provider giả, có thể chuyển sang nhóm tiếp theo.** Xem [quy tắc snapshot](#đọc-snapshot-course-theo-lượt-ghi-danh) và [báo cáo kiểm thử](services/learning-service/test/TEST_REPORT.md).
 
 | Mã | Chức năng | Trạng thái |
 | --- | --- | --- |
@@ -16,6 +16,13 @@ Thứ tự triển khai và điều kiện hoàn thành của từng chức năn
 | [PRG-06](#prg-06--đồng-bộ-tiến-độ-qua-event) | Đồng bộ tiến độ qua event | **Hoàn thành luồng quiz đã chấm theo contract.** Hoàn thành bài được ghi qua API Learning của PRG-01. Còn kiểm tra với Quiz thật. |
 | [PRG-07](#prg-07--chống-tính-trùng-event) | Chống tính trùng event | **Hoàn thành cho luồng Quiz hiện có.** Gửi lại event giữ nguyên điểm và số lượt. |
 | [PRG-08](#prg-08--lưu-thời-điểm-học-gần-nhất) | Lưu thời điểm học gần nhất | **Hoàn thành backend và mock API.** Lưu vị trí học tiếp và dùng mốc hoạt động mới nhất để sắp xếp khóa trong dashboard. |
+| [MST-01](#mst-01--danh-sách-kỹ-năng-khóa-học) | Danh sách kỹ năng khóa học | **Hoàn thành backend và mock API với Course giả lập.** Chủ khóa quản lý danh mục, học viên xem kỹ năng đang dùng, Quiz có API nội bộ để tra mã. |
+| [MST-02](#mst-02--liên-kết-câu-hỏi-với-kỹ-năng) | Liên kết câu hỏi với kỹ năng | **Hoàn thành phần kiểm tra của Learning.** Luồng lưu mapping và giữ phiên bản đã được thử với Quiz giả lập. Tích hợp QUIZ-08 còn ở phía Quiz. |
+| [MST-03](#mst-03--tính-điểm-mastery) | Tính điểm mastery | **Đã lưu điểm tổng hợp và số câu với Quiz giả lập.** Hai API dùng công thức tổng điểm đạt chia tổng điểm tối đa. |
+| [MST-04](#mst-04--phân-loại-mức-độ-thành-thạo) | Phân loại mức độ thành thạo | **Đã nối bộ phân loại vào API mastery.** |
+| [MST-05](#mst-05--dữ-liệu-biểu-đồ-năng-lực) | Dữ liệu biểu đồ năng lực | **API trả điểm theo công thức MST-03.** |
+| [MST-06](#mst-06--cập-nhật-mastery-sau-quiz) | Cập nhật mastery sau quiz | **API dùng kết quả đã commit qua RabbitMQ → PostgreSQL.** |
+| [MST-07](#mst-07--lịch-sử-mastery) | Lịch sử mastery | **API phân trang các mốc đã lưu cố định vào PostgreSQL.** |
 
 ## Vị trí trong dự án
 
@@ -75,7 +82,7 @@ Học viên dùng API để xem tiến độ nội dung và biết khóa đã đ
 
 **Ví dụ khi học.** Khóa mẫu có hai bài bắt buộc. Bạn xem xong video của bài 1 rồi xác nhận hoàn thành bài. Dashboard hiện **1/2 bài · 50%**. Sau khi xác nhận cả hai bài, dashboard hiện **2/2 bài · 100%**. Nếu bài kiểm tra cuối khóa chưa đạt, khóa vẫn hiện **Đang học**.
 
-Một bài được tính vào tổng nếu chứa ít nhất một mục bắt buộc trong policy cấp khóa hoặc cấp chương. Một bài đã xác nhận hoàn thành qua PRG-01 được đếm một lần. Nếu tổng bằng 0 thì tỷ lệ là `0`. Trạng thái `COMPLETED` dùng điều kiện trong policy gồm item, bài đánh giá cấp khóa và các chương. Khi phiên bản đang phát hành khác lượt ghi danh, đặt `COURSE_SERVICE_TOKEN` để Learning yêu cầu bản cũ từ Course. Nếu Course chưa cung cấp bản đó, Learning trả `409 CONTENT_VERSION_MISMATCH`.
+Một bài được tính vào tổng nếu chứa ít nhất một mục bắt buộc trong policy cấp khóa hoặc cấp chương. Một bài đã xác nhận hoàn thành qua PRG-01 được đếm một lần. Nếu tổng bằng 0 thì tỷ lệ là `0`. Trạng thái `COMPLETED` dùng điều kiện trong policy gồm item, bài đánh giá cấp khóa và các chương. Learning luôn đọc cấu trúc từ API internal theo `enrollment.contentVersion`, với `COURSE_SERVICE_TOKEN`. Nếu Course chưa cung cấp bản đó, Learning trả `409 CONTENT_VERSION_MISMATCH`.
 
 ```text
 GET http://127.0.0.1:3104/api/v1/learning/courses/33333333-3333-4333-8333-333333333333/progress
@@ -215,6 +222,31 @@ Trong Postman, gửi hai lần `POST http://127.0.0.1:3104/__mock/events` với 
 
 **Kiểm thử và tích hợp.** [Suite E2E](services/learning-service/test/learning-workflow.db.e2e-spec.ts) dùng PostgreSQL thật và Course giả lập. Khi ghép hệ thống, cần kiểm tra thời điểm giao diện gửi yêu cầu lưu và Course trả đúng phiên bản nội dung.
 
+## Đọc snapshot Course theo lượt ghi danh
+
+**Vị trí trong code** gồm [`CourseClient.structure()`](services/learning-service/src/integrations/course.client.ts) và [test HTTP snapshot](services/learning-service/test/course-snapshot.e2e-spec.ts). Thay đổi ảnh hưởng PRG-01/02/03/05/08 và việc áp dụng migration vào snapshot cũ.
+
+**Ví dụ dễ hiểu.** Bạn đăng ký khi khóa ở phiên bản 1. Sau đó khóa được phát hành phiên bản 2 với thêm bài hoặc điều kiện khác. Learning dùng cấu trúc và policy của phiên bản 1 để tính tiến độ cho bạn. Các mục cần học lại do critical revision được áp dụng riêng qua migration.
+
+Learning gửi một request lấy cả outline và completion policy theo phiên bản đã ghi danh.
+
+```text
+GET /api/v1/internal/courses/{id}/structure?contentVersion={enrollment.contentVersion}
+Authorization: Bearer <COURSE_SERVICE_TOKEN>
+X-Request-Id: <requestId>
+```
+
+Client kiểm tra cả `courseId` và `contentVersion` trong outline và policy. Thiếu credential trả `503`. Snapshot bị thiếu hoặc trả sai phiên bản dẫn tới `409 CONTENT_VERSION_MISMATCH`. Learning dừng xử lý khi chưa có đúng snapshot.
+
+| Dữ liệu Learning đang gọi | Cách gọi hiện tại |
+| --- | --- |
+| Cấu trúc và policy dùng tính tiến độ | API internal `getLearningStructure`, kèm phiên bản ghi danh và credential service. |
+| Quyền tra lượt quiz | API internal `getAttemptAccess` của Quiz. |
+| Context revision để học lại | API internal `getCourseItemMigrationContext` của Course. |
+| Danh sách khóa đã ghi danh và metadata chủ khóa | Các API theo người dùng đã có trong contract. `checkEnrollment` hiện trả trạng thái và mã ghi danh, chưa cung cấp đủ danh sách khóa và snapshot cho dashboard. |
+
+Khi ghép, Course cần trả snapshot lịch sử, chuyển giá trị `contentVersion` từ query HTTP sang số và kiểm tra credential của caller. Các điểm này đã được đối chiếu với code main và ghi trong báo cáo.
+
 ## Học lại sau khi Course sửa nội dung
 
 **Vị trí trong code**
@@ -267,6 +299,186 @@ Credential mẫu ở trên dành cho mock. NestJS dùng `LEARNING_SERVICE_TOKEN`
 Main cung cấp hướng dẫn và endpoint nhận migration. Learning đã bổ sung contract đọc context tin cậy từ Course tại `GET /api/v1/internal/course-revisions/{id}/item-migration-context`. Dữ liệu trả về theo `CourseItemMigrationContext` gồm metadata revision đã xuất bản, item đích, các item nguồn ở phiên bản cũ và yêu cầu assessment mới.
 
 API này cần thiết vì Course có thể tạo mã chapter, lesson và item mới khi tạo revision. Learning dùng liên hệ nguồn–đích để tìm đúng completion cũ. Course cần triển khai API này cùng credential nội bộ và cung cấp nội dung sửa đúng cho học viên cũ. Test hiện giả lập phần cung cấp context. Cấu hình `COURSE_SERVICE_TOKEN` cho phía Learning khi ghép.
+
+## Rà soát chéo PRG-01 đến PRG-08 ngày 14/11/2026
+
+**Vị trí code và test bổ sung**
+
+| File | Chức năng và thay đổi |
+| --- | --- |
+| [`progress.service.ts`](services/learning-service/src/modules/progress/progress.service.ts) | PRG-01/02/05: khóa chỉ hoàn thành khi đủ bài bắt buộc đã xác nhận và đủ policy. `completedAt` tính cả lần xác nhận bài bắt buộc cuối. |
+| [`progress-evidence.ts`](services/learning-service/src/modules/progress/rules/progress-evidence.ts) | PRG-01/03/05/06/07: nhận kết quả đúng phiên bản dù đến trước migration, kiểm tra ngưỡng khi đổi loại item sang quiz, giữ lý do thông báo của quiz đã hoàn thành. |
+| [`course-items-migration.db.e2e-spec.ts`](services/learning-service/test/course-items-migration.db.e2e-spec.ts) | API NestJS với PostgreSQL: grade đến trước migration, video đổi thành quiz, ngưỡng sai, practice và thông báo quiz. |
+| [`progress-audit.e2e-spec.ts`](services/learning-service/test/progress-audit.e2e-spec.ts) | API tiến độ và dashboard: đủ item/quiz nhưng chưa xác nhận bài, xác nhận từng bài rồi hoàn thành khóa. |
+| [`mock-server.cjs`](services/learning-service/test/mock-server.cjs), [`mock-server.test.cjs`](services/learning-service/test/mock-server.test.cjs) | Mock và test HTTP áp dụng cùng điều kiện xác nhận bài bắt buộc với backend. |
+
+**Bốn điểm đã sửa và ví dụ dễ hiểu**
+
+1. **PRG-01/02/05 — xác nhận bài trước khi hoàn thành khóa.** Bạn đã xem hết nội dung và đạt mọi quiz, nhưng chưa bấm hoàn thành hai bài. API tiến độ khóa vẫn trả `IN_PROGRESS`, **0/2 bài · 0%**; dashboard dẫn tới `COMPLETE_LESSON`. Gửi `PUT /api/v1/learning/lessons/{id}/completion` cho bài 1 thì thành **1/2 · 50%**, cho bài 2 thì **2/2 · 100%** và `COMPLETED`. Mốc hoàn thành khóa bao gồm thời điểm xác nhận bài cuối. Trạng thái mở chương vẫn xét policy của chương.
+2. **PRG-03/06/07 — kết quả quiz đến trước lệnh học lại.** Bạn làm đạt quiz phiên bản 2 lúc 10:01; lệnh migration đến Learning lúc 10:02. Kết quả phiên bản 2 vẫn được tính. API tiến độ khóa trả số assessment đã đạt tương ứng; không bắt làm lại chỉ vì thứ tự chuyển bản tin. Kết quả phiên bản 1 không được dùng thay phiên bản 2.
+3. **PRG-01/03 — video được sửa thành quiz bắt buộc.** Course cung cấp quiz mới yêu cầu 90%. Kết quả practice hoặc kết quả được đánh dấu đạt theo ngưỡng 70% đều chưa đủ. API tiến độ bài giữ mục ở `OUTDATED`; xác nhận bài trả `409`. Khi có kết quả `GRADED`, đạt và đúng ngưỡng 90% thì mục mới hoàn thành, cho phép xác nhận bài. Ngưỡng lấy từ context tin cậy của Course, không đặt cố định 90% trong code.
+4. **PRG-01/05 — thông báo sửa quiz.** Bạn đã đạt quiz; Course chỉ sửa hướng dẫn và gửi `NOTIFY_ONLY`. API tiến độ bài giữ `COMPLETED`, trả lý do để giao diện hiển thị. Event kết quả cũ đến trễ không xóa thông báo. Một kết quả hợp lệ được chấm sau thông báo sẽ xóa lý do; yêu cầu học lại mới hơn cũng thay thế thông báo cũ khi đã hoàn thành hợp lệ.
+
+**Quy ước policy khi đổi loại.** Nếu quiz đổi thành bài đọc, Learning giữ requirement assessment của policy đã pin. Context migration hiện không chỉ rõ scope để xóa requirement cấp chương/khóa. Thay đổi requirement này cần thống nhất contract với Course; Learning không tự bỏ một điều kiện hoàn thành. Ngược lại, quiz mới của một item phải thỏa ngưỡng do Course cung cấp cho chính item đó, không tự thêm scope policy mới.
+
+**Kết luận.** Hai agent đã chạy test riêng và đối chiếu các trường hợp trên. Chưa phát hiện lỗi chặn còn lại trong phạm vi kiểm thử hiện tại. Phần ghép Course/Quiz thật tiếp tục theo PLAN, không phải điều kiện chờ để chuyển sang chức năng Learning tiếp theo. Các sửa mới đang ở local, chưa push.
+
+## MST-01 – Danh sách kỹ năng khóa học
+
+| Vị trí | Công dụng |
+| --- | --- |
+| [`src/modules/mastery/`](services/learning-service/src/modules/mastery/) | Controller cho học viên, chủ khóa và Admin. Controller nội bộ để Quiz kiểm tra mã. Service kiểm tra quyền theo khóa rồi mới đọc hoặc ghi. |
+| [`course-skills.repository.ts`](services/learning-service/src/modules/mastery/repositories/course-skills.repository.ts) | Lưu danh mục trong PostgreSQL. Khóa dòng khi sửa để kiểm tra `expectedVersion` và tăng version trong cùng transaction. |
+| [`1794528000007-create-course-skills.ts`](services/learning-service/src/database/migrations/1794528000007-create-course-skills.ts) | Tạo bảng `learning_course_skills` và index theo khóa. |
+| [OpenAPI Learning](packages/contracts/openapi/learning.json) | Bốn operation `listCourseSkills`, `createCourseSkill`, `updateCourseSkill` và `getCourseSkillReference`. |
+| [Fixture khóa và kỹ năng](services/learning-service/test/fixtures/course-skills.mock.json), [E2E PostgreSQL](services/learning-service/test/course-skills.db.e2e-spec.ts) | Dữ liệu Postman và ca kiểm thử khóa nháp, quyền truy cập, ghi đồng thời và tra cứu nội bộ. |
+
+**Trạng thái.** Hoàn thành phần danh mục kỹ năng trong Learning với Course giả lập. **MST-02** đã bổ sung API để Quiz kiểm tra một nhóm mã kỹ năng khi gắn câu hỏi.
+
+**Ví dụ khi học.** Cô Mai thêm kỹ năng “Tổ chức module” vào khóa NestJS. Học viên đã ghi danh thấy kỹ năng này trong danh sách. Sau khi cô ngừng dùng một kỹ năng cũ, danh sách học viên chỉ còn kỹ năng đang dùng. Mã kỹ năng cũ vẫn còn để hệ thống đối chiếu bài quiz đã chấm trước đó.
+
+Danh mục Learning dùng mã ổn định theo `courseId`. Bản đầu lấy danh sách hiện hành của khóa. Cách lưu tên hoặc trạng thái kỹ năng theo từng bản nội dung để phục vụ lịch sử sẽ được đối chiếu với MST-02/MST-07. Với chủ khóa hoặc Admin, Learning gọi `GET /api/v1/courses/{id}/reviews?page=1&limit=1` của Course để kiểm tra quyền trên cả khóa nháp. Học viên cần lượt ghi danh hợp lệ. API nội bộ cần `LEARNING_SKILL_LOOKUP_TOKEN`, tách với token ghi migration. Quiz sẽ chỉ dùng kỹ năng `ACTIVE` cho lần gắn mới.
+
+Chạy `npm.cmd run start:mock -w @lms/learning-service` từ thư mục gốc rồi thử trong Postman.
+
+| Bước | Request và dữ liệu | Kết quả mong đợi |
+| --- | --- | --- |
+| 1 | `GET http://127.0.0.1:3104/api/v1/learning/courses/33333333-3333-4333-8333-333333333333/skills`, header `X-Mock-User: studentB`. | `200`, `data.skills` chỉ gồm kỹ năng đang dùng. Dùng `studentA` trả `403 ENROLLMENT_REQUIRED`. |
+| 2 | `POST` đến cùng URL, header `X-Mock-User: instructorA`, gửi body tạo bên dưới. | `201`, kỹ năng mới có `status: ACTIVE` và `version: 1`. Lấy `data.id` để dùng ở bước 3. |
+| 3 | `PATCH http://127.0.0.1:3104/api/v1/learning/courses/33333333-3333-4333-8333-333333333333/skills/{skillId}`, cùng header, gửi body ngừng dùng bên dưới. | `200`, cùng mã, `status: INACTIVE` và `version: 2`. Gửi lại body với version cũ trả `409 VERSION_CONFLICT`. Đọc lại bằng học viên thấy mục đã ẩn. |
+| 4 | `GET http://127.0.0.1:3104/api/v1/internal/courses/33333333-3333-4333-8333-333333333333/skills/{skillId}`, header `Authorization: Bearer learning-mock-skill-token`. | `200` và giữ trạng thái `INACTIVE` để tra lịch sử. Token ở đây dành cho mock. Sai khóa trả `404`. |
+
+Body tạo kỹ năng. Chọn **Body → raw → JSON**.
+
+```json
+{"name":"Dependency injection","description":"Biết cách inject provider vào controller."}
+```
+
+Body ngừng sử dụng kỹ năng vừa tạo.
+
+```json
+{"status":"INACTIVE","expectedVersion":1}
+```
+
+Kết quả kiểm thử và môi trường chạy nằm ở [TEST_REPORT.md](services/learning-service/test/TEST_REPORT.md#mst-01--danh-sách-kỹ-năng-khóa-học).
+
+## MST-02 – Liên kết câu hỏi với kỹ năng
+
+| Vị trí | Công dụng |
+| --- | --- |
+| [`internal-course-skills.controller.ts`](services/learning-service/src/modules/mastery/internal-course-skills.controller.ts) | Nhận danh sách mã và kiểm tra token tra kỹ năng trước khi xử lý. |
+| [`course-skills.service.ts`](services/learning-service/src/modules/mastery/course-skills.service.ts), [`course-skills.repository.ts`](services/learning-service/src/modules/mastery/repositories/course-skills.repository.ts) | Dùng một truy vấn để tìm kỹ năng hoạt động của đúng khóa. Trả các mã bị từ chối nếu có. |
+| [OpenAPI Learning](packages/contracts/openapi/learning.json) | Operation `validateCourseSkills`, request `ValidateCourseSkillsRequest`, lỗi `INVALID_SKILL_REFERENCE`. |
+| [Suite API và Quiz giả lập](services/learning-service/test/course-skills.db.e2e-spec.ts), [mock API](services/learning-service/test/mock-server.test.cjs) | Kiểm tra mã hợp lệ, trùng mã, token, khác khóa, ngừng dùng và lưu mapping theo phiên bản câu hỏi. |
+
+**Ví dụ khi soạn bài.** Câu hỏi “Module dùng để làm gì?” có thể đánh giá cả kỹ năng “Tổ chức module” và “Dependency injection”. Quiz kiểm tra hai mã trong một request. Nếu một mã thuộc khóa khác, Quiz nhận danh sách mã lỗi để giảng viên chọn lại. Nếu sau này giảng viên ngừng dùng một kỹ năng, lượt làm đã lưu vẫn giữ kỹ năng đó khi đọc kết quả cũ.
+
+### Request mẫu để thử trong Postman
+
+```http
+POST http://127.0.0.1:3104/api/v1/internal/courses/33333333-3333-4333-8333-333333333333/skills/validate
+Authorization: Bearer learning-mock-skill-token
+Content-Type: application/json
+```
+
+```json
+{"skillIds":["00000000-0000-4000-8000-000000000a01"]}
+```
+
+| Tình huống | Kết quả mong đợi |
+| --- | --- |
+| Danh sách có từ 1 đến 100 mã, tất cả đang dùng và thuộc đúng khóa. | `204`, body rỗng. |
+| Thêm mã mẫu `00000000-0000-4000-8000-000000000a02` đã ngừng dùng, dùng mã thuộc khóa khác hoặc mã không tồn tại. | `422 INVALID_SKILL_REFERENCE`. `error.details.skillIds` chỉ ra các mã bị từ chối. |
+| Mã sai định dạng, trùng kể cả viết hoa, danh sách rỗng hoặc vượt 100 mã. | `400 VALIDATION_ERROR`. |
+| Thiếu token tra kỹ năng hoặc dùng token migration. | `401 UNAUTHORIZED` khi server đã cấu hình token tra kỹ năng. |
+
+**Luồng khi ghép QUIZ-08.** Quiz xác minh quyền giảng viên và lấy `courseId` từ quiz/câu hỏi mà nó quản lý. Lấy phần mã vừa thêm so với phiên bản câu hỏi hiện tại rồi gọi Learning bằng `LEARNING_SKILL_LOOKUP_TOKEN`. Nếu không thêm mã nào, có thể bỏ qua request. Chỉ lưu phiên bản mới sau khi nhận 204. Khi chấm, Quiz dùng mapping đã lưu của phiên bản học viên làm, nên việc chỉnh câu hỏi hoặc ngừng dùng kỹ năng không đổi kết quả cũ. Lookup `GET .../skills/{skillId}` vẫn dùng để tra mã đã ngừng dùng.
+
+**Trạng thái.** Hoàn thành phía Learning và thử qua Quiz giả lập. Quiz thật cần gọi API trong luồng tạo/sửa câu hỏi, lưu mapping theo phiên bản và kiểm tra lại khi ghép.
+
+## MST-03 – Tính điểm mastery
+
+| Vị trí | Công dụng |
+| --- | --- |
+| [`mastery-calculator.ts`](services/learning-service/src/modules/mastery/mastery-calculator.ts) | Cộng tổng điểm đạt và tổng điểm tối đa của từng kỹ năng. |
+| [`mastery.service.ts`](services/learning-service/src/modules/mastery/mastery.service.ts) | Chọn các lượt chấm hợp lệ, gom theo kỹ năng và gọi bộ tính cho điểm hiện tại và lịch sử. |
+| [`mastery-results.repository.ts`](services/learning-service/src/modules/mastery/repositories/mastery-results.repository.ts), [migration 0008](services/learning-service/src/database/migrations/1794528000008-save-mastery.ts) | Lưu điểm hiện tại và snapshot lịch sử vào PostgreSQL trong cùng transaction. |
+| [`mastery.mock.json`](services/learning-service/test/fixtures/mastery.mock.json), [OpenAPI Quiz](packages/contracts/openapi/quiz.json) | Fixture có số câu trong từng lượt và contract `getAssessmentSummary`. |
+| [`learning-workflow.db.e2e-spec.ts`](services/learning-service/test/learning-workflow.db.e2e-spec.ts) | Kiểm tra điểm có mẫu số khác nhau qua RabbitMQ, PostgreSQL và API NestJS. |
+
+`scorePercent = tổng score / tổng maxScore × 100`. Với kỹ năng “Tổ chức module”, hai lượt `4/10` và `18/20` cho `(4 + 18) / (10 + 20) × 100 ≈ 73,33%`. API trả điểm trước khi làm tròn, mức `PROFICIENT`, `evidenceCount: 2` và `algorithmVersion: weighted-score-v1`. Mỗi kỹ năng dùng tổng riêng. Quiz luyện tập, lượt sai phiên bản hoặc dữ liệu trùng không làm tăng số mẫu.
+
+`GET /api/v1/learning/courses/{id}/mastery` trả và lưu điểm hiện tại vào bảng `learning_mastery_current`. Hai lượt mẫu có 3 và 5 câu nên API trả `questionCount: 8` và `evidenceCount: 2`. Nếu còn một lượt góp điểm thiếu số câu, trường `questionCount` là `null`. Thêm `/history` để đọc mốc đã lưu. [Kết quả kiểm thử](services/learning-service/test/TEST_REPORT.md#mst-03-và-mst-07--số-câu-quiz-và-snapshot)
+
+## MST-04 – Phân loại mức độ thành thạo
+
+| Vị trí | Công dụng |
+| --- | --- |
+| [`mastery-level.ts`](services/learning-service/src/modules/mastery/rules/mastery-level.ts) | Nhận điểm phần trăm đã tính và số bằng chứng của một kỹ năng, kiểm tra đầu vào rồi trả mức thành thạo. |
+| [`mastery-level.spec.ts`](services/learning-service/src/modules/mastery/rules/mastery-level.spec.ts) | Kiểm tra ngay dưới, đúng và trên ngưỡng, trường hợp thiếu dữ liệu, ngưỡng tùy chỉnh và đầu vào lỗi. |
+| [Kiểu `MasteryData`](packages/contracts/src/http/learning.ts) | Định nghĩa ba mức sẽ dùng trong API `getMastery` của MST-05. |
+
+| Điểm đã tính từ dữ liệu hợp lệ | Mức |
+| --- | --- |
+| Dưới 40% | `BEGINNER` |
+| Từ 40% đến dưới 70% | `DEVELOPING` |
+| Từ 70% | `PROFICIENT` |
+| Chưa có bằng chứng | Không xếp mức |
+
+**Ví dụ khi học.** Hai học viên cùng xem kỹ năng “Tổ chức module”. Người có điểm đánh giá 0% được xếp `BEGINNER`. Người chưa có bài đánh giá chưa được xếp mức. Nếu điểm là 69,999%, mức vẫn là `DEVELOPING`. Từ đúng 70% thì lên `PROFICIENT`. Bộ phân loại so sánh giá trị trước khi làm tròn để hiển thị.
+
+Ngưỡng mặc định lấy từ baseline. Cấu hình hai biến `LEARNING_MASTERY_DEVELOPING_MIN` và `LEARNING_MASTERY_PROFICIENT_MIN` khi khởi động NestJS. Chúng áp dụng cho cả instance và phải thỏa `0 < developingMin < proficientMin <= 100`. Mock Postman dùng mốc 40/70 mặc định. Quyền mở chương tiếp tục dùng policy khóa học.
+
+**Ca kiểm thử ở biên.** Hai lượt `0,03/0,4` và `0,29/0,4` cho đúng 40% theo toán học. Máy có thể biểu diễn kết quả thấp hơn 40% một lượng rất nhỏ. Bộ tính giảm sai số cộng và bộ phân loại cho phép sai số ở mức biểu diễn số để trả `DEVELOPING`. Giá trị thực sự dưới ngưỡng, ví dụ 39,999%, vẫn là `BEGINNER`.
+
+**Trạng thái.** API MST-05 và MST-07 gọi bộ phân loại trên điểm MST-03.
+
+Chạy lại bộ kiểm tra MST-04 từ thư mục gốc bằng `npm.cmd test -w @lms/learning-service -- --runInBand mastery-level`. [Báo cáo kiểm thử](services/learning-service/test/TEST_REPORT.md#mst-04--phân-loại-mức-độ-thành-thạo)
+
+## MST-05 – Dữ liệu biểu đồ năng lực
+
+| Vị trí | Công dụng |
+| --- | --- |
+| [`mastery.controller.ts`](services/learning-service/src/modules/mastery/mastery.controller.ts), [`mastery.service.ts`](services/learning-service/src/modules/mastery/mastery.service.ts) | API lấy tên kỹ năng trong khóa, điểm và số lượt đánh giá của chính học viên đã ghi danh. Dùng bộ phân loại MST-04 để trả mức. |
+| [`mastery-calculator.ts`](services/learning-service/src/modules/mastery/mastery-calculator.ts) | Bộ tính điểm MST-03 và `algorithmVersion`. |
+
+`GET /api/v1/learning/courses/{id}/mastery` trả `skills` với tên, điểm, mức, `questionCount` và `evidenceCount`. Học viên chưa có bằng chứng nhận `skills: []`. Tài khoản khác hoặc chưa ghi danh bị từ chối.
+
+`updatedAt` là thời điểm Learning tạo hoặc lưu thay đổi của bảng điểm hiện tại khi đọc mastery. Ví dụ, bạn đã thấy 90% từ một lượt. Nếu điểm của lượt làm trước đó đến muộn và làm bảng điểm đổi thành 73,33%, `updatedAt` tăng. Đọc lại cùng dữ liệu hoặc nhận lại kết quả đã đồng bộ sẽ giữ mốc này.
+
+**Ví dụ khi học.** Với mock, trước khi có quiz đã chấm, biểu đồ chưa có cột “Tổ chức module”. Sau lượt chấm mẫu đạt 40%, cột xuất hiện ở mức `DEVELOPING`. Sau lượt thứ hai, cột lên khoảng 73,33%.
+
+## MST-06 – Cập nhật mastery sau quiz
+
+| Vị trí | Công dụng |
+| --- | --- |
+| [`assessment-results.consumer.ts`](services/learning-service/src/modules/progress-sync/consumers/assessment-results.consumer.ts), [`assessment-attempts.repository.ts`](services/learning-service/src/modules/progress-sync/repositories/assessment-attempts.repository.ts) | Luồng PRG-06/07 nhận `quiz.attempt.graded.v2`, ghi kết quả và receipt vào PostgreSQL, chống trùng theo ID event và cặp attempt/phiên bản. |
+| [`mastery-timeline.ts`](services/learning-service/src/modules/mastery/rules/mastery-timeline.ts), [`mastery.service.ts`](services/learning-service/src/modules/mastery/mastery.service.ts) | Chọn kết quả đã commit theo lượt ghi danh và các phiên bản quiz hợp lệ. API đọc lại dữ liệu khi được gọi nên lần đọc sau commit nhận lượt chấm mới. |
+
+Learning chỉ dùng điểm kỹ năng trong lượt `GRADED` thuộc học viên, khóa, phiên bản phù hợp và có bằng chứng của kỹ năng trong khóa. Kết quả quiz luyện tập không tính mastery. Khi yêu cầu học lại thay phiên bản quiz, kết quả của phiên bản cũ đã đủ căn cứ còn nằm trong lịch sử. Kết quả đúng phiên bản mới đã được chấm trước lúc Learning nhận migration được dùng từ lúc migration có hiệu lực.
+
+**Ví dụ khi học.** Bạn hoàn thành một quiz và Quiz gửi kết quả sang Learning. Lần đọc kế tiếp sau khi lưu thấy số lượt tăng thêm một. Nếu RabbitMQ giao lại cùng lượt, bảng vẫn giữ nguyên số lượt và lịch sử. Kịch bản dùng PostgreSQL/RabbitMQ thật và công thức MST-03.
+
+## MST-07 – Lịch sử mastery
+
+| Vị trí | Công dụng |
+| --- | --- |
+| [`mastery.controller.ts`](services/learning-service/src/modules/mastery/mastery.controller.ts), [`mastery.service.ts`](services/learning-service/src/modules/mastery/mastery.service.ts) | API phân trang các mốc mastery từ lượt chấm đã lưu, mốc gần nhất trước. Mỗi mốc có ID lượt làm, phiên bản ghi danh/quiz, thời điểm chấm, thời điểm có hiệu lực, phiên bản công thức và kết quả kỹ năng. |
+| [`learning-workflow.db.e2e-spec.ts`](services/learning-service/test/learning-workflow.db.e2e-spec.ts), [`course-items-migration.db.e2e-spec.ts`](services/learning-service/test/course-items-migration.db.e2e-spec.ts) | Kiểm tra gửi lệch thứ tự, đổi phiên bản qua migration, phân trang, quyền và chống trùng. |
+
+`GET /api/v1/learning/courses/{id}/mastery/history?page=1&limit=20` chỉ trả lịch sử cho chính học viên đã ghi danh. Lần đầu đọc mastery hoặc history sau khi có lượt hợp lệ, Learning lưu điểm, mức, tên kỹ năng, số câu và `algorithmVersion` của mốc vào `learning_mastery_snapshots`. `recordedAt` là thời điểm lưu. Lượt đến muộn có thể thêm mốc cũ và cập nhật điểm hiện tại. Mốc đã lưu giữ nguyên, kể cả khi đổi tên kỹ năng. Ví dụ, nếu đã đọc lượt 18/20 trước khi lượt 4/10 đến, lịch sử giữ 90% ở mốc đã đọc, còn mastery hiện tại là 73,33% sau khi cả hai lượt được lưu.
+
+**Ví dụ thử trong Postman cho MST-05/06/07.** Chạy mock bằng `npm.cmd run start:mock -w @lms/learning-service`. Thêm header `X-Mock-User: studentB` cho các request dưới đây.
+
+| Request | Kết quả mong đợi |
+| --- | --- |
+| `GET http://127.0.0.1:3104/api/v1/learning/courses/33333333-3333-4333-8333-333333333333/mastery` | Ban đầu `200` và `skills: []`. |
+| `GET http://127.0.0.1:3104/api/v1/internal/attempts/00000000-0000-4000-8000-000000000a12/graded`, header `Authorization: Bearer quiz-mock-service-token`. | `200`. API Quiz giả lập trả `data.skillScores[0].questionCount: 5` theo `getAssessmentSummary`. |
+| `POST http://127.0.0.1:3104/__mock/events` với `{"event":"masteryAttemptFirst"}` | Trả receipt `SYNCED`. Lượt 4/10 cho 40%, `DEVELOPING`, 1 lượt và 3 câu. |
+| Cùng URL POST với `{"event":"masteryAttemptSecond"}` | Thêm lượt 18/20 cho khoảng 73,33%, `PROFICIENT`, 2 lượt và 8 câu. Gửi lần nữa giữ nguyên số lượt và số câu. |
+| `GET http://127.0.0.1:3104/api/v1/learning/courses/33333333-3333-4333-8333-333333333333/mastery/history?page=2&limit=1` | `total: 2`, trang 2 trả mốc đầu tiên với 40% và 1 lượt đánh giá. |
+
+**Trạng thái.** Đã hoàn thiện phần Learning với Quiz/Course giả lập. Khi ghép, Quiz cung cấp trường `skillScores[].questionCount` trong kết quả chấm và publisher. Dùng schema mới trên các consumer trước khi Quiz bật trường này. [Báo cáo kiểm thử](services/learning-service/test/TEST_REPORT.md#mst-03-và-mst-07--số-câu-quiz-và-snapshot)
 
 ## Cập nhật khi làm thêm chức năng
 

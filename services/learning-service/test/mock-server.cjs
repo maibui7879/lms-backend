@@ -1,5 +1,6 @@
 const { createServer } = require('node:http');
 const { randomUUID } = require('node:crypto');
+const { isDeepStrictEqual } = require('node:util');
 const {
   ContractValidationError,
   ENDPOINTS,
@@ -12,6 +13,8 @@ const {
   quiz,
 } = require('./fixtures/learning-providers.mock.json');
 const { expected } = require('./fixtures/learning-scenarios.mock.json');
+const skillFixtures = require('./fixtures/course-skills.mock.json');
+const masteryFixtures = require('./fixtures/mastery.mock.json');
 
 const enrollment = parseContract('EnrollmentSnapshotData', course.enrollment);
 const { outline, completionPolicy } = parseContract(
@@ -32,11 +35,34 @@ const events = new Map(
     parseContract('AttemptGradedV2Event', quiz[name]),
   ]),
 );
+for (const sample of masteryFixtures.attempts) {
+  const { skillId } = masteryFixtures.question;
+  const { eventId, attemptId, gradedAt, score, maxScore, questionCount } =
+    sample;
+  const event = parseContract('AttemptGradedV2Event', {
+    ...quiz.attemptGraded,
+    eventId,
+    occurredAt: gradedAt,
+    payload: {
+      ...quiz.attemptGraded.payload,
+      attemptId,
+      gradedAt,
+      score,
+      maxScore,
+      passed:
+        (score / maxScore) * 100 >=
+        quiz.attemptGraded.payload.passingScorePercent,
+      skillScores: [{ skillId, score, maxScore, questionCount }],
+    },
+  });
+  events.set(sample.name, event);
+}
 
 class MockApiError extends Error {
-  constructor(code, message) {
+  constructor(code, message, details = {}) {
     super(message);
     this.code = code;
+    this.details = details;
   }
 }
 
@@ -99,6 +125,19 @@ function readPageQuery(searchParams) {
 }
 
 function createLearningMockServer() {
+  const skillCourses = new Map([
+    [courseId, course.publishedCourse.instructorId],
+    [
+      skillFixtures.secondCourse.id,
+      identity[skillFixtures.secondCourse.instructor].id,
+    ],
+  ]);
+  const skills = new Map(
+    skillFixtures.skills.map((skill) => [
+      skill.id,
+      parseContract('CourseSkillData', { ...skill }),
+    ]),
+  );
   const mutableItems = structuredClone(items);
   const completedItems = new Map();
   const completionHistory = new Map();
@@ -108,6 +147,8 @@ function createLearningMockServer() {
   const completedLessons = new Map();
   const receipts = new Map();
   const syncedAttempts = new Map();
+  const masterySnapshots = new Map();
+  let masteryCurrent;
   const passedAssessments = new Set();
   let checkpoint = null;
   let updatedAt = expected.initial.updatedAt;
@@ -215,6 +256,7 @@ function createLearningMockServer() {
     const access = chapterAccess().chapters;
     if (
       !completedAt &&
+      requiredLessons.every(({ id }) => completedLessons.has(id)) &&
       completionPolicy.requiredItemIds.every((id) => completedItems.has(id)) &&
       completionPolicy.requiredAssessments.every(isPassed) &&
       completionPolicy.chapterPolicies.every(({ chapterId }) =>
@@ -287,7 +329,158 @@ function createLearningMockServer() {
     };
   }
 
+  function getSkill(courseId, skillId) {
+    const skill = skills.get(skillId);
+    return requireResource(skill?.courseId === courseId ? skill : undefined);
+  }
+
+  const skillHandlers = {
+    listCourseSkills(courseId, _body, actor) {
+      return {
+        skills: [...skills.values()]
+          .filter(
+            (skill) =>
+              skill.courseId === courseId &&
+              (actor.role !== 'STUDENT' || skill.status === 'ACTIVE'),
+          )
+          .sort(
+            (a, b) =>
+              a.createdAt.localeCompare(b.createdAt) ||
+              a.id.localeCompare(b.id),
+          ),
+      };
+    },
+    createCourseSkill(courseId, body) {
+      const now = new Date().toISOString();
+      const skill = {
+        id: randomUUID(),
+        courseId,
+        name: body.name.trim(),
+        description: body.description.trim(),
+        status: 'ACTIVE',
+        version: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      skills.set(skill.id, skill);
+      return skill;
+    },
+    updateCourseSkill(courseId, body, _actor, skillId) {
+      const skill = getSkill(courseId, skillId);
+      if (skill.version !== body.expectedVersion)
+        throw new MockApiError('VERSION_CONFLICT', 'Reload the latest skill');
+      for (const key of ['name', 'description', 'status']) {
+        if (body[key] !== undefined) skill[key] = body[key].trim();
+      }
+      skill.version += 1;
+      skill.updatedAt = new Date().toISOString();
+      return skill;
+    },
+    getCourseSkillReference(courseId, _body, _actor, skillId) {
+      return getSkill(courseId, skillId);
+    },
+    validateCourseSkills(courseId, { skillIds }) {
+      const rejected = skillIds
+        .map((id) => id.toLowerCase())
+        .filter((id) => {
+          const skill = skills.get(id);
+          return skill?.courseId !== courseId || skill.status !== 'ACTIVE';
+        });
+      if (rejected.length) {
+        throw new MockApiError(
+          'INVALID_SKILL_REFERENCE',
+          'All new skills must be active and belong to the course',
+          { skillIds: rejected },
+        );
+      }
+    },
+  };
+
+  function fixtureMastery() {
+    const { skillId } = masteryFixtures.question;
+    const grades = [...syncedAttempts.values()]
+      .filter(({ attemptId }) =>
+        masteryFixtures.attempts.some(
+          (sample) => sample.attemptId === attemptId,
+        ),
+      )
+      .sort((a, b) => Date.parse(a.gradedAt) - Date.parse(b.gradedAt));
+    let totalScore = 0;
+    let totalMaxScore = 0;
+    let questionCount = 0;
+    return grades.map((grade, index) => {
+      const [skillScore] = grade.skillScores;
+      totalScore += skillScore.score;
+      totalMaxScore += skillScore.maxScore;
+      questionCount += skillScore.questionCount;
+      const scorePercent = (totalScore / totalMaxScore) * 100;
+      return {
+        attemptId: grade.attemptId,
+        assessmentVersion: grade.assessmentVersion,
+        contentVersion,
+        gradedAt: grade.gradedAt,
+        effectiveAt: grade.gradedAt,
+        algorithmVersion: masteryFixtures.algorithmVersion,
+        skills: [
+          {
+            skillId,
+            skillName: skills.get(skillId).name,
+            scorePercent,
+            level:
+              scorePercent >= 70
+                ? 'PROFICIENT'
+                : scorePercent >= 40
+                  ? 'DEVELOPING'
+                  : 'BEGINNER',
+            evidenceCount: index + 1,
+            questionCount,
+          },
+        ],
+      };
+    });
+  }
+
+  function refreshFixtureMastery() {
+    const points = fixtureMastery();
+    const recordedAt = new Date().toISOString();
+    for (const point of points) {
+      if (!masterySnapshots.has(point.attemptId))
+        masterySnapshots.set(point.attemptId, { ...point, recordedAt });
+    }
+    const skills = points.at(-1)?.skills ?? [];
+    if (!masteryCurrent || !isDeepStrictEqual(masteryCurrent.skills, skills)) {
+      const timestamp = masteryCurrent
+        ? Math.max(Date.now(), Date.parse(masteryCurrent.updatedAt) + 1)
+        : Date.now();
+      masteryCurrent = {
+        courseId,
+        userId,
+        skills,
+        algorithmVersion: masteryFixtures.algorithmVersion,
+        updatedAt: new Date(timestamp).toISOString(),
+      };
+    }
+    return points;
+  }
+
   const handlers = {
+    ...skillHandlers,
+    getMastery() {
+      refreshFixtureMastery();
+      return masteryCurrent;
+    },
+    listMasteryHistory({ page, limit }) {
+      const points = refreshFixtureMastery()
+        .reverse()
+        .map(({ attemptId }) => masterySnapshots.get(attemptId));
+      const start = (page - 1) * limit;
+      return {
+        items: points.slice(start, start + limit),
+        total: points.length,
+        page,
+        limit,
+      };
+    },
     getCourseProgress() {
       const totalRequiredItems = completionPolicy.requiredItemIds.length;
       const completedRequiredItems = completionPolicy.requiredItemIds.filter(
@@ -672,7 +865,7 @@ function createLearningMockServer() {
       service === 'learning' && Object.hasOwn(handlers, operationId),
   ).map((endpoint) => ({
     ...endpoint,
-    pattern: new RegExp(`^${endpoint.path.replace('{id}', '([^/]+)')}$`),
+    pattern: new RegExp(`^${endpoint.path.replace(/\{\w+\}/g, '([^/]+)')}$`),
   }));
   return createServer(async (request, response) => {
     const incoming = request.headers['x-request-id'];
@@ -684,6 +877,33 @@ function createLearningMockServer() {
     try {
       const url = new URL(request.url, 'http://localhost');
       const method = request.method.toLowerCase();
+      // Quiz fixture response for the existing internal getAssessmentSummary contract.
+      const quizGrade =
+        method === 'get' &&
+        /^\/api\/v1\/internal\/attempts\/([^/]+)\/graded$/.exec(url.pathname);
+      if (quizGrade) {
+        const token =
+          process.env.QUIZ_SERVICE_TOKEN ?? 'quiz-mock-service-token';
+        if (request.headers.authorization !== `Bearer ${token}`)
+          throw new MockApiError(
+            'UNAUTHORIZED',
+            'A valid Quiz service credential is required',
+          );
+        if (url.search)
+          throw new MockApiError(
+            'VALIDATION_ERROR',
+            'Unexpected query parameters',
+          );
+        const id = parseContract('Uuid', quizGrade[1]).toLowerCase();
+        const grade = requireResource(
+          [...events.values()].find(({ payload }) => payload.attemptId === id),
+        );
+        send(response, 200, {
+          data: parseContract('GradedAssessmentSummary', grade.payload),
+          meta: { requestId },
+        });
+        return;
+      }
       const mockEvent = method === 'post' && url.pathname === '/__mock/events';
       const route = routes.find(
         (endpoint) =>
@@ -692,10 +912,15 @@ function createLearningMockServer() {
       if (!route && !mockEvent)
         throw new MockApiError('NOT_FOUND', 'Mock route not found');
       const internal = route?.access === 'INTERNAL';
+      const skillRoute =
+        route && Object.hasOwn(skillHandlers, route.operationId);
+      const internalToken = skillRoute
+        ? (process.env.LEARNING_SKILL_LOOKUP_TOKEN ??
+          'learning-mock-skill-token')
+        : (process.env.LEARNING_SERVICE_TOKEN ?? 'learning-mock-service-token');
       if (
         internal &&
-        request.headers.authorization !==
-          `Bearer ${process.env.LEARNING_SERVICE_TOKEN ?? 'learning-mock-service-token'}`
+        request.headers.authorization !== `Bearer ${internalToken}`
       )
         throw new MockApiError(
           'UNAUTHORIZED',
@@ -709,7 +934,7 @@ function createLearningMockServer() {
         );
       }
       const actor = identity[name];
-      if (route?.access === 'COURSE_OWNER') {
+      if (!skillRoute && route?.access === 'COURSE_OWNER') {
         if (actor.role !== 'INSTRUCTOR' && actor.role !== 'ADMIN')
           throw new MockApiError(
             'FORBIDDEN',
@@ -728,7 +953,11 @@ function createLearningMockServer() {
         actor.role !== 'STUDENT'
       ) {
         throw new MockApiError('FORBIDDEN', 'A student account is required');
-      } else if (route?.access !== 'AUTHENTICATED' && actor.id !== userId) {
+      } else if (
+        !skillRoute &&
+        route?.access !== 'AUTHENTICATED' &&
+        actor.id !== userId
+      ) {
         throw new MockApiError(
           route?.access === 'ATTEMPT_OWNER'
             ? 'NOT_ATTEMPT_OWNER'
@@ -757,10 +986,38 @@ function createLearningMockServer() {
         }
         data = applyFixtureEvent(body.event);
       } else {
-        const [, rawId] = route.pattern.exec(url.pathname);
+        const [, rawId, rawSkillId] = route.pattern.exec(url.pathname);
         const id =
-          rawId === undefined ? undefined : parseContract('Uuid', rawId);
-        if (route.path.includes('/courses/')) requireResource(id === courseId);
+          rawId === undefined
+            ? undefined
+            : parseContract('Uuid', rawId).toLowerCase();
+        const skillId =
+          rawSkillId === undefined
+            ? undefined
+            : parseContract('Uuid', rawSkillId).toLowerCase();
+        if (skillRoute && !internal) {
+          if (route.method === 'get' && actor.role === 'STUDENT') {
+            if (id !== courseId || actor.id !== userId)
+              throw new MockApiError(
+                'ENROLLMENT_REQUIRED',
+                'Course access is required',
+              );
+          } else {
+            if (actor.role !== 'INSTRUCTOR' && actor.role !== 'ADMIN')
+              throw new MockApiError(
+                'FORBIDDEN',
+                'An active instructor or admin is required',
+              );
+            const ownerId = requireResource(skillCourses.get(id));
+            if (actor.role === 'INSTRUCTOR' && actor.id !== ownerId)
+              throw new MockApiError(
+                'NOT_COURSE_OWNER',
+                'Course belongs to another instructor',
+              );
+          }
+        } else if (!skillRoute && route.path.includes('/courses/')) {
+          requireResource(id === courseId);
+        }
         const body = route.request
           ? parseContract(route.request, await readJson(request))
           : undefined;
@@ -768,7 +1025,7 @@ function createLearningMockServer() {
           data = handlers[route.operationId](readPageQuery(url.searchParams));
           for (const item of data.items) parseContract(route.response, item);
         } else {
-          data = handlers[route.operationId](id, body, actor);
+          data = handlers[route.operationId](id, body, actor, skillId);
           if (route.response && (data !== null || !route.nullable))
             parseContract(route.response, data);
         }
@@ -787,7 +1044,7 @@ function createLearningMockServer() {
         error: {
           code,
           message: expected ? error.message : 'Unexpected mock server error',
-          details: {},
+          details: error instanceof MockApiError ? error.details : {},
         },
         requestId,
         timestamp: new Date().toISOString(),

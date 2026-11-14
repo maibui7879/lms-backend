@@ -8,6 +8,8 @@ Learning có API ghi nhận hoàn thành item, đọc tiến độ khóa, xem tr
 
 Course sở hữu cấu trúc/requirements/enrollment; Quiz sở hữu câu hỏi và kết quả chấm. Learning không tự tạo danh sách required lessons hoặc chấm lại quiz.
 
+PRG-01 đến PRG-08 đã qua rà soát và kiểm thử bởi hai agent: bộ đầy đủ 56/56 E2E với PostgreSQL/RabbitMQ và 10/10 mock API; vòng độc lập 32/32 E2E thuộc ba suite và 10/10 mock. Course/Quiz vẫn là provider giả. Khóa chỉ báo `COMPLETED` khi đủ policy và các bài bắt buộc đã được xác nhận qua PRG-01; thời điểm hoàn thành bao gồm lần xác nhận bài cuối. Quiz bị sửa dùng đúng phiên bản và ngưỡng mới, không loại kết quả hợp lệ do migration đến muộn. Chi tiết và ví dụ nằm trong [WORK.md](../../WORK.md) và [báo cáo kiểm thử](test/TEST_REPORT.md).
+
 ## Contracts phải đọc
 
 | Nguồn                                                                                                                                                | Mục đích                                                       |
@@ -287,7 +289,7 @@ Terminal khác: `Invoke-RestMethod http://127.0.0.1:3004/` chỉ smoke check sca
 
 ### Chạy API tiến độ
 
-Dùng PostgreSQL của Learning và một bản Course đã có API ghi danh, outline và completion policy. Bật mock auth trong cả hai service ở chế độ development. Learning gọi Course qua HTTP với danh tính mock đã được guard xác thực. Dùng mã khóa, item và `contentVersion` thuộc enrollment thực của học viên trên Course.
+Dùng PostgreSQL của Learning và một bản Course có API ghi danh cùng API internal trả cấu trúc theo phiên bản. Bật mock auth cho API học viên ở chế độ development. Learning lấy snapshot bằng credential service và `contentVersion` thuộc enrollment của học viên.
 
 ```powershell
 npm.cmd run build -w @lms/contracts -w @lms/auth -w @lms/learning-service
@@ -295,6 +297,7 @@ $env:NODE_ENV='development'
 $env:MOCK_AUTH='true'
 $env:DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/learning'
 $env:COURSE_URL='http://127.0.0.1:3002'
+$env:COURSE_SERVICE_TOKEN='TOKEN_NOI_BO_DO_COURSE_CAP'
 npm.cmd run migration:run -w @lms/learning-service
 npm.cmd run start:dev -w @lms/learning-service
 ```
@@ -315,7 +318,7 @@ Thay `DATABASE_URL` bằng kết nối PostgreSQL của Learning trước khi ch
 
 Mỗi item chỉ có một bản ghi hoàn thành theo enrollment và `contentVersion`. `progressPercent` đếm item bắt buộc, còn `lessonProgressPercent` đếm các bài bắt buộc đã xác nhận hoàn thành. API trạng thái chương đọc `chapterPolicies` theo phiên bản ghi danh. Chương đã đủ điều kiện trả `COMPLETED`. Khi chương trước còn thiếu điều kiện, chương sau trả `LOCKED` với lý do `PREVIOUS_CHAPTER_NOT_COMPLETED`.
 
-Khi phiên bản hiện tại khác phiên bản ghi danh, đặt `COURSE_SERVICE_TOKEN` để Learning hỏi API nội bộ của Course về cấu trúc đã ghi danh. Nếu Course chưa phục vụ được bản đó, Learning trả `409 CONTENT_VERSION_MISMATCH`.
+Mọi lần đọc cấu trúc dùng `GET /api/v1/internal/courses/{id}/structure?contentVersion={enrollment.contentVersion}` với `COURSE_SERVICE_TOKEN`. Learning kiểm tra khóa và phiên bản của cả outline lẫn policy. Nếu Course chưa phục vụ được bản đó, Learning trả `409 CONTENT_VERSION_MISMATCH`. Thiếu credential trả `503`.
 
 Với **PRG-01**, API đọc tiến độ bài trả `IN_PROGRESS` khi đã hoàn thành ít nhất một item. API ghi hoàn thành bài kiểm tra các item bắt buộc theo policy và quyền vào bài. Khi đủ điều kiện, nó lưu một dòng theo enrollment, `contentVersion` và `lessonId`. Gửi lại cùng yêu cầu giữ nguyên `completedAt`.
 
