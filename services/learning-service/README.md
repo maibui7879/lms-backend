@@ -4,7 +4,7 @@ Owner: chưa chốt tên. Workspace `@lms/learning-service`, port mặc định 
 
 ## Trạng thái và phạm vi
 
-Learning có API ghi nhận hoàn thành item, đọc tiến độ khóa và xem trạng thái từng chương với PostgreSQL và xác thực mock cho local/test. Consumer nhận kết quả chấm quiz để áp dụng policy của chương và khóa. Học viên có thể xem trạng thái đồng bộ kết quả quiz (`PRG-06`). Lộ trình tiếp theo bao gồm resume, mastery và certificate. MongoDB Atlas dự kiến phục vụ activity và read model.
+Learning có API ghi nhận hoàn thành item, đọc tiến độ khóa, xem trạng thái từng chương, lưu vị trí học tiếp và đọc dashboard với PostgreSQL và xác thực mock cho local/test. Consumer nhận kết quả chấm quiz để áp dụng policy của chương và khóa. Học viên có thể xem trạng thái đồng bộ kết quả quiz (`PRG-06`). Lộ trình tiếp theo bao gồm mastery và certificate. MongoDB Atlas dự kiến phục vụ activity và read model.
 
 Course sở hữu cấu trúc/requirements/enrollment; Quiz sở hữu câu hỏi và kết quả chấm. Learning không tự tạo danh sách required lessons hoặc chấm lại quiz.
 
@@ -304,11 +304,32 @@ Thay `DATABASE_URL` bằng kết nối PostgreSQL của Learning trước khi ch
 | Method | Path | Dữ liệu gửi |
 | --- | --- | --- |
 | PUT | `/api/v1/learning/items/{id}/completion` | `{ "completed": true, "contentVersion": 1 }` với phiên bản đã ghi danh |
+| GET | `/api/v1/learning/lessons/{id}/progress` | Trạng thái bài học và các item trong bài |
+| PUT | `/api/v1/learning/lessons/{id}/completion` | `{ "completed": true, "contentVersion": 1 }` với phiên bản đã ghi danh |
 | GET | `/api/v1/learning/courses/{id}/progress` | |
 | GET | `/api/v1/learning/courses/{id}/chapters/access` | |
+| GET | `/api/v1/learning/me/dashboard` | Tiến độ theo bài, quiz đã chấm gần đây và bước học tiếp |
+| GET | `/api/v1/learning/courses/{id}/resume` | Vị trí đã lưu trong lượt ghi danh hiện tại hoặc `data: null` |
+| PUT | `/api/v1/learning/courses/{id}/resume` | Mã bài, mã mục học, phiên bản nội dung, vị trí video và `expectedRevision` |
 | GET | `/api/v1/learning/attempts/{id}/sync` | Chỉ chủ lượt làm có quyền xem |
 
-Mỗi item chỉ có một bản ghi hoàn thành theo enrollment và `contentVersion`. Tiến độ phần trăm chỉ đếm item bắt buộc. API trạng thái chương đọc `chapterPolicies` theo phiên bản ghi danh. Chương đã đủ điều kiện trả `COMPLETED`. Khi chương trước còn thiếu điều kiện, chương sau trả `LOCKED` với lý do `PREVIOUS_CHAPTER_NOT_COMPLETED`.
+Mỗi item chỉ có một bản ghi hoàn thành theo enrollment và `contentVersion`. `progressPercent` đếm item bắt buộc, còn `lessonProgressPercent` đếm các bài bắt buộc đã xác nhận hoàn thành. API trạng thái chương đọc `chapterPolicies` theo phiên bản ghi danh. Chương đã đủ điều kiện trả `COMPLETED`. Khi chương trước còn thiếu điều kiện, chương sau trả `LOCKED` với lý do `PREVIOUS_CHAPTER_NOT_COMPLETED`.
+
+Khi phiên bản hiện tại khác phiên bản ghi danh, đặt `COURSE_SERVICE_TOKEN` để Learning hỏi API nội bộ của Course về cấu trúc đã ghi danh. Nếu Course chưa phục vụ được bản đó, Learning trả `409 CONTENT_VERSION_MISMATCH`.
+
+Với **PRG-01**, API đọc tiến độ bài trả `IN_PROGRESS` khi đã hoàn thành ít nhất một item. API ghi hoàn thành bài kiểm tra các item bắt buộc theo policy và quyền vào bài. Khi đủ điều kiện, nó lưu một dòng theo enrollment, `contentVersion` và `lessonId`. Gửi lại cùng yêu cầu giữ nguyên `completedAt`.
+
+Với **PRG-03**, `GET /api/v1/learning/courses/{id}/chapters/access` trả `completedLessons`, `totalLessons` và `progressPercent` cho mỗi chương. Tỷ lệ tính theo số bài đã xác nhận hoàn thành qua PRG-01 trên tổng số bài trong phiên bản ghi danh. Chương rỗng trả `0%`. Trường `status` vẫn xét các item và quiz bắt buộc theo policy, vì vậy thanh tiến độ bài học có thể đạt `100%` trong khi chương chờ quiz.
+
+Với **PRG-08**, lần lưu đầu gửi `expectedRevision: 0`. Các lần sau gửi số `revision` trong dữ liệu vừa đọc hoặc lưu thành công. Khi gặp `409 REVISION_CONFLICT`, đọc lại vị trí mới nhất bằng `GET`. [Ví dụ lưu ở giây 60 trên Postman](../../WORK.md#prg-08--lưu-thời-điểm-học-gần-nhất)
+
+### Học lại nội dung sau critical revision
+
+Theo [hướng dẫn migration của nhóm](../../packages/contracts/docs/learning-migration-guide.md), Learning có `POST /api/v1/internal/courses/{id}/migrations`. Endpoint dùng `Authorization: Bearer <LEARNING_SERVICE_TOKEN>` và trả `204`. Policy `REQUIRE_RECOMPLETION` đánh dấu đúng item thành `OUTDATED`, làm giảm tiến độ liên quan và áp dụng lại điều kiện mở chương. `NOTIFY_ONLY` giữ kết quả đã học và ghi lý do thông báo.
+
+Dữ liệu cũ được nâng thành `COMPLETED`. Khi học lại hợp lệ, item chuyển về `COMPLETED` và xóa metadata invalidation. Enrollment giữ phiên bản đã ghi danh, attempt quiz cũ được giữ để audit. Quiz bị thay đổi cần kết quả đạt của assessmentVersion mới.
+
+Learning bổ sung contract `getCourseItemMigrationContext` để lấy revision đã xuất bản và liên hệ item cũ–mới bằng credential `COURSE_SERVICE_TOKEN`. Course cần triển khai endpoint này và phục vụ nội dung đã sửa tương ứng cho người học cũ. Test hiện dùng Course giả lập. [Danh sách file, request mock và ví dụ học lại](../../WORK.md#học-lại-sau-khi-course-sửa-nội-dung)
 
 Đặt `RABBITMQ_URL` trước khi khởi động Learning để bật consumer. Quiz gửi JSON `AttemptGradedV2Event` đến exchange topic `lms.events` với routing key `quiz.attempt.graded.v2`. Learning đăng ký queue bền vững `learning.quiz-results.v2` và ACK sau khi lưu kết quả vào PostgreSQL. Khóa duy nhất theo `eventId` và cặp `attemptId`/`assessmentVersion` chống ghi trùng.
 
@@ -345,16 +366,21 @@ Gửi header `X-Mock-User: studentB` trong Postman. Với `PUT` hoặc `POST`, c
 | Method | Path | Dữ liệu gửi |
 | --- | --- | --- |
 | GET | `/api/v1/learning/courses/{courseId}/progress` | |
+| GET | `/api/v1/learning/me/dashboard` | `studentB` có khóa mẫu. `studentA` có danh sách rỗng. |
 | GET | `/api/v1/learning/courses/{courseId}/chapters/access` | |
 | PUT | `/api/v1/learning/items/{itemId}/completion` | `{ "completed": true, "contentVersion": 1 }` |
 | GET | `/api/v1/learning/lessons/{lessonId}/progress` | |
 | PUT | `/api/v1/learning/lessons/{lessonId}/completion` | `{ "completed": true, "contentVersion": 1 }` |
+| GET | `/api/v1/learning/courses/{courseId}/me/quiz-scores` | `X-Mock-User: studentB`. Tùy chọn `?page=1&limit=20`. |
+| GET | `/api/v1/learning/courses/{courseId}/quiz-scores` | `X-Mock-User: instructorA` hoặc `adminA`. Có cùng tùy chọn phân trang. |
 | GET | `/api/v1/learning/courses/{courseId}/resume` | |
 | PUT | `/api/v1/learning/courses/{courseId}/resume` | `requests.saveResume` trong [fixture kịch bản](test/fixtures/learning-scenarios.mock.json) |
 | GET | `/api/v1/learning/attempts/{attemptId}/sync` | |
 | POST | `/__mock/events` | `{ "event": "chapterAttempt79" }`, `{ "event": "chapterAttempt80" }` hoặc `{ "event": "attemptGraded" }` |
 
 Để thử mở khóa chương, dùng `courseId=33333333-3333-4333-8333-333333333333` và hoàn thành video có `itemId=00000000-0000-4000-8000-000000000221`. Gửi event `chapterAttempt79` rồi đọc lại `chapters/access` để thấy chương 2 vẫn khóa. Gửi `chapterAttempt80` và đọc lại để thấy chương 1 `COMPLETED`, chương 2 `UNLOCKED`. Ngưỡng 80 lấy từ policy của bộ dữ liệu mẫu.
+
+Để thử **PRG-04 – Tổng hợp điểm quiz**, dùng cùng `courseId` và gọi `me/quiz-scores` hoặc `quiz-scores`. Trước khi mock nhận event, danh sách rỗng. Sau `chapterAttempt79` rồi `chapterAttempt80`, API trả một nhóm gồm hai lượt đã chấm, điểm cao nhất 80% và `passed: true`. [Các bước và kết quả mong đợi](../../WORK.md#prg-04--tổng-hợp-điểm-quiz)
 
 ```powershell
 npm.cmd run test:mock -w @lms/learning-service

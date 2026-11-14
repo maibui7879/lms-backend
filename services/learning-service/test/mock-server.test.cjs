@@ -25,10 +25,18 @@ async function start(t) {
 
   return async function call(
     path,
-    { method = 'GET', body, user = 'studentB', status = 200, schema } = {},
+    {
+      method = 'GET',
+      body,
+      user = 'studentB',
+      status = 200,
+      schema,
+      serviceToken,
+    } = {},
   ) {
     const headers = { 'X-Request-Id': 'learning-mock-test' };
     if (user) headers['X-Mock-User'] = user;
+    if (serviceToken) headers.Authorization = `Bearer ${serviceToken}`;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     const response = await fetch(
       `http://127.0.0.1:${server.address().port}${path}`,
@@ -38,6 +46,10 @@ async function start(t) {
         body: body === undefined ? undefined : JSON.stringify(body),
       },
     );
+    if (response.status === 204) {
+      assert.equal(status, 204);
+      return null;
+    }
     const payload = await response.json();
     assert.equal(response.status, status, JSON.stringify(payload));
     assert.equal(response.headers.get('x-request-id'), 'learning-mock-test');
@@ -49,6 +61,271 @@ async function start(t) {
     return schema ? parseContract(schema, payload.data) : payload.data;
   };
 }
+
+test('PRG-04 shows synced quiz scores to the learner and course owner', async (t) => {
+  const call = await start(t);
+  const mine = `${coursePath}/me/quiz-scores`;
+  const owner = `${coursePath}/quiz-scores`;
+  const apply = (event) =>
+    call('/__mock/events', { method: 'POST', body: { event } });
+  const empty = { items: [], page: 1, limit: 20, total: 0 };
+  assert.deepEqual(await call(mine), empty);
+  assert.deepEqual(await call(owner, { user: 'instructorA' }), empty);
+  assert.equal(
+    (await call(mine, { user: 'studentA', status: 403 })).code,
+    'ENROLLMENT_REQUIRED',
+  );
+  assert.equal(
+    (await call(owner, { user: 'instructorB', status: 403 })).code,
+    'NOT_COURSE_OWNER',
+  );
+  assert.equal((await call(owner, { status: 403 })).code, 'FORBIDDEN');
+  await call(`${mine}?page=1&page=2`, { status: 400 });
+
+  await apply('chapterAttempt79');
+  const { userId, courseId, quizId, assessmentVersion } =
+    quiz.chapterAttempt79.payload;
+  const initial = {
+    userId,
+    courseId,
+    quizId,
+    assessmentVersion,
+    gradedAttempts: 1,
+    bestScorePercent: 79,
+    passed: false,
+  };
+  assert.deepEqual((await call(mine)).items, [initial]);
+
+  await apply('chapterAttempt80');
+  await apply('chapterAttempt80');
+  const summary = await call(`${mine}?limit=1`);
+  assert.deepEqual(summary, {
+    items: [
+      { ...initial, gradedAttempts: 2, bestScorePercent: 80, passed: true },
+    ],
+    total: 1,
+    page: 1,
+    limit: 1,
+  });
+  assert.deepEqual(
+    await call(`${owner}?limit=1`, { user: 'instructorA' }),
+    summary,
+  );
+  assert.deepEqual(await call(`${owner}?limit=1`, { user: 'adminA' }), summary);
+});
+
+test('PRG-05 shows lesson progress, latest activity and a valid next step', async (t) => {
+  const call = await start(t);
+  const dashboard = (user = 'studentB') =>
+    call(`${base}/me/dashboard`, { user, schema: 'LearningDashboardData' });
+  assert.deepEqual((await dashboard('studentA')).courses, []);
+  const initial = await dashboard();
+  assert.deepEqual(initial.recentQuizzes, []);
+  assert.equal(initial.courses[0].lessonProgressPercent, 0);
+  const checkpoint = await call(`${coursePath}/resume`, {
+    method: 'PUT',
+    body: requests.saveResume,
+  });
+  const resumed = (await dashboard()).courses[0];
+  assert.equal(resumed.lastActivityAt, checkpoint.updatedAt);
+  assert.equal(resumed.nextStep.positionSeconds, 60);
+  await call(videoPath, { method: 'PUT', body: requests.completeItem });
+  assert.equal((await dashboard()).courses[0].nextStep.kind, 'COMPLETE_LESSON');
+  await call(`${lessonPath}/completion`, {
+    method: 'PUT',
+    body: requests.completeItem,
+  });
+  await call('/__mock/events', {
+    method: 'POST',
+    body: { event: 'chapterAttempt79' },
+  });
+  const updated = await dashboard();
+  assert.equal(updated.courses[0].lessonProgressPercent, 50);
+  assert.equal(updated.courses[0].nextStep.kind, 'QUIZ');
+  assert.equal(updated.recentQuizzes[0].scorePercent, 79);
+  assert.equal(updated.recentQuizzes[0].passed, false);
+});
+
+test('PRG-01 to PRG-08 completes the full Postman workflow with mock providers', async (t) => {
+  const call = await start(t);
+  const dashboardPath = `${base}/me/dashboard`;
+  const apply = (event) =>
+    call('/__mock/events', { method: 'POST', body: { event } });
+  const completion = { method: 'PUT', body: requests.completeItem };
+  const progress = () =>
+    call(`${coursePath}/progress`, { schema: 'CourseProgressData' });
+  assert.equal((await progress()).status, 'NOT_STARTED');
+  assert.equal(await call(`${coursePath}/resume`), null);
+  const saved = await call(`${coursePath}/resume`, {
+    method: 'PUT',
+    body: requests.saveResume,
+  });
+  assert.equal(
+    (await call(dashboardPath)).courses[0].nextStep.positionSeconds,
+    saved.positionSeconds,
+  );
+  assert.equal((await progress()).lessonProgressPercent, 0);
+
+  await call(videoPath, completion);
+  await call(`${lessonPath}/completion`, completion);
+  await apply('chapterAttempt79');
+  const chapterScores = await call(`${coursePath}/me/quiz-scores`);
+  assert.equal(chapterScores.items[0].passed, false);
+  assert.equal((await progress()).lessonProgressPercent, 50);
+  assert.equal(
+    (await call(`${coursePath}/chapters/access`)).chapters[1].status,
+    'LOCKED',
+  );
+  assert.deepEqual(
+    await call(`${coursePath}/quiz-scores`, { user: 'instructorA' }),
+    chapterScores,
+  );
+
+  await apply('chapterAttempt80');
+  assert.equal(
+    (await call(`${coursePath}/chapters/access`)).chapters[1].status,
+    'UNLOCKED',
+  );
+  await call(readingPath, completion);
+  await call(
+    `${base}/lessons/${chapter2.lessons[0].id}/completion`,
+    completion,
+  );
+  const awaitingQuiz = await progress();
+  assert.equal(awaitingQuiz.lessonProgressPercent, 100);
+  assert.equal(awaitingQuiz.status, 'IN_PROGRESS');
+
+  await apply('attemptGraded');
+  const done = await progress();
+  assert.equal(done.status, 'COMPLETED');
+  assert.equal(done.passedRequiredAssessments, 1);
+  const sync = await call(
+    `${base}/attempts/${quiz.attemptGraded.payload.attemptId}/sync`,
+  );
+  assert.equal(sync.status, 'SYNCED');
+  const dashboard = await call(dashboardPath, {
+    schema: 'LearningDashboardData',
+  });
+  assert.equal(dashboard.courses[0].nextStep, null);
+  assert.equal(dashboard.recentQuizzes.length, 3);
+
+  await apply('attemptGraded');
+  assert.deepEqual(await progress(), done);
+  assert.deepEqual(await call(dashboardPath), dashboard);
+});
+
+test('critical migration invalidates a selected item and is idempotent after relearning', async (t) => {
+  const call = await start(t);
+  const migration = {
+    revisionId: '00000000-0000-4000-8000-000000000901',
+    itemIds: ['00000000-0000-4000-8000-000000000902'],
+    reason: 'Video đã được chỉnh sửa',
+    policy: 'REQUIRE_RECOMPLETION',
+  };
+  const internalPath = `/api/v1/internal/courses/${course.enrollment.courseId}/migrations`;
+  const apply = (policy = migration.policy) =>
+    call(internalPath, {
+      method: 'POST',
+      body: { ...migration, policy },
+      status: 204,
+      serviceToken:
+        process.env.LEARNING_SERVICE_TOKEN ?? 'learning-mock-service-token',
+    });
+  await call(internalPath, { method: 'POST', body: migration, status: 401 });
+  const saved = await call(`${coursePath}/resume`, {
+    method: 'PUT',
+    body: requests.saveResume,
+  });
+  await call(videoPath, { method: 'PUT', body: requests.completeItem });
+  await call(`${lessonPath}/completion`, {
+    method: 'PUT',
+    body: requests.completeItem,
+  });
+  await apply('NOTIFY_ONLY');
+  await apply();
+  const state = await call(`${lessonPath}/progress`, {
+    schema: 'LessonProgressData',
+  });
+  assert.equal(state.status, 'OUTDATED');
+  assert.equal(state.items[0].status, 'OUTDATED');
+  assert.equal(state.items[0].invalidationReason, migration.reason);
+  assert.deepEqual(await call(`${coursePath}/resume`), {
+    ...saved,
+    positionSeconds: 0,
+  });
+  const moved = await call(`${coursePath}/resume`, {
+    method: 'PUT',
+    body: {
+      ...requests.saveResume,
+      positionSeconds: 15,
+      expectedRevision: saved.revision,
+    },
+  });
+  assert.equal(moved.revision, saved.revision + 1);
+  assert.equal((await call(`${coursePath}/progress`)).lessonProgressPercent, 0);
+  await call(videoPath, { method: 'PUT', body: requests.completeItem });
+  await call(`${lessonPath}/completion`, {
+    method: 'PUT',
+    body: requests.completeItem,
+  });
+  await apply();
+  assert.equal(
+    (await call(`${coursePath}/progress`)).lessonProgressPercent,
+    50,
+  );
+  assert.equal(
+    (await call(`${lessonPath}/progress`)).items[0].invalidatedAt,
+    null,
+  );
+  assert.equal(
+    (await call(`${lessonPath}/progress`)).items[0].invalidationReason,
+    null,
+  );
+});
+
+test('keeps an unaffected checkpoint while its chapter is temporarily locked by migration', async (t) => {
+  const call = await start(t);
+  await call(videoPath, { method: 'PUT', body: requests.completeItem });
+  await call(`${lessonPath}/completion`, {
+    method: 'PUT',
+    body: requests.completeItem,
+  });
+  await call('/__mock/events', {
+    method: 'POST',
+    body: { event: 'chapterAttempt80' },
+  });
+  const checkpoint = await call(`${coursePath}/resume`, {
+    method: 'PUT',
+    body: requests.resumeChapter2,
+  });
+  await call(
+    `/api/v1/internal/courses/${course.enrollment.courseId}/migrations`,
+    {
+      method: 'POST',
+      serviceToken:
+        process.env.LEARNING_SERVICE_TOKEN ?? 'learning-mock-service-token',
+      status: 204,
+      body: {
+        revisionId: '00000000-0000-4000-8000-000000000901',
+        itemIds: ['00000000-0000-4000-8000-000000000902'],
+        reason: 'Học lại video ở chương trước',
+        policy: 'REQUIRE_RECOMPLETION',
+      },
+    },
+  );
+  await call(`${coursePath}/resume`, { status: 403 });
+  const dashboard = await call(`${base}/me/dashboard`);
+  assert.equal(
+    dashboard.courses[0].nextStep.learningItemId,
+    expected.videoCompleted.learningItemId,
+  );
+  await call(videoPath, { method: 'PUT', body: requests.completeItem });
+  await call(`${lessonPath}/completion`, {
+    method: 'PUT',
+    body: requests.completeItem,
+  });
+  assert.deepEqual(await call(`${coursePath}/resume`), checkpoint);
+});
 
 test('reads progress and rejects unauthorized or invalid input', async (t) => {
   const call = await start(t);
@@ -113,6 +390,23 @@ test('records item and lesson completion idempotently', async (t) => {
   const progress = await call(`${coursePath}/progress`);
   assert.equal(progress.completedRequiredItems, 1);
   assert.equal(progress.progressPercent, 50);
+  const chapterAccess = await call(`${coursePath}/chapters/access`, {
+    schema: 'CourseChapterAccessData',
+  });
+  assert.deepEqual(
+    chapterAccess.chapters.map(
+      ({ completedLessons, totalLessons, progressPercent, status }) => [
+        completedLessons,
+        totalLessons,
+        progressPercent,
+        status,
+      ],
+    ),
+    [
+      [1, 1, 100, 'UNLOCKED'],
+      [0, 1, 0, 'LOCKED'],
+    ],
+  );
 });
 
 test('keeps the next chapter locked after a failed grade and opens it after a pass', async (t) => {

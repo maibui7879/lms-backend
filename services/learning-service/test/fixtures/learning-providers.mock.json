@@ -17,6 +17,18 @@
       "email": "instructorA@example.test",
       "role": "INSTRUCTOR",
       "status": "ACTIVE"
+    },
+    "instructorB": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "email": "instructorB@example.test",
+      "role": "INSTRUCTOR",
+      "status": "ACTIVE"
+    },
+    "adminA": {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "email": "adminA@example.test",
+      "role": "ADMIN",
+      "status": "ACTIVE"
     }
   },
   "course": {

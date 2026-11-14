@@ -18,7 +18,10 @@ import { AssessmentAttempt } from '../src/modules/progress-sync/entities/assessm
 import { AssessmentSyncReceipt } from '../src/modules/progress-sync/entities/assessment-sync-receipt.entity';
 import { AssessmentAttemptsRepository } from '../src/modules/progress-sync/repositories/assessment-attempts.repository';
 import { ItemCompletion } from '../src/modules/progress/entities/item-completion.entity';
+import { LearningResume } from '../src/modules/progress/entities/learning-resume.entity';
+import { LessonCompletion } from '../src/modules/progress/entities/lesson-completion.entity';
 import providers from './fixtures/learning-providers.mock.json';
+import scenarios from './fixtures/learning-scenarios.mock.json';
 
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const brokerUrl = process.env.TEST_RABBITMQ_URL;
@@ -27,6 +30,7 @@ const exchange = 'lms.events';
 const queue = 'learning.quiz-results.v2';
 const dlq = `${queue}.dlq`;
 const serviceToken = 'fixture-quiz-service-token';
+const courseServiceToken = 'fixture-course-service-token';
 const learner = 'studentB';
 
 async function waitFor<T>(
@@ -79,13 +83,31 @@ suite(
     const { courseId, userId, contentVersion } = enrollment;
     const coursePath = `/api/v1/courses/${courseId}`;
     const learningPath = `/api/v1/learning/courses/${courseId}`;
+    const scoreCourse = { ...courseData, id: randomUUID() };
+    const scoreEnrollment = {
+      ...enrollment,
+      courseId: scoreCourse.id,
+      enrollmentId: randomUUID(),
+    };
+    const resumeEnrollment = { ...enrollment, enrollmentId: randomUUID() };
+    const secondCoursePolicy = {
+      ...structure.completionPolicy,
+      courseId: scoreCourse.id,
+      requiredItemIds: [],
+      chapterPolicies: [],
+    };
     const [chapterOne, chapterTwo] = structure.outline.chapters;
-    const video = chapterOne.lessons[0].items[0];
-    const reading = chapterTwo.lessons[0].items[0];
+    const [firstLesson] = chapterOne.lessons;
+    const [secondLesson] = chapterTwo.lessons;
+    const [video, optionalReading] = firstLesson.items;
+    const [reading] = secondLesson.items;
     const attempts = new Map<string, AttemptGradedV2Event>();
     const events = new Set<string>();
     let enrollmentActive = false;
+    let currentEnrollment = enrollment;
+    let scoreEnrollmentActive = false;
     let outlineVersion = contentVersion;
+    let oldSnapshotAvailable = false;
 
     function makeEvent(fixture: unknown): AttemptGradedV2Event {
       const original = parseContract('AttemptGradedV2Event', fixture);
@@ -123,11 +145,26 @@ suite(
       await source.runMigrations();
       course = await listen((req, res) => {
         const url = new URL(req.url ?? '/', 'http://localhost');
+        if (url.pathname === `/api/v1/internal/courses/${courseId}/structure`) {
+          if (req.headers.authorization !== `Bearer ${courseServiceToken}`)
+            return res.writeHead(401).end();
+          if (
+            !oldSnapshotAvailable ||
+            url.searchParams.get('contentVersion') !== String(contentVersion)
+          )
+            return res.writeHead(409).end();
+          return json(res, structure);
+        }
         if (url.pathname === '/api/v1/enrollments/me') {
-          const items =
+          const progressEnrollment =
             enrollmentActive && req.headers['x-mock-user'] === learner
-              ? [{ enrollment, course: courseData }]
+              ? [{ enrollment: currentEnrollment, course: courseData }]
               : [];
+          const scoreEnrollments =
+            scoreEnrollmentActive && req.headers['x-mock-user'] === learner
+              ? [{ enrollment: scoreEnrollment, course: scoreCourse }]
+              : [];
+          const items = [...progressEnrollment, ...scoreEnrollments];
           return json(res, {
             items,
             page: Number(url.searchParams.get('page')),
@@ -135,6 +172,19 @@ suite(
             total: items.length,
           });
         }
+        if (url.pathname === `/api/v1/courses/${scoreCourse.id}`)
+          return json(res, scoreCourse);
+        if (url.pathname === `/api/v1/courses/${scoreCourse.id}/outline`)
+          return json(res, {
+            ...structure.outline,
+            courseId: scoreCourse.id,
+            chapters: [],
+          });
+        if (
+          url.pathname === `/api/v1/courses/${scoreCourse.id}/completion-policy`
+        )
+          return json(res, secondCoursePolicy);
+        if (url.pathname === coursePath) return json(res, courseData);
         if (url.pathname === `${coursePath}/outline`)
           return json(res, {
             ...structure.outline,
@@ -161,8 +211,8 @@ suite(
           res,
           parseContract('AttemptAccessData', {
             attemptId: event.payload.attemptId,
-            userId,
-            courseId,
+            userId: event.payload.userId,
+            courseId: event.payload.courseId,
             eventId: event.eventId,
             attemptStatus: 'SUBMITTED',
             gradingStatus: 'GRADED',
@@ -193,6 +243,10 @@ suite(
       );
     }, 20000);
 
+    afterEach(() => {
+      scoreEnrollmentActive = false;
+    });
+
     afterAll(async () => {
       await app?.close();
       await broker?.close();
@@ -208,6 +262,15 @@ suite(
         await source
           .getRepository(ItemCompletion)
           .delete({ enrollmentId: enrollment.enrollmentId });
+        await source
+          .getRepository(ItemCompletion)
+          .delete({ enrollmentId: resumeEnrollment.enrollmentId });
+        await source
+          .getRepository(LessonCompletion)
+          .delete({ enrollmentId: enrollment.enrollmentId });
+        await source
+          .getRepository(LearningResume)
+          .delete({ enrollmentId: resumeEnrollment.enrollmentId });
         await source.destroy();
       }
       process.env = oldEnv;
@@ -219,6 +282,19 @@ suite(
         .set('X-Mock-User', student);
     }
 
+    function dashboard(student = learner) {
+      return request(app!.getHttpServer())
+        .get('/api/v1/learning/me/dashboard')
+        .set('X-Mock-User', student);
+    }
+
+    async function dashboardData(student = learner) {
+      return parseContract(
+        'LearningDashboardData',
+        (await dashboard(student).expect(200)).body.data,
+      );
+    }
+
     function complete(itemId: string, version = contentVersion) {
       return request(app!.getHttpServer())
         .put(`/api/v1/learning/items/${itemId}/completion`)
@@ -226,15 +302,26 @@ suite(
         .send({ completed: true, contentVersion: version });
     }
 
-    async function chapterStates() {
+    function lessonProgress(lessonId: string, student = learner) {
+      return request(app!.getHttpServer())
+        .get(`/api/v1/learning/lessons/${lessonId}/progress`)
+        .set('X-Mock-User', student);
+    }
+
+    function completeLesson(lessonId: string, version = contentVersion) {
+      return request(app!.getHttpServer())
+        .put(`/api/v1/learning/lessons/${lessonId}/completion`)
+        .set('X-Mock-User', learner)
+        .send({ completed: true, contentVersion: version });
+    }
+
+    async function chapterAccess() {
       const result = await request(app!.getHttpServer())
         .get(`${learningPath}/chapters/access`)
         .set('X-Mock-User', learner)
         .expect(200);
-      return parseContract(
-        'CourseChapterAccessData',
-        result.body.data,
-      ).chapters.map(({ status, reason }) => [status, reason]);
+      return parseContract('CourseChapterAccessData', result.body.data)
+        .chapters;
     }
 
     function sync(event: AttemptGradedV2Event, student = learner) {
@@ -256,18 +343,458 @@ suite(
     async function syncStatus(
       event: AttemptGradedV2Event,
       status: 'PENDING' | 'SYNCED' | 'FAILED',
+      student = learner,
     ) {
       return waitFor(async () => {
-        const result = await sync(event).expect(200);
+        const result = await sync(event, student).expect(200);
         const data = parseContract('ProgressSyncData', result.body.data);
         return data.status === status ? data : undefined;
       }, status);
     }
 
-    it('PRG-01/02/03/06/07 moves an enrolled learner from zero to course completion', async () => {
+    it('PRG-04 summarizes synced grades by learner, quiz and version with scoped access', async () => {
+      scoreEnrollmentActive = true;
+      const ownPath = `/api/v1/learning/courses/${scoreCourse.id}/me/quiz-scores`;
+      const ownerPath = `/api/v1/learning/courses/${scoreCourse.id}/quiz-scores`;
+      const scores = (path: string, user: string) =>
+        request(app!.getHttpServer())
+          .get(path)
+          .set('X-Mock-User', user)
+          .set('X-Request-Id', 'prg04-workflow');
+      const mine = () => scores(ownPath, learner);
+
+      const empty = await mine()
+        .expect(200)
+        .expect('X-Request-Id', 'prg04-workflow');
+      expect(empty.body).toEqual({
+        data: { items: [], total: 0, page: 1, limit: 20 },
+        meta: { requestId: 'prg04-workflow' },
+      });
+      expect(
+        (await scores(ownPath, 'studentA').expect(403)).body.error.code,
+      ).toBe('ENROLLMENT_REQUIRED');
+      expect(
+        (await scores(ownerPath, 'instructorB').expect(403)).body.error.code,
+      ).toBe('NOT_COURSE_OWNER');
+      expect(
+        (await scores(ownerPath, learner).expect(403)).body.error.code,
+      ).toBe('FORBIDDEN');
+      await scores(`${ownPath}?page=1&page=2`, learner).expect(400);
+      await scores(`${ownPath}?limit=101`, learner).expect(400);
+      await scores(`${ownPath}?userId=${userId}`, learner).expect(400);
+
+      const failedFixture = providers.quiz.chapterAttempt79;
+      const passedFixture = providers.quiz.chapterAttempt80;
+      const failed = makeEvent({
+        ...failedFixture,
+        payload: { ...failedFixture.payload, courseId: scoreCourse.id },
+      });
+      const passed = makeEvent({
+        ...passedFixture,
+        payload: {
+          ...passedFixture.payload,
+          courseId: scoreCourse.id,
+          score: 8,
+          maxScore: 10,
+        },
+      });
+      expect((await mine().expect(200)).body.data.total).toBe(0);
+
+      await publish(failed);
+      await syncStatus(failed, 'SYNCED');
+      const first = {
+        userId,
+        courseId: scoreCourse.id,
+        quizId: failed.payload.quizId,
+        assessmentVersion: failed.payload.assessmentVersion,
+        gradedAttempts: 1,
+        bestScorePercent: 79,
+        passed: false,
+      };
+      expect((await mine().expect(200)).body.data.items).toEqual([first]);
+
+      await publish(passed);
+      await syncStatus(passed, 'SYNCED');
+      const duplicate = { ...passed, eventId: randomUUID() };
+      events.add(duplicate.eventId);
+      attempts.set(passed.payload.attemptId, duplicate);
+      await publish(duplicate);
+      await syncStatus(duplicate, 'SYNCED');
+
+      const nextVersion = makeEvent({
+        ...failed,
+        payload: {
+          ...failed.payload,
+          assessmentVersion: first.assessmentVersion + 1,
+        },
+      });
+      const practice = makeEvent({
+        ...passed,
+        payload: { ...passed.payload, quizType: 'PRACTICE', score: 10 },
+      });
+      const beforeEnrollment = makeEvent({
+        ...passed,
+        payload: {
+          ...passed.payload,
+          gradedAt: '2026-01-15T08:59:00Z',
+          score: 9,
+        },
+      });
+      const otherLearnerId = providers.identity.studentA.id;
+      const otherLearner = makeEvent({
+        ...passed,
+        payload: { ...passed.payload, userId: otherLearnerId, score: 9.5 },
+      });
+      for (const event of [
+        nextVersion,
+        practice,
+        beforeEnrollment,
+        otherLearner,
+      ]) {
+        await publish(event);
+        await syncStatus(
+          event,
+          'SYNCED',
+          event === otherLearner ? 'studentA' : learner,
+        );
+      }
+
+      const second = {
+        ...first,
+        assessmentVersion: first.assessmentVersion + 1,
+      };
+      const myFirst = {
+        ...first,
+        gradedAttempts: 2,
+        bestScorePercent: 80,
+        passed: true,
+      };
+      expect((await mine().expect(200)).body.data).toEqual({
+        items: [myFirst, second],
+        total: 2,
+        page: 1,
+        limit: 20,
+      });
+      expect(
+        (await scores(`${ownPath}?page=2&limit=1`, learner).expect(200)).body
+          .data,
+      ).toEqual({
+        items: [second],
+        total: 2,
+        page: 2,
+        limit: 1,
+      });
+      expect(
+        (await scores(`${ownPath}?page=3&limit=1`, learner).expect(200)).body
+          .data,
+      ).toEqual({
+        items: [],
+        total: 2,
+        page: 3,
+        limit: 1,
+      });
+
+      const ownerScores = (await scores(ownerPath, 'instructorA').expect(200))
+        .body.data;
+      expect(ownerScores.total).toBe(3);
+      expect(ownerScores.items).toEqual([
+        { ...myFirst, gradedAttempts: 3, bestScorePercent: 90 },
+        second,
+        {
+          ...myFirst,
+          userId: otherLearnerId,
+          gradedAttempts: 1,
+          bestScorePercent: 95,
+        },
+      ]);
+      expect((await scores(ownerPath, 'adminA').expect(200)).body.data).toEqual(
+        ownerScores,
+      );
+    }, 25000);
+
+    it('PRG-06/07 handles concurrent duplicate grades and preserves the original result on conflict', async () => {
+      const event = makeEvent({
+        ...providers.quiz.attemptGraded,
+        payload: {
+          ...providers.quiz.attemptGraded.payload,
+          courseId: randomUUID(),
+        },
+      });
+      const duplicate = { ...event, eventId: randomUUID() };
+      events.add(duplicate.eventId);
+      const repository = app!.get(AssessmentAttemptsRepository);
+      const results = await Promise.all([
+        repository.record(event),
+        repository.record(duplicate),
+      ]);
+      expect(results).toEqual(['SYNCED', 'SYNCED']);
+      const stored = source!.getRepository(AssessmentAttempt);
+      const receipts = source!.getRepository(AssessmentSyncReceipt);
+      expect(await stored.countBy({ attemptId: event.payload.attemptId })).toBe(
+        1,
+      );
+      expect(
+        (await receipts.findOneByOrFail({ eventId: event.eventId })).status,
+      ).toBe('SYNCED');
+      expect(
+        (await receipts.findOneByOrFail({ eventId: duplicate.eventId })).status,
+      ).toBe('SYNCED');
+
+      const conflicting = {
+        ...event,
+        payload: { ...event.payload, score: 0, passed: false },
+      };
+      await publish(conflicting);
+      const deadLetter = await waitFor(
+        async () => (await publisher.get(dlq, { noAck: false })) || undefined,
+        'conflicting result in DLQ',
+      );
+      expect(deadLetter.properties.headers?.['x-learning-failure']).toBe(
+        'EVENT_CONFLICT',
+      );
+      expect(JSON.parse(deadLetter.content.toString('utf8'))).toEqual(
+        conflicting,
+      );
+      publisher.ack(deadLetter);
+      expect(
+        (
+          await stored.findOneByOrFail({
+            attemptId: event.payload.attemptId,
+            assessmentVersion: event.payload.assessmentVersion,
+          })
+        ).result,
+      ).toMatchObject({
+        ...event.payload,
+        gradedAt: new Date(event.payload.gradedAt).toISOString(),
+      });
+      expect(
+        (await receipts.findOneByOrFail({ eventId: event.eventId })).status,
+      ).toBe('SYNCED');
+
+      const invalid = {
+        ...event,
+        eventId: randomUUID(),
+        payload: { ...event.payload, attemptId: randomUUID(), maxScore: 0 },
+      };
+      events.add(invalid.eventId);
+      await publish(invalid);
+      const invalidLetter = await waitFor(
+        async () => (await publisher.get(dlq, { noAck: false })) || undefined,
+        'invalid result in DLQ',
+      );
+      expect(invalidLetter.properties.headers?.['x-learning-failure']).toBe(
+        'INVALID_RESULT',
+      );
+      publisher.ack(invalidLetter);
+      expect(
+        await stored.countBy({ attemptId: invalid.payload.attemptId }),
+      ).toBe(0);
+      expect(await receipts.countBy({ eventId: invalid.eventId })).toBe(0);
+    });
+
+    it('PRG-05/08 resumes the learner and orders enrolled courses by latest activity', async () => {
+      const path = `${learningPath}/resume`;
+      const get = (user = learner) =>
+        request(app!.getHttpServer()).get(path).set('X-Mock-User', user);
+      const save = (overrides = {}) =>
+        request(app!.getHttpServer())
+          .put(path)
+          .set('X-Mock-User', learner)
+          .send({ ...scenarios.requests.saveResume, ...overrides });
+
+      enrollmentActive = true;
+      currentEnrollment = resumeEnrollment;
+      try {
+        scoreEnrollmentActive = true;
+        const initialDashboard = await dashboardData();
+        expect(initialDashboard.courses).toHaveLength(2);
+        expect(
+          initialDashboard.courses.find(
+            (entry) => entry.courseId === scoreCourse.id,
+          ),
+        ).toMatchObject({
+          totalRequiredLessons: 0,
+          completedRequiredLessons: 0,
+          lessonProgressPercent: 0,
+          nextStep: { kind: 'QUIZ' },
+        });
+        expect(initialDashboard.recentQuizzes).toEqual([]);
+        expect(await dashboardData('studentA')).toMatchObject({
+          courses: [],
+          recentQuizzes: [],
+        });
+        expect(await dashboardData('instructorA')).toMatchObject({
+          courses: [],
+          recentQuizzes: [],
+        });
+        await dashboard('invalid').expect(401);
+        expect((await get().expect(200)).body.data).toBeNull();
+        await get('studentA').expect(403);
+        expect(
+          (await save({ expectedRevision: 1 }).expect(409)).body.error.code,
+        ).toBe('REVISION_CONFLICT');
+        expect(
+          (await save({ contentVersion: contentVersion + 1 }).expect(409)).body
+            .error.code,
+        ).toBe('CONTENT_VERSION_MISMATCH');
+        expect(
+          (await save({ lessonId: secondLesson.id }).expect(422)).body.error
+            .code,
+        ).toBe('INVALID_LESSON_RELATION');
+        expect(
+          (await save(scenarios.requests.resumeChapter2).expect(403)).body.error
+            .code,
+        ).toBe('PREREQUISITE_NOT_COMPLETED');
+        const laterItem = {
+          learningItemId: optionalReading.id,
+          positionSeconds: null,
+        };
+        await save(laterItem).expect(403);
+        await save({ positionSeconds: null }).expect(400);
+        await save({ positionSeconds: 181 }).expect(400);
+        expect((await get().expect(200)).body.data).toBeNull();
+
+        const initialProgress = (await progress().expect(200)).body.data;
+        const firstWrites = await Promise.all([
+          save(),
+          save({ positionSeconds: 0 }),
+        ]);
+        expect(
+          firstWrites.map(({ status }) => status).sort((a, b) => a - b),
+        ).toEqual([200, 409]);
+        const first = parseContract(
+          'LearningResumeData',
+          firstWrites.find(({ status }) => status === 200)!.body.data,
+        );
+        expect(first).toMatchObject({
+          courseId,
+          userId,
+          contentVersion,
+          lessonId: firstLesson.id,
+          learningItemId: video.id,
+          revision: 1,
+        });
+        expect((await get().expect(200)).body.data).toEqual(first);
+        const resumedDashboard = await dashboardData();
+        expect(resumedDashboard.courses[0]).toMatchObject({
+          courseId,
+          lastActivityAt: first.updatedAt,
+          lessonProgressPercent: 0,
+          nextStep: {
+            kind: 'LEARNING_ITEM',
+            lessonId: firstLesson.id,
+            learningItemId: video.id,
+            positionSeconds: first.positionSeconds,
+          },
+        });
+        expect(resumedDashboard.updatedAt).toBe(first.updatedAt);
+
+        const updates = await Promise.all([
+          save({ positionSeconds: 120.5, expectedRevision: 1 }),
+          save({ positionSeconds: 180, expectedRevision: 1 }),
+        ]);
+        expect(
+          updates.map(({ status }) => status).sort((a, b) => a - b),
+        ).toEqual([200, 409]);
+        expect(
+          updates.find(({ status }) => status === 409)?.body.error.code,
+        ).toBe('REVISION_CONFLICT');
+        const latest = parseContract(
+          'LearningResumeData',
+          updates.find(({ status }) => status === 200)!.body.data,
+        );
+        expect(latest.revision).toBe(2);
+        expect([120.5, 180]).toContain(latest.positionSeconds);
+        expect((await get().expect(200)).body.data).toEqual(latest);
+        expect((await progress().expect(200)).body.data).toEqual(
+          initialProgress,
+        );
+        expect(
+          await source!.getRepository(LearningResume).countBy({
+            enrollmentId: resumeEnrollment.enrollmentId,
+          }),
+        ).toBe(1);
+
+        await complete(video.id).expect(200);
+        await save({
+          ...laterItem,
+          positionSeconds: 60,
+          expectedRevision: 2,
+        }).expect(400);
+        const readingCheckpoint = parseContract(
+          'LearningResumeData',
+          (await save({ ...laterItem, expectedRevision: 2 }).expect(200)).body
+            .data,
+        );
+        expect(readingCheckpoint).toMatchObject({
+          learningItemId: optionalReading.id,
+          positionSeconds: null,
+          revision: 3,
+        });
+        expect((await get().expect(200)).body.data).toEqual(readingCheckpoint);
+
+        outlineVersion = contentVersion + 1;
+        expect((await get().expect(409)).body.error.code).toBe(
+          'CONTENT_VERSION_MISMATCH',
+        );
+        outlineVersion = contentVersion;
+        currentEnrollment = { ...resumeEnrollment, status: 'CANCELLED' };
+        await get().expect(403);
+        await save({ expectedRevision: 3 }).expect(403);
+        expect(
+          (await dashboardData()).courses.map((entry) => entry.courseId),
+        ).toEqual([scoreCourse.id]);
+        currentEnrollment = enrollment;
+        expect((await get().expect(200)).body.data).toBeNull();
+        currentEnrollment = {
+          ...resumeEnrollment,
+          contentVersion: contentVersion + 1,
+        };
+        expect((await get().expect(200)).body.data).toBeNull();
+      } finally {
+        currentEnrollment = enrollment;
+        outlineVersion = contentVersion;
+        enrollmentActive = false;
+      }
+    });
+
+    it('PRG-01/02/03/05/06/07 moves an enrolled learner from zero to course completion', async () => {
       await progress().expect(403);
+      await lessonProgress(firstLesson.id).expect(403);
       enrollmentActive = true;
       await progress('studentA').expect(403);
+      await lessonProgress(firstLesson.id, 'studentA').expect(403);
+      await lessonProgress(randomUUID()).expect(404);
+      await request(app!.getHttpServer())
+        .put(`/api/v1/learning/lessons/${firstLesson.id}/completion`)
+        .set('X-Mock-User', learner)
+        .send({ completed: false, contentVersion })
+        .expect(400);
+      const untouched = await lessonProgress(firstLesson.id).expect(200);
+      expect(
+        parseContract('LessonProgressData', untouched.body.data),
+      ).toMatchObject({
+        lessonId: firstLesson.id,
+        status: 'NOT_STARTED',
+        completedAt: null,
+      });
+      const lessonRows = source!.getRepository(LessonCompletion);
+      const lessonKey = {
+        enrollmentId: enrollment.enrollmentId,
+        contentVersion,
+        lessonId: firstLesson.id,
+      };
+      expect(
+        (await completeLesson(firstLesson.id).expect(409)).body.error.code,
+      ).toBe('COURSE_REQUIREMENTS_NOT_MET');
+      expect(
+        (await completeLesson(firstLesson.id, contentVersion + 1).expect(409))
+          .body.error.code,
+      ).toBe('CONTENT_VERSION_MISMATCH');
+      expect(
+        (await completeLesson(secondLesson.id).expect(403)).body.error.code,
+      ).toBe('PREREQUISITE_NOT_COMPLETED');
+      expect(await lessonRows.countBy(lessonKey)).toBe(0);
       expect((await progress().expect(200)).body.data).toMatchObject({
         status: 'NOT_STARTED',
         progressPercent: 0,
@@ -294,7 +821,65 @@ suite(
           .getRepository(ItemCompletion)
           .countBy({ enrollmentId: enrollment.enrollmentId }),
       ).toBe(1);
-      expect((await progress().expect(200)).body.data.progressPercent).toBe(50);
+      expect((await progress().expect(200)).body.data).toMatchObject({
+        progressPercent: 50,
+        completedRequiredLessons: 0,
+        lessonProgressPercent: 0,
+      });
+      expect((await dashboardData()).courses[0].nextStep).toEqual({
+        kind: 'COMPLETE_LESSON',
+        lessonId: firstLesson.id,
+      });
+
+      const started = await lessonProgress(firstLesson.id).expect(200);
+      expect(
+        parseContract('LessonProgressData', started.body.data),
+      ).toMatchObject({
+        status: 'IN_PROGRESS',
+        completedAt: null,
+      });
+      expect(await chapterAccess()).toMatchObject([
+        {
+          completedLessons: 0,
+          totalLessons: 1,
+          progressPercent: 0,
+          status: 'UNLOCKED',
+        },
+        {
+          completedLessons: 0,
+          totalLessons: 1,
+          progressPercent: 0,
+          status: 'LOCKED',
+        },
+      ]);
+      const lessonResults = await Promise.all([
+        completeLesson(firstLesson.id).expect(200),
+        completeLesson(firstLesson.id).expect(200),
+      ]);
+      const finished = parseContract(
+        'LessonProgressData',
+        lessonResults[0].body.data,
+      );
+      expect(finished).toMatchObject({
+        status: 'COMPLETED',
+        completedAt: expect.any(String),
+      });
+      expect(finished.items).toContainEqual({
+        learningItemId: optionalReading.id,
+        contentVersion,
+        status: 'NOT_STARTED',
+        completedAt: null,
+        invalidatedAt: null,
+        invalidationReason: null,
+      });
+      expect(lessonResults[1].body.data).toEqual(finished);
+      expect(
+        (await lessonProgress(firstLesson.id).expect(200)).body.data,
+      ).toEqual(finished);
+      expect(
+        (await lessonRows.findOneByOrFail(lessonKey)).completedAt.toISOString(),
+      ).toBe(finished.completedAt);
+      expect(await lessonRows.countBy(lessonKey)).toBe(1);
 
       const failed = makeEvent(providers.quiz.chapterAttempt79);
       expect((await sync(failed).expect(200)).body.data.status).toBe('PENDING');
@@ -303,17 +888,58 @@ suite(
       );
       await publish(failed);
       await syncStatus(failed, 'SYNCED');
-      expect(await chapterStates()).toEqual([
-        ['UNLOCKED', null],
-        ['LOCKED', 'PREVIOUS_CHAPTER_NOT_COMPLETED'],
+      const awaitingChapterQuiz = await dashboardData();
+      expect(awaitingChapterQuiz.courses[0]).toMatchObject({
+        completedRequiredLessons: 1,
+        totalRequiredLessons: 2,
+        lessonProgressPercent: 50,
+        nextStep: {
+          kind: 'QUIZ',
+          quizId: failed.payload.quizId,
+          assessmentVersion: failed.payload.assessmentVersion,
+        },
+      });
+      expect(awaitingChapterQuiz.recentQuizzes).toMatchObject([
+        {
+          attemptId: failed.payload.attemptId,
+          scorePercent: 79,
+          passed: false,
+        },
+      ]);
+      expect((await dashboardData('studentA')).recentQuizzes).toEqual([]);
+      expect(await chapterAccess()).toMatchObject([
+        {
+          completedLessons: 1,
+          totalLessons: 1,
+          progressPercent: 100,
+          status: 'UNLOCKED',
+          reason: null,
+        },
+        {
+          completedLessons: 0,
+          totalLessons: 1,
+          progressPercent: 0,
+          status: 'LOCKED',
+          reason: 'PREVIOUS_CHAPTER_NOT_COMPLETED',
+        },
       ]);
 
       const passed = makeEvent(providers.quiz.chapterAttempt80);
       await publish(passed);
       const originalReceipt = await syncStatus(passed, 'SYNCED');
-      expect(await chapterStates()).toEqual([
-        ['COMPLETED', null],
-        ['UNLOCKED', null],
+      expect(await chapterAccess()).toMatchObject([
+        {
+          completedLessons: 1,
+          totalLessons: 1,
+          progressPercent: 100,
+          status: 'COMPLETED',
+        },
+        {
+          completedLessons: 0,
+          totalLessons: 1,
+          progressPercent: 0,
+          status: 'UNLOCKED',
+        },
       ]);
       const duplicate = { ...passed, eventId: randomUUID() };
       events.add(duplicate.eventId);
@@ -328,11 +954,36 @@ suite(
       ).toBe(1);
       attempts.set(passed.payload.attemptId, passed);
       expect(await syncStatus(passed, 'SYNCED')).toEqual(originalReceipt);
+      const afterPass = await dashboardData();
+      expect(afterPass.courses[0].nextStep).toMatchObject({
+        kind: 'LEARNING_ITEM',
+        lessonId: secondLesson.id,
+        learningItemId: reading.id,
+      });
+      expect(afterPass.recentQuizzes.map(({ attemptId }) => attemptId)).toEqual(
+        [passed.payload.attemptId, failed.payload.attemptId],
+      );
 
       await complete(reading.id).expect(200);
+      await completeLesson(secondLesson.id).expect(200);
+      expect(await chapterAccess()).toMatchObject([
+        {
+          completedLessons: 1,
+          totalLessons: 1,
+          progressPercent: 100,
+          status: 'COMPLETED',
+        },
+        {
+          completedLessons: 1,
+          totalLessons: 1,
+          progressPercent: 100,
+          status: 'COMPLETED',
+        },
+      ]);
       expect((await progress().expect(200)).body.data).toMatchObject({
         status: 'IN_PROGRESS',
         progressPercent: 100,
+        lessonProgressPercent: 100,
         passedRequiredAssessments: 0,
       });
       const finalGrade = makeEvent(providers.quiz.attemptGraded);
@@ -343,6 +994,7 @@ suite(
         progressPercent: 100,
         passedRequiredAssessments: 1,
       });
+      expect((await dashboardData()).courses[0].nextStep).toBeNull();
     }, 25000);
 
     it('PRG-06/07 rolls back a failed write, sends it to DLQ, then syncs on replay', async () => {
@@ -392,14 +1044,35 @@ suite(
       );
     }, 60000);
 
-    it('PRG-02/03 rejects a changed Course outline for a pinned enrollment', async () => {
+    it('PRG-01/02/03/05 uses a pinned snapshot when Course publishes a new outline', async () => {
       enrollmentActive = true;
       outlineVersion = contentVersion + 1;
+      const previousToken = process.env.COURSE_SERVICE_TOKEN;
       try {
+        delete process.env.COURSE_SERVICE_TOKEN;
         const result = await progress().expect(409);
         expect(result.body.error.code).toBe('CONTENT_VERSION_MISMATCH');
+        const lesson = await lessonProgress(firstLesson.id).expect(409);
+        expect(lesson.body.error.code).toBe('CONTENT_VERSION_MISMATCH');
+        process.env.COURSE_SERVICE_TOKEN = courseServiceToken;
+        await dashboard().expect(409);
+        oldSnapshotAvailable = true;
+        expect((await progress().expect(200)).body.data).toMatchObject({
+          contentVersion,
+          totalRequiredLessons: 2,
+          completedRequiredLessons: 2,
+          lessonProgressPercent: 100,
+        });
+        expect((await dashboardData()).courses[0]).toMatchObject({
+          contentVersion,
+          lessonProgressPercent: 100,
+        });
       } finally {
         outlineVersion = contentVersion;
+        oldSnapshotAvailable = false;
+        if (previousToken === undefined)
+          delete process.env.COURSE_SERVICE_TOKEN;
+        else process.env.COURSE_SERVICE_TOKEN = previousToken;
       }
     });
   },

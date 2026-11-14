@@ -18,6 +18,8 @@ import type { AssessmentSyncReceipt } from '../src/modules/progress-sync/entitie
 import { AssessmentAttemptsRepository } from '../src/modules/progress-sync/repositories/assessment-attempts.repository';
 import type { ItemCompletion } from '../src/modules/progress/entities/item-completion.entity';
 import { ItemCompletionsRepository } from '../src/modules/progress/repositories/item-completions.repository';
+import { LessonCompletionsRepository } from '../src/modules/progress/repositories/lesson-completions.repository';
+import { CourseItemMigrationsRepository } from '../src/modules/progress/repositories/course-item-migrations.repository';
 import providers from './fixtures/learning-providers.mock.json';
 import scenarios from './fixtures/learning-scenarios.mock.json';
 
@@ -219,6 +221,8 @@ describe('Learning progress (e2e)', () => {
           ),
         complete,
       })
+      .overrideProvider(LessonCompletionsRepository)
+      .useValue({ list: () => Promise.resolve([]) })
       .overrideProvider(AssessmentAttemptsRepository)
       .useValue({
         record,
@@ -239,6 +243,8 @@ describe('Learning progress (e2e)', () => {
             ),
           ),
       })
+      .overrideProvider(CourseItemMigrationsRepository)
+      .useValue({ list: () => Promise.resolve([]) })
       .compile();
     app = module.createNestApplication();
     await app.init();
@@ -610,6 +616,9 @@ describe('Learning progress (e2e)', () => {
           chapterId: chapterOne.id,
           order: chapterOne.order,
           contentVersion: enrollment.contentVersion,
+          completedLessons: 0,
+          totalLessons: 1,
+          progressPercent: 0,
           status: 'UNLOCKED',
           reason: null,
         },
@@ -617,6 +626,9 @@ describe('Learning progress (e2e)', () => {
           chapterId: chapterTwo.id,
           order: chapterTwo.order,
           contentVersion: enrollment.contentVersion,
+          completedLessons: 0,
+          totalLessons: 1,
+          progressPercent: 0,
           status: 'LOCKED',
           reason: 'PREVIOUS_CHAPTER_NOT_COMPLETED',
         },
