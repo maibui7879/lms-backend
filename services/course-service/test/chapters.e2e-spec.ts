@@ -11,6 +11,7 @@ import { ChaptersController } from '../src/modules/chapters/chapters.controller'
 import { ChaptersService } from '../src/modules/chapters/chapters.service';
 import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
 import { Course } from '../src/modules/courses/entities/course.entity';
+import { CourseRevision } from '../src/modules/course-revisions/entities/course-revision.entity';
 
 describe('Chapter endpoints (HTTP with repository test doubles)', () => {
   let app: INestApplication;
@@ -22,6 +23,7 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
     findOneBy: jest.fn(),
     update: jest.fn(),
   };
+  const revisionRepository = { findOneBy: jest.fn() };
   const chapterRepository = {
     create: jest.fn((value: unknown) => value),
     save: jest.fn(),
@@ -71,6 +73,10 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
         ChaptersService,
         { provide: getRepositoryToken(Chapter), useValue: chapterRepository },
         { provide: getRepositoryToken(Course), useValue: courseRepository },
+        {
+          provide: getRepositoryToken(CourseRevision),
+          useValue: revisionRepository,
+        },
         { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
@@ -123,6 +129,7 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
       .expect(201);
     expect(chapterRepository.create).toHaveBeenCalledWith({
       courseId,
+      revisionId: null,
       title: 'Chapter 2',
       order: 2,
       version: 1,

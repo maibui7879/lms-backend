@@ -10,6 +10,11 @@ import { CourseRevisionsController } from '../src/modules/course-revisions/cours
 import { CourseRevisionsService } from '../src/modules/course-revisions/course-revisions.service';
 import { CourseReview } from '../src/modules/course-revisions/entities/course-review.entity';
 import { Course } from '../src/modules/courses/entities/course.entity';
+import { CourseRevision } from '../src/modules/course-revisions/entities/course-revision.entity';
+import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
+import { Lesson } from '../src/modules/lessons/entities/lesson.entity';
+import { LearningItem } from '../src/modules/learning-items/entities/learning-item.entity';
+import { DataSource } from 'typeorm';
 
 describe('Course review endpoints (HTTP with repository test doubles)', () => {
   let app: INestApplication;
@@ -27,6 +32,22 @@ describe('Course review endpoints (HTTP with repository test doubles)', () => {
     create: jest.fn((value: unknown) => value),
     save: jest.fn(),
     findAndCount: jest.fn(),
+  };
+  const revisionRepository = {
+    findOneBy: jest.fn(),
+    findOne: jest.fn(),
+    findAndCount: jest.fn(),
+    update: jest.fn(),
+  };
+  const chapterRepository = { find: jest.fn() };
+  const lessonRepository = { find: jest.fn() };
+  const itemRepository = { find: jest.fn() };
+  const transactionManager = { update: jest.fn() };
+  const dataSource = {
+    transaction: jest.fn(
+      async (callback: (manager: typeof transactionManager) => unknown) =>
+        callback(transactionManager),
+    ),
   };
 
   const course = (status: string = 'DRAFT', version = 1) => ({
@@ -54,6 +75,17 @@ describe('Course review endpoints (HTTP with repository test doubles)', () => {
           provide: getRepositoryToken(CourseReview),
           useValue: reviewRepository,
         },
+        {
+          provide: getRepositoryToken(CourseRevision),
+          useValue: revisionRepository,
+        },
+        { provide: getRepositoryToken(Chapter), useValue: chapterRepository },
+        { provide: getRepositoryToken(Lesson), useValue: lessonRepository },
+        {
+          provide: getRepositoryToken(LearningItem),
+          useValue: itemRepository,
+        },
+        { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
     app = module.createNestApplication();
@@ -69,6 +101,9 @@ describe('Course review endpoints (HTTP with repository test doubles)', () => {
     courseRepository.findAndCount.mockResolvedValue([[course('IN_REVIEW')], 1]);
     courseRepository.update.mockResolvedValue({ affected: 1 });
     reviewRepository.findAndCount.mockResolvedValue([[], 0]);
+    chapterRepository.find.mockResolvedValue([]);
+    lessonRepository.find.mockResolvedValue([]);
+    itemRepository.find.mockResolvedValue([]);
     reviewRepository.save.mockImplementation(
       async (value: Record<string, unknown>) => ({
         ...value,

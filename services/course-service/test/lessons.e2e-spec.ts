@@ -11,6 +11,7 @@ import { LessonsController } from '../src/modules/lessons/lessons.controller';
 import { LessonsService } from '../src/modules/lessons/lessons.service';
 import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
 import { Course } from '../src/modules/courses/entities/course.entity';
+import { CourseRevision } from '../src/modules/course-revisions/entities/course-revision.entity';
 import { Lesson } from '../src/modules/lessons/entities/lesson.entity';
 
 describe('Lesson endpoints (HTTP with repository test doubles)', () => {
@@ -21,6 +22,7 @@ describe('Lesson endpoints (HTTP with repository test doubles)', () => {
   const lessonB = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   const owner = getMockUser('instructorA');
   const courseRepository = { findOneBy: jest.fn(), update: jest.fn() };
+  const revisionRepository = { findOneBy: jest.fn() };
   const chapterRepository = { findOneBy: jest.fn() };
   const lessonRepository = {
     create: jest.fn((value: unknown) => value),
@@ -75,6 +77,10 @@ describe('Lesson endpoints (HTTP with repository test doubles)', () => {
         { provide: getRepositoryToken(Lesson), useValue: lessonRepository },
         { provide: getRepositoryToken(Chapter), useValue: chapterRepository },
         { provide: getRepositoryToken(Course), useValue: courseRepository },
+        {
+          provide: getRepositoryToken(CourseRevision),
+          useValue: revisionRepository,
+        },
         { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
@@ -126,6 +132,7 @@ describe('Lesson endpoints (HTTP with repository test doubles)', () => {
     expect(lessonRepository.create).toHaveBeenCalledWith({
       courseId,
       chapterId,
+      revisionId: null,
       title: 'Lesson 2',
       order: 2,
       version: 1,

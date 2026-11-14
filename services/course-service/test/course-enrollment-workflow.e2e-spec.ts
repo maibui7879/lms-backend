@@ -11,9 +11,12 @@ import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
 import { Lesson } from '../src/modules/lessons/entities/lesson.entity';
 import { LearningItem } from '../src/modules/learning-items/entities/learning-item.entity';
 import { Enrollment } from '../src/modules/enrollments/entities/enrollment.entity';
-import { CourseRevisionsModule } from '../src/modules/course-revisions/course-revisions.module';
+import { CourseRevisionsController } from '../src/modules/course-revisions/course-revisions.controller';
+import { CourseRevisionsService } from '../src/modules/course-revisions/course-revisions.service';
 import { CourseReview } from '../src/modules/course-revisions/entities/course-review.entity';
+import { CourseRevision } from '../src/modules/course-revisions/entities/course-revision.entity';
 import { EnrollmentsModule } from '../src/modules/enrollments/enrollments.module';
+import { DataSource } from 'typeorm';
 
 describe('Course creation to enrollment workflow', () => {
   let app: INestApplication;
@@ -57,12 +60,37 @@ describe('Course creation to enrollment workflow', () => {
     save: jest.fn(),
     findAndCount: jest.fn(),
   };
+  const revisionRepository = {};
+  const transactionManager = { update: jest.fn() };
+  const dataSource = {
+    transaction: jest.fn(
+      async (callback: (manager: typeof transactionManager) => unknown) =>
+        callback(transactionManager),
+    ),
+  };
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
     process.env.MOCK_AUTH = 'true';
     const module = await Test.createTestingModule({
-      imports: [CoursesModule, CourseRevisionsModule, EnrollmentsModule],
+      imports: [CoursesModule, EnrollmentsModule],
+      controllers: [CourseRevisionsController],
+      providers: [
+        CourseRevisionsService,
+        { provide: DataSource, useValue: dataSource },
+        { provide: getRepositoryToken(Course), useValue: courseRepository },
+        {
+          provide: getRepositoryToken(CourseReview),
+          useValue: reviewRepository,
+        },
+        {
+          provide: getRepositoryToken(CourseRevision),
+          useValue: revisionRepository,
+        },
+        { provide: getRepositoryToken(Chapter), useValue: chapterRepository },
+        { provide: getRepositoryToken(Lesson), useValue: lessonRepository },
+        { provide: getRepositoryToken(LearningItem), useValue: itemRepository },
+      ],
     })
       .overrideProvider(getRepositoryToken(Course))
       .useValue(courseRepository)
@@ -76,6 +104,10 @@ describe('Course creation to enrollment workflow', () => {
       .useValue(enrollmentRepository)
       .overrideProvider(getRepositoryToken(CourseReview))
       .useValue(reviewRepository)
+      .overrideProvider(getRepositoryToken(CourseRevision))
+      .useValue(revisionRepository)
+      .overrideProvider(DataSource)
+      .useValue(dataSource)
       .compile();
     app = module.createNestApplication();
     app.use(requestContext);

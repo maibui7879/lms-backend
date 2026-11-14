@@ -13,6 +13,7 @@ import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
 import { Course } from '../src/modules/courses/entities/course.entity';
 import { LearningItem } from '../src/modules/learning-items/entities/learning-item.entity';
 import { Lesson } from '../src/modules/lessons/entities/lesson.entity';
+import { CourseRevision } from '../src/modules/course-revisions/entities/course-revision.entity';
 
 describe('Completion policy endpoints', () => {
   let app: INestApplication;
@@ -22,8 +23,10 @@ describe('Completion policy endpoints', () => {
   const itemId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   const owner = getMockUser('instructorA');
   const courseRepository = { findOneBy: jest.fn(), update: jest.fn() };
+  const revisionRepository = { findOneBy: jest.fn() };
   const policyRepository = {
     findOneBy: jest.fn(),
+    findOne: jest.fn(),
     create: jest.fn((value: unknown) => value),
     save: jest.fn(),
   };
@@ -43,6 +46,10 @@ describe('Completion policy endpoints', () => {
           useValue: policyRepository,
         },
         { provide: getRepositoryToken(Course), useValue: courseRepository },
+        {
+          provide: getRepositoryToken(CourseRevision),
+          useValue: revisionRepository,
+        },
         { provide: getRepositoryToken(Chapter), useValue: chapterRepository },
         { provide: getRepositoryToken(Lesson), useValue: lessonRepository },
         { provide: getRepositoryToken(LearningItem), useValue: itemRepository },
@@ -65,6 +72,7 @@ describe('Completion policy endpoints', () => {
     });
     courseRepository.update.mockResolvedValue({ affected: 1 });
     policyRepository.findOneBy.mockResolvedValue(null);
+    policyRepository.findOne.mockResolvedValue(null);
     policyRepository.save.mockImplementation(async (value: unknown) => value);
     itemRepository.find.mockResolvedValue([
       {

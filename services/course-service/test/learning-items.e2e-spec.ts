@@ -12,6 +12,7 @@ import { LearningItem } from '../src/modules/learning-items/entities/learning-it
 import { Lesson } from '../src/modules/lessons/entities/lesson.entity';
 import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
 import { Course } from '../src/modules/courses/entities/course.entity';
+import { CourseRevision } from '../src/modules/course-revisions/entities/course-revision.entity';
 
 describe('Learning item endpoints', () => {
   let app: INestApplication;
@@ -22,6 +23,7 @@ describe('Learning item endpoints', () => {
   const itemB = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
   const owner = getMockUser('instructorA');
   const courseRepository = { findOneBy: jest.fn(), update: jest.fn() };
+  const revisionRepository = { findOneBy: jest.fn() };
   const chapterRepository = { find: jest.fn() };
   const lessonRepository = { findOneBy: jest.fn(), find: jest.fn() };
   const itemRepository = {
@@ -79,6 +81,10 @@ describe('Learning item endpoints', () => {
         { provide: getRepositoryToken(Lesson), useValue: lessonRepository },
         { provide: getRepositoryToken(Chapter), useValue: chapterRepository },
         { provide: getRepositoryToken(Course), useValue: courseRepository },
+        {
+          provide: getRepositoryToken(CourseRevision),
+          useValue: revisionRepository,
+        },
       ],
     }).compile();
     app = module.createNestApplication();
