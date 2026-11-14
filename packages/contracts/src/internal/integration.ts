@@ -1,6 +1,9 @@
 import type { Uuid } from '../http/common';
 import type { AccountStatus, UserRole } from '../http/auth';
-import type { CourseCompletionPolicy, CourseOutlineData } from '../http/course';
+import type {
+  CourseCompletionPolicy, CourseOutlineData, CourseRevisionData,
+  LearningItemData, RequiredAssessment,
+} from '../http/course';
 import type { CourseProgressData } from '../http/learning';
 import type { AttemptStatus, GradingStatus, QuizType } from '../http/quiz';
 
@@ -27,6 +30,15 @@ export interface CourseContentReference {
 export interface CourseLearningStructure {
   outline: CourseOutlineData;
   completionPolicy: CourseCompletionPolicy;
+}
+/** Course supplies immutable, published revision metadata and item lineage. */
+export interface CourseItemMigrationContext {
+  revision: CourseRevisionData;
+  items: {
+    item: LearningItemData;
+    previousItems: LearningItemData[];
+    requiredAssessment: RequiredAssessment | null;
+  }[];
 }
 export interface CourseAccessQuery {
   userId: Uuid;

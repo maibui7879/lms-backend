@@ -38,9 +38,11 @@ export interface SchemaTypes {
   CourseContentUpdatedEvent: Contracts.CourseContentUpdatedEvent;
   CourseContentUpdatedPayload: Contracts.CourseContentUpdatedPayload;
   CourseData: Contracts.CourseData;
+  CourseItemMigrationContext: Contracts.CourseItemMigrationContext;
   CourseLearnerData: Contracts.CourseLearnerData;
   CourseLearningStructure: Contracts.CourseLearningStructure;
   CourseOutlineData: Contracts.CourseOutlineData;
+  CoursePatchNoticeData: Contracts.CoursePatchNoticeData;
   CourseProgressData: Contracts.CourseProgressData;
   CourseProgressSummary: Contracts.CourseProgressSummary;
   CoursePublishedEvent: Contracts.CoursePublishedEvent;
@@ -48,6 +50,7 @@ export interface SchemaTypes {
   CourseQuery: Contracts.CourseQuery;
   CourseReviewData: Contracts.CourseReviewData;
   CourseReviewedEvent: Contracts.CourseReviewedEvent;
+  CourseRevisionChangeData: Contracts.CourseRevisionChangeData;
   CourseRevisionData: Contracts.CourseRevisionData;
   CourseRevisionStatus: Contracts.CourseRevisionStatus;
   CourseStatus: Contracts.CourseStatus;
@@ -85,9 +88,12 @@ export interface SchemaTypes {
   JwtClaims: Contracts.JwtClaims;
   LearnerAssessmentSummary: Contracts.LearnerAssessmentSummary;
   LearnerProgressSummary: Contracts.LearnerProgressSummary;
+  LearningDashboardCourse: Contracts.LearningDashboardCourse;
   LearningDashboardData: Contracts.LearningDashboardData;
   LearningItemContent: Contracts.LearningItemContent;
   LearningItemData: Contracts.LearningItemData;
+  LearningNextStep: Contracts.LearningNextStep;
+  LearningRecentQuiz: Contracts.LearningRecentQuiz;
   LearningResumeData: Contracts.LearningResumeData;
   LearningStatisticsData: Contracts.LearningStatisticsData;
   LearningStatus: Contracts.LearningStatus;
@@ -101,6 +107,8 @@ export interface SchemaTypes {
   LoginResponse: Contracts.LoginResponse;
   LogoutRequest: Contracts.LogoutRequest;
   MasteryData: Contracts.MasteryData;
+  MigrateCourseItemsRequest: Contracts.MigrateCourseItemsRequest;
+  MigrationPolicy: Contracts.MigrationPolicy;
   MutationHeaders: Contracts.MutationHeaders;
   PageQuery: Contracts.PageQuery;
   Permission: Contracts.Permission;
@@ -133,7 +141,10 @@ export interface SchemaTypes {
   RequiredAssessment: Contracts.RequiredAssessment;
   ReviewCourseRequest: Contracts.ReviewCourseRequest;
   ReviewCourseRevisionRequest: Contracts.ReviewCourseRevisionRequest;
+  RevisionChangeType: Contracts.RevisionChangeType;
+  RevisionEntityType: Contracts.RevisionEntityType;
   RevisionReorderRequest: Contracts.RevisionReorderRequest;
+  RevisionUpdateType: Contracts.RevisionUpdateType;
   RevisionVersionRequest: Contracts.RevisionVersionRequest;
   SaveAnswersRequest: Contracts.SaveAnswersRequest;
   SaveResumeRequest: Contracts.SaveResumeRequest;

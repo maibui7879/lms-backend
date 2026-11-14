@@ -20,10 +20,11 @@ export interface CourseData {
   updatedAt: string;
 }
 export type CourseRevisionStatus =
-  | 'DRAFT'
-  | 'IN_REVIEW'
-  | 'PUBLISHED'
-  | 'REJECTED';
+  'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'REJECTED';
+export type RevisionUpdateType = 'NORMAL' | 'CRITICAL';
+export type MigrationPolicy =
+  | 'KEEP_ENROLLED_VERSION'
+  | 'MIGRATE_AFFECTED_ITEMS';
 export interface CourseRevisionData {
   id: Uuid;
   courseId: Uuid;
@@ -35,19 +36,59 @@ export interface CourseRevisionData {
   submittedAt: string | null;
   publishedAt: string | null;
   version: number;
+  updateType: RevisionUpdateType;
+  migrationPolicy: MigrationPolicy;
 }
 export interface CreateCourseRevisionRequest {
   baseContentVersion: number;
+  updateType: RevisionUpdateType;
+  migrationPolicy: MigrationPolicy;
 }
 export interface ReviewCourseRevisionRequest extends VersionRequest {
   decision: 'APPROVE' | 'REJECT';
   reason?: string;
 }
-export interface RevisionVersionRequest extends VersionRequest {
+export type RevisionEntityType =
+  | 'CHAPTER'
+  | 'LESSON'
+  | 'LEARNING_ITEM'
+  | 'QUIZ';
+export type RevisionChangeType = 'ADDED' | 'UPDATED' | 'DELETED';
+export interface CourseRevisionChangeData {
+  id: Uuid;
   revisionId: Uuid;
+  entityType: RevisionEntityType;
+  entityId: Uuid;
+  changeType: RevisionChangeType;
+  oldVersion: number | null;
+  newVersion: number | null;
+  isCritical: boolean;
+  summary: string;
+  createdAt: string;
+}
+export interface CoursePatchNoticeData {
+  id: Uuid;
+  courseId: Uuid;
+  revisionId: Uuid;
+  severity: 'INFO' | 'WARNING' | 'CRITICAL';
+  title: string;
+  message: string;
+  requiresAction: boolean;
+  publishedAt: string;
+}
+export interface MigrateCourseItemsRequest {
+  revisionId: Uuid;
+  itemIds: Uuid[];
+  reason: string;
+  policy: 'REQUIRE_RECOMPLETION' | 'NOTIFY_ONLY';
+}
+export interface RevisionVersionRequest extends VersionRequest {
+  /** Chỉ bắt buộc khi thao tác trên một CourseRevision cụ thể. */
+  revisionId?: Uuid;
 }
 export interface RevisionReorderRequest extends ReorderRequest {
-  revisionId: Uuid;
+  /** Chỉ bắt buộc khi reorder nội dung thuộc một CourseRevision cụ thể. */
+  revisionId?: Uuid;
 }
 export interface CreateCourseRequest {
   title: string;
@@ -98,7 +139,7 @@ export interface SectionEndQuizRef {
   passingScorePercent: number;
 }
 export interface CreateChapterRequest {
-  revisionId: Uuid;
+  revisionId?: Uuid;
   title: string;
   endSectionQuiz?: SectionEndQuizRef | null;
 }
@@ -116,7 +157,7 @@ export interface LessonData {
   version: number;
 }
 export interface CreateLessonRequest {
-  revisionId: Uuid;
+  revisionId?: Uuid;
   title: string;
 }
 export interface UpdateLessonRequest extends RevisionVersionRequest {
@@ -127,7 +168,7 @@ export type LearningItemContent =
   | { type: 'READING'; body: string }
   | { type: 'QUIZ'; quizId: Uuid; assessmentVersion: number };
 export type CreateLearningItemRequest = LearningItemContent & {
-  revisionId: Uuid;
+  revisionId?: Uuid;
   title: string;
   required: boolean;
 };

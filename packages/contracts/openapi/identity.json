@@ -2563,6 +2563,19 @@
             "type": "integer",
             "minimum": 1
           },
+          "completedLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "progressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
           "status": {
             "anyOf": [
               {
@@ -2611,6 +2624,9 @@
           "chapterId",
           "order",
           "contentVersion",
+          "completedLessons",
+          "totalLessons",
+          "progressPercent",
           "status",
           "reason"
         ],
@@ -3295,6 +3311,446 @@
         ],
         "additionalProperties": false
       },
+      "CourseItemMigrationContext": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "$ref": "#/components/schemas/CourseRevisionData"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "VIDEO"
+                        },
+                        "videoUrl": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "durationSeconds": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "required": {
+                          "type": "boolean"
+                        },
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "courseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "lessonId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "order": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "contentVersion": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "videoUrl",
+                        "durationSeconds",
+                        "title",
+                        "required",
+                        "id",
+                        "courseId",
+                        "lessonId",
+                        "order",
+                        "contentVersion",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "READING"
+                        },
+                        "body": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "required": {
+                          "type": "boolean"
+                        },
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "courseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "lessonId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "order": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "contentVersion": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "body",
+                        "title",
+                        "required",
+                        "id",
+                        "courseId",
+                        "lessonId",
+                        "order",
+                        "contentVersion",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "QUIZ"
+                        },
+                        "quizId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "assessmentVersion": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "required": {
+                          "type": "boolean"
+                        },
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "courseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "lessonId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "order": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "contentVersion": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "quizId",
+                        "assessmentVersion",
+                        "title",
+                        "required",
+                        "id",
+                        "courseId",
+                        "lessonId",
+                        "order",
+                        "contentVersion",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "previousItems": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "VIDEO"
+                          },
+                          "videoUrl": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "durationSeconds": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "revisionId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "courseId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "lessonId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "order": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "contentVersion": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "videoUrl",
+                          "durationSeconds",
+                          "title",
+                          "required",
+                          "id",
+                          "courseId",
+                          "lessonId",
+                          "order",
+                          "contentVersion",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "READING"
+                          },
+                          "body": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "revisionId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "courseId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "lessonId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "order": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "contentVersion": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "body",
+                          "title",
+                          "required",
+                          "id",
+                          "courseId",
+                          "lessonId",
+                          "order",
+                          "contentVersion",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "QUIZ"
+                          },
+                          "quizId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "assessmentVersion": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "revisionId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "courseId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "lessonId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "order": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "contentVersion": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "quizId",
+                          "assessmentVersion",
+                          "title",
+                          "required",
+                          "id",
+                          "courseId",
+                          "lessonId",
+                          "order",
+                          "contentVersion",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "requiredAssessment": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequiredAssessment"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "item",
+                "previousItems",
+                "requiredAssessment"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "CourseLearnerData": {
         "type": "object",
         "properties": {
@@ -3358,6 +3814,65 @@
         ],
         "additionalProperties": false
       },
+      "CoursePatchNoticeData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              },
+              {
+                "type": "string",
+                "const": "INFO"
+              },
+              {
+                "type": "string",
+                "const": "WARNING"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "message": {
+            "type": "string"
+          },
+          "requiresAction": {
+            "type": "boolean"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "revisionId",
+          "severity",
+          "title",
+          "message",
+          "requiresAction",
+          "publishedAt"
+        ],
+        "additionalProperties": false
+      },
       "CourseProgressData": {
         "type": "object",
         "properties": {
@@ -3390,6 +3905,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -3402,6 +3925,19 @@
             "minimum": 0
           },
           "progressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "completedRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lessonProgressPercent": {
             "type": "number",
             "minimum": 0,
             "maximum": 100
@@ -3439,6 +3975,9 @@
           "completedRequiredItems",
           "totalRequiredItems",
           "progressPercent",
+          "completedRequiredLessons",
+          "totalRequiredLessons",
+          "lessonProgressPercent",
           "passedRequiredAssessments",
           "totalRequiredAssessments",
           "completedAt",
@@ -3470,6 +4009,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -3482,6 +4029,19 @@
             "minimum": 0
           },
           "progressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "completedRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lessonProgressPercent": {
             "type": "number",
             "minimum": 0,
             "maximum": 100
@@ -3517,6 +4077,9 @@
           "completedRequiredItems",
           "totalRequiredItems",
           "progressPercent",
+          "completedRequiredLessons",
+          "totalRequiredLessons",
+          "lessonProgressPercent",
           "passedRequiredAssessments",
           "totalRequiredAssessments",
           "completedAt",
@@ -3749,6 +4312,104 @@
         ],
         "additionalProperties": false
       },
+      "CourseRevisionChangeData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "CHAPTER"
+              },
+              {
+                "type": "string",
+                "const": "LESSON"
+              },
+              {
+                "type": "string",
+                "const": "LEARNING_ITEM"
+              },
+              {
+                "type": "string",
+                "const": "QUIZ"
+              }
+            ]
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changeType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ADDED"
+              },
+              {
+                "type": "string",
+                "const": "UPDATED"
+              },
+              {
+                "type": "string",
+                "const": "DELETED"
+              }
+            ]
+          },
+          "oldVersion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ]
+          },
+          "newVersion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ]
+          },
+          "isCritical": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "revisionId",
+          "entityType",
+          "entityId",
+          "changeType",
+          "oldVersion",
+          "newVersion",
+          "isCritical",
+          "summary",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
       "CourseRevisionData": {
         "type": "object",
         "properties": {
@@ -3827,6 +4488,30 @@
           "version": {
             "type": "integer",
             "minimum": 1
+          },
+          "updateType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "NORMAL"
+              },
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              }
+            ]
+          },
+          "migrationPolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "KEEP_ENROLLED_VERSION"
+              },
+              {
+                "type": "string",
+                "const": "MIGRATE_AFFECTED_ITEMS"
+              }
+            ]
           }
         },
         "required": [
@@ -3839,7 +4524,9 @@
           "createdAt",
           "submittedAt",
           "publishedAt",
-          "version"
+          "version",
+          "updateType",
+          "migrationPolicy"
         ],
         "additionalProperties": false
       },
@@ -3907,7 +4594,6 @@
           }
         },
         "required": [
-          "revisionId",
           "title"
         ],
         "additionalProperties": false
@@ -3947,10 +4633,36 @@
           "baseContentVersion": {
             "type": "integer",
             "minimum": 1
+          },
+          "updateType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "NORMAL"
+              },
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              }
+            ]
+          },
+          "migrationPolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "KEEP_ENROLLED_VERSION"
+              },
+              {
+                "type": "string",
+                "const": "MIGRATE_AFFECTED_ITEMS"
+              }
+            ]
           }
         },
         "required": [
-          "baseContentVersion"
+          "baseContentVersion",
+          "updateType",
+          "migrationPolicy"
         ],
         "additionalProperties": false
       },
@@ -4032,7 +4744,6 @@
               "type",
               "videoUrl",
               "durationSeconds",
-              "revisionId",
               "title",
               "required"
             ],
@@ -4065,7 +4776,6 @@
             "required": [
               "type",
               "body",
-              "revisionId",
               "title",
               "required"
             ],
@@ -4103,7 +4813,6 @@
               "type",
               "quizId",
               "assessmentVersion",
-              "revisionId",
               "title",
               "required"
             ],
@@ -4125,7 +4834,6 @@
           }
         },
         "required": [
-          "revisionId",
           "title"
         ],
         "additionalProperties": false
@@ -5298,6 +6006,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -5311,13 +6027,36 @@
                 "format": "date-time"
               }
             ]
+          },
+          "invalidatedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "invalidationReason": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
           }
         },
         "required": [
           "learningItemId",
           "contentVersion",
           "status",
-          "completedAt"
+          "completedAt",
+          "invalidatedAt",
+          "invalidationReason"
         ],
         "additionalProperties": false
       },
@@ -5438,13 +6177,226 @@
         ],
         "additionalProperties": false
       },
+      "LearningDashboardCourse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextStep": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "LEARNING_ITEM"
+                  },
+                  "lessonId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "learningItemId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "positionSeconds": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "lessonId",
+                  "learningItemId",
+                  "positionSeconds"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "COMPLETE_LESSON"
+                  },
+                  "lessonId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "lessonId"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "QUIZ"
+                  },
+                  "quizId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "assessmentVersion": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "kind",
+                  "quizId",
+                  "assessmentVersion"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrollmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "COMPLETED"
+              },
+              {
+                "type": "string",
+                "const": "IN_PROGRESS"
+              },
+              {
+                "type": "string",
+                "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
+              }
+            ]
+          },
+          "completedRequiredItems": {
+            "type": "number",
+            "minimum": 0
+          },
+          "totalRequiredItems": {
+            "type": "number",
+            "minimum": 0
+          },
+          "progressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "completedRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lessonProgressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "passedRequiredAssessments": {
+            "type": "number",
+            "minimum": 0
+          },
+          "totalRequiredAssessments": {
+            "type": "number",
+            "minimum": 0
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "title",
+          "lastActivityAt",
+          "nextStep",
+          "userId",
+          "courseId",
+          "enrollmentId",
+          "contentVersion",
+          "status",
+          "completedRequiredItems",
+          "totalRequiredItems",
+          "progressPercent",
+          "completedRequiredLessons",
+          "totalRequiredLessons",
+          "lessonProgressPercent",
+          "passedRequiredAssessments",
+          "totalRequiredAssessments",
+          "completedAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
       "LearningDashboardData": {
         "type": "object",
         "properties": {
           "courses": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CourseProgressData"
+              "$ref": "#/components/schemas/LearningDashboardCourse"
+            }
+          },
+          "recentQuizzes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningRecentQuiz"
             }
           },
           "updatedAt": {
@@ -5454,6 +6406,7 @@
         },
         "required": [
           "courses",
+          "recentQuizzes",
           "updatedAt"
         ],
         "additionalProperties": false
@@ -5584,7 +6537,6 @@
               "type",
               "videoUrl",
               "durationSeconds",
-              "revisionId",
               "title",
               "required",
               "id",
@@ -5647,7 +6599,6 @@
             "required": [
               "type",
               "body",
-              "revisionId",
               "title",
               "required",
               "id",
@@ -5715,7 +6666,6 @@
               "type",
               "quizId",
               "assessmentVersion",
-              "revisionId",
               "title",
               "required",
               "id",
@@ -5728,6 +6678,129 @@
             "additionalProperties": false
           }
         ]
+      },
+      "LearningNextStep": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "LEARNING_ITEM"
+              },
+              "lessonId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "learningItemId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "positionSeconds": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "lessonId",
+              "learningItemId",
+              "positionSeconds"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "COMPLETE_LESSON"
+              },
+              "lessonId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "kind",
+              "lessonId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "QUIZ"
+              },
+              "quizId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "assessmentVersion": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "kind",
+              "quizId",
+              "assessmentVersion"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "LearningRecentQuiz": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quizId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "scorePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "gradedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "attemptId",
+          "courseId",
+          "quizId",
+          "assessmentVersion",
+          "scorePercent",
+          "passed",
+          "gradedAt"
+        ],
+        "additionalProperties": false
       },
       "LearningResumeData": {
         "type": "object",
@@ -5838,6 +6911,14 @@
           {
             "type": "string",
             "const": "NOT_STARTED"
+          },
+          {
+            "type": "string",
+            "const": "OUTDATED"
+          },
+          {
+            "type": "string",
+            "const": "RESET"
           }
         ]
       },
@@ -6022,7 +7103,6 @@
                     "type",
                     "videoUrl",
                     "durationSeconds",
-                    "revisionId",
                     "title",
                     "required",
                     "id",
@@ -6085,7 +7165,6 @@
                   "required": [
                     "type",
                     "body",
-                    "revisionId",
                     "title",
                     "required",
                     "id",
@@ -6153,7 +7232,6 @@
                     "type",
                     "quizId",
                     "assessmentVersion",
-                    "revisionId",
                     "title",
                     "required",
                     "id",
@@ -6242,6 +7320,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -6420,6 +7506,58 @@
           "updatedAt"
         ],
         "additionalProperties": false
+      },
+      "MigrateCourseItemsRequest": {
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "REQUIRE_RECOMPLETION"
+              },
+              {
+                "type": "string",
+                "const": "NOTIFY_ONLY"
+              }
+            ]
+          }
+        },
+        "required": [
+          "revisionId",
+          "itemIds",
+          "reason",
+          "policy"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationPolicy": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "KEEP_ENROLLED_VERSION"
+          },
+          {
+            "type": "string",
+            "const": "MIGRATE_AFFECTED_ITEMS"
+          }
+        ]
       },
       "MutationHeaders": {
         "type": "object",
@@ -7946,6 +9084,42 @@
         ],
         "additionalProperties": false
       },
+      "RevisionChangeType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "ADDED"
+          },
+          {
+            "type": "string",
+            "const": "UPDATED"
+          },
+          {
+            "type": "string",
+            "const": "DELETED"
+          }
+        ]
+      },
+      "RevisionEntityType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "CHAPTER"
+          },
+          {
+            "type": "string",
+            "const": "LESSON"
+          },
+          {
+            "type": "string",
+            "const": "LEARNING_ITEM"
+          },
+          {
+            "type": "string",
+            "const": "QUIZ"
+          }
+        ]
+      },
       "RevisionReorderRequest": {
         "type": "object",
         "properties": {
@@ -7967,11 +9141,22 @@
           }
         },
         "required": [
-          "revisionId",
           "orderedIds",
           "expectedVersion"
         ],
         "additionalProperties": false
+      },
+      "RevisionUpdateType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "NORMAL"
+          },
+          {
+            "type": "string",
+            "const": "CRITICAL"
+          }
+        ]
       },
       "RevisionVersionRequest": {
         "type": "object",
@@ -7986,7 +9171,6 @@
           }
         },
         "required": [
-          "revisionId",
           "expectedVersion"
         ],
         "additionalProperties": false
@@ -8324,7 +9508,6 @@
         },
         "required": [
           "title",
-          "revisionId",
           "expectedVersion"
         ],
         "additionalProperties": false
@@ -8461,7 +9644,6 @@
               "type",
               "videoUrl",
               "durationSeconds",
-              "revisionId",
               "title",
               "required",
               "expectedVersion"
@@ -8499,7 +9681,6 @@
             "required": [
               "type",
               "body",
-              "revisionId",
               "title",
               "required",
               "expectedVersion"
@@ -8542,7 +9723,6 @@
               "type",
               "quizId",
               "assessmentVersion",
-              "revisionId",
               "title",
               "required",
               "expectedVersion"
@@ -8570,7 +9750,6 @@
         },
         "required": [
           "title",
-          "revisionId",
           "expectedVersion"
         ],
         "additionalProperties": false

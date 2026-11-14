@@ -1,7 +1,12 @@
 import type { Uuid } from './common';
 import type { ProgressSyncStatus } from './quiz';
 
-export type LearningStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type LearningStatus =
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'OUTDATED'
+  | 'RESET';
 export type ChapterAccessStatus = 'LOCKED' | 'UNLOCKED' | 'COMPLETED';
 export type ChapterAccessReason =
   | 'ENROLLMENT_REQUIRED'
@@ -13,6 +18,9 @@ export interface ChapterAccessData {
   chapterId: Uuid;
   order: number;
   contentVersion: number;
+  completedLessons: number;
+  totalLessons: number;
+  progressPercent: number;
   status: ChapterAccessStatus;
   reason: ChapterAccessReason | null;
 }
@@ -27,6 +35,8 @@ export interface ItemProgressData {
   contentVersion: number;
   status: LearningStatus;
   completedAt: string | null;
+  invalidatedAt: string | null;
+  invalidationReason: string | null;
 }
 export interface LessonProgressData {
   userId: Uuid;
@@ -53,7 +63,12 @@ export interface CourseProgressData {
   status: LearningStatus;
   completedRequiredItems: number;
   totalRequiredItems: number;
+  /** Percentage of required items. */
   progressPercent: number;
+  completedRequiredLessons: number;
+  totalRequiredLessons: number;
+  /** Percentage of required lessons with a recorded lesson completion. */
+  lessonProgressPercent: number;
   passedRequiredAssessments: number;
   totalRequiredAssessments: number;
   completedAt: string | null;
@@ -77,8 +92,35 @@ export interface LearningResumeData {
   updatedAt: string;
   revision: number;
 }
+export type LearningNextStep =
+  | {
+      kind: 'LEARNING_ITEM';
+      lessonId: Uuid;
+      learningItemId: Uuid;
+      positionSeconds: number | null;
+    }
+  | { kind: 'COMPLETE_LESSON'; lessonId: Uuid }
+  | { kind: 'QUIZ'; quizId: Uuid; assessmentVersion: number };
+
+export interface LearningDashboardCourse extends CourseProgressData {
+  title: string;
+  lastActivityAt: string;
+  nextStep: LearningNextStep | null;
+}
+
+export interface LearningRecentQuiz {
+  attemptId: Uuid;
+  courseId: Uuid;
+  quizId: Uuid;
+  assessmentVersion: number;
+  scorePercent: number;
+  passed: boolean;
+  gradedAt: string;
+}
+
 export interface LearningDashboardData {
-  courses: CourseProgressData[];
+  courses: LearningDashboardCourse[];
+  recentQuizzes: LearningRecentQuiz[];
   updatedAt: string;
 }
 export interface MasteryData {

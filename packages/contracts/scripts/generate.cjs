@@ -95,6 +95,10 @@ function propertyRules(name, schema) {
         'evidenceCount',
         'enrolledCount',
         'completedCount',
+        'completedLessons',
+        'totalLessons',
+        'completedRequiredLessons',
+        'totalRequiredLessons',
       ].includes(name)
     )
       schema.type = 'integer';
