@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { parseContract } from '@lms/contracts';
 import type {
+  CourseData,
+  CourseItemMigrationContext,
   CourseLearningStructure,
+  EnrolledCourseData,
   EnrollmentSnapshotData,
 } from '@lms/contracts';
 import { apiError } from '../common/api-error';
@@ -14,9 +17,48 @@ export interface CourseRequestContext {
 
 @Injectable()
 export class CourseClient {
+  async migrationContext(
+    revisionId: string,
+    requestId: string,
+  ): Promise<CourseItemMigrationContext> {
+    const token = process.env.COURSE_SERVICE_TOKEN?.trim();
+    if (!token)
+      throw apiError(
+        'SERVICE_UNAVAILABLE',
+        'Course service credential is not configured',
+      );
+    const data = await this.get(
+      `/api/v1/internal/course-revisions/${revisionId}/item-migration-context`,
+      { mockUser: '', userId: '', requestId },
+      token,
+    );
+    return this.parse(() => parseContract('CourseItemMigrationContext', data));
+  }
+
+  async getCourse(
+    courseId: string,
+    context: CourseRequestContext,
+  ): Promise<CourseData> {
+    const data = await this.get(`/api/v1/courses/${courseId}`, context);
+    return this.parse(() => {
+      const course = parseContract('CourseData', data);
+      if (course.id.toLowerCase() !== courseId)
+        throw new Error('Unexpected course ID');
+      return course;
+    });
+  }
+
   async *enrollments(
     context: CourseRequestContext,
   ): AsyncGenerator<EnrollmentSnapshotData> {
+    for await (const { enrollment } of this.enrolledCourses(context)) {
+      yield enrollment;
+    }
+  }
+
+  async *enrolledCourses(
+    context: CourseRequestContext,
+  ): AsyncGenerator<EnrolledCourseData> {
     const limit = 100;
     for (let page = 1; ; page += 1) {
       const data = await this.get(
@@ -55,9 +97,9 @@ export class CourseClient {
           );
         }
         if (course.status === 'PUBLISHED' && enrollment.status !== 'CANCELLED')
-          yield enrollment;
+          yield { enrollment, course };
       }
-      if (items.length < limit || page * limit >= total) return;
+      if (page * limit >= total) return;
     }
   }
 
@@ -70,14 +112,31 @@ export class CourseClient {
       this.get(`${path}/outline`, context),
       this.get(`${path}/completion-policy`, context),
     ]);
-    return this.parse(() =>
+    const structure = this.parse(() =>
       parseContract('CourseLearningStructure', { outline, completionPolicy }),
     );
+    const serviceToken = process.env.COURSE_SERVICE_TOKEN;
+    if (
+      serviceToken &&
+      (structure.outline.contentVersion !== enrollment.contentVersion ||
+        structure.completionPolicy.contentVersion !== enrollment.contentVersion)
+    ) {
+      const snapshot = await this.get(
+        `/api/v1/internal/courses/${enrollment.courseId}/structure?contentVersion=${enrollment.contentVersion}`,
+        context,
+        serviceToken,
+      );
+      return this.parse(() =>
+        parseContract('CourseLearningStructure', snapshot),
+      );
+    }
+    return structure;
   }
 
   private async get(
     path: string,
     context: CourseRequestContext,
+    serviceToken?: string,
   ): Promise<unknown> {
     let response: Response;
     try {
@@ -87,7 +146,9 @@ export class CourseClient {
       );
       response = await fetch(url, {
         headers: {
-          'X-Mock-User': context.mockUser,
+          ...(serviceToken
+            ? { Authorization: `Bearer ${serviceToken}` }
+            : { 'X-Mock-User': context.mockUser }),
           'X-Request-Id': context.requestId,
         },
         signal: AbortSignal.timeout(3000),
@@ -99,6 +160,16 @@ export class CourseClient {
       }
       throw apiError('SERVICE_UNAVAILABLE', 'Course service is unavailable');
     }
+    if (serviceToken && [404, 409].includes(response.status))
+      throw apiError(
+        'CONTENT_VERSION_MISMATCH',
+        'The enrolled course version is unavailable',
+      );
+    if (serviceToken && [401, 403].includes(response.status))
+      throw apiError(
+        'SERVICE_UNAVAILABLE',
+        'Course denied the service credential',
+      );
     if (response.status === 403)
       throw apiError('ENROLLMENT_REQUIRED', 'Course access is required');
     if (response.status === 404)
