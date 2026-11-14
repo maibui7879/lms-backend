@@ -187,3 +187,10 @@ Giữ LoginResponse/QuizResultData/QuizAttemptStatus và v1 event để consumer
 Public RegisterRequest bỏ quyền tự chọn INSTRUCTOR là thay đổi chủ ý so với handoff cũ; chưa có registration controller trong scaffold. Không thay version workspace package lúc consumer nội bộ còn cùng checkout; khi publish package cần version/release notes theo chính sách nhóm.
 
 Chỉ sau review baseline mới xây mock dataset/scenario manifest dựa trên [IDs có sẵn](fixtures/ids.json): quan hệ owner → course → chapter → lesson → items/quiz, enrollment snapshot, attempt/question snapshot, graded event và receipt. Mỗi mock request/response/event phải qua parseContract và kiểm tra quan hệ chéo; dữ liệu sai quyền, deadline, version, pending và DLQ có scenario riêng. Không đưa secrets hoặc sửa database production. Thay đổi này chưa tạo dataset, seed hay mock endpoint.
+## Quy tắc revision và critical update
+
+Course đã PUBLISHED không được sửa trực tiếp. Instructor tạo CourseRevision từ baseContentVersion hiện tại; revision ở DRAFT hoặc REJECTED được chỉnh sửa, còn IN_REVIEW bị khóa cho đến khi Admin approve hoặc reject.
+
+Revision NORMAL chỉ áp dụng cho enrollment mới. Revision CRITICAL dùng cho nội dung sai hoặc ảnh hưởng an toàn/pháp lý. migrationPolicy quyết định giữ nguyên version learner hiện tại hoặc yêu cầu Learning migrate các learning item bị ảnh hưởng. Migration phải theo item, không reset toàn bộ course.
+
+CourseRevisionChangeData ghi lại entity được thêm, sửa hoặc xóa. CoursePatchNoticeData dùng để thông báo cho learner. Completion item có thể chuyển sang OUTDATED hoặc RESET; attempt quiz cũ giữ để audit và assessmentVersion mới được dùng cho lần làm lại.

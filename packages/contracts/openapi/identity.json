@@ -3358,6 +3358,65 @@
         ],
         "additionalProperties": false
       },
+      "CoursePatchNoticeData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              },
+              {
+                "type": "string",
+                "const": "INFO"
+              },
+              {
+                "type": "string",
+                "const": "WARNING"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "message": {
+            "type": "string"
+          },
+          "requiresAction": {
+            "type": "boolean"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "revisionId",
+          "severity",
+          "title",
+          "message",
+          "requiresAction",
+          "publishedAt"
+        ],
+        "additionalProperties": false
+      },
       "CourseProgressData": {
         "type": "object",
         "properties": {
@@ -3390,6 +3449,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -3470,6 +3537,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -3749,6 +3824,104 @@
         ],
         "additionalProperties": false
       },
+      "CourseRevisionChangeData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "CHAPTER"
+              },
+              {
+                "type": "string",
+                "const": "LESSON"
+              },
+              {
+                "type": "string",
+                "const": "LEARNING_ITEM"
+              },
+              {
+                "type": "string",
+                "const": "QUIZ"
+              }
+            ]
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changeType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ADDED"
+              },
+              {
+                "type": "string",
+                "const": "UPDATED"
+              },
+              {
+                "type": "string",
+                "const": "DELETED"
+              }
+            ]
+          },
+          "oldVersion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ]
+          },
+          "newVersion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ]
+          },
+          "isCritical": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "revisionId",
+          "entityType",
+          "entityId",
+          "changeType",
+          "oldVersion",
+          "newVersion",
+          "isCritical",
+          "summary",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
       "CourseRevisionData": {
         "type": "object",
         "properties": {
@@ -3827,6 +4000,30 @@
           "version": {
             "type": "integer",
             "minimum": 1
+          },
+          "updateType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "NORMAL"
+              },
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              }
+            ]
+          },
+          "migrationPolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "KEEP_ENROLLED_VERSION"
+              },
+              {
+                "type": "string",
+                "const": "MIGRATE_AFFECTED_ITEMS"
+              }
+            ]
           }
         },
         "required": [
@@ -3839,7 +4036,9 @@
           "createdAt",
           "submittedAt",
           "publishedAt",
-          "version"
+          "version",
+          "updateType",
+          "migrationPolicy"
         ],
         "additionalProperties": false
       },
@@ -3946,10 +4145,36 @@
           "baseContentVersion": {
             "type": "integer",
             "minimum": 1
+          },
+          "updateType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "NORMAL"
+              },
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              }
+            ]
+          },
+          "migrationPolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "KEEP_ENROLLED_VERSION"
+              },
+              {
+                "type": "string",
+                "const": "MIGRATE_AFFECTED_ITEMS"
+              }
+            ]
           }
         },
         "required": [
-          "baseContentVersion"
+          "baseContentVersion",
+          "updateType",
+          "migrationPolicy"
         ],
         "additionalProperties": false
       },
@@ -5293,6 +5518,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -5306,13 +5539,36 @@
                 "format": "date-time"
               }
             ]
+          },
+          "invalidatedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "invalidationReason": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
           }
         },
         "required": [
           "learningItemId",
           "contentVersion",
           "status",
-          "completedAt"
+          "completedAt",
+          "invalidatedAt",
+          "invalidationReason"
         ],
         "additionalProperties": false
       },
@@ -5830,6 +6086,14 @@
           {
             "type": "string",
             "const": "NOT_STARTED"
+          },
+          {
+            "type": "string",
+            "const": "OUTDATED"
+          },
+          {
+            "type": "string",
+            "const": "RESET"
           }
         ]
       },
@@ -6231,6 +6495,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -6409,6 +6681,58 @@
           "updatedAt"
         ],
         "additionalProperties": false
+      },
+      "MigrateCourseItemsRequest": {
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "REQUIRE_RECOMPLETION"
+              },
+              {
+                "type": "string",
+                "const": "NOTIFY_ONLY"
+              }
+            ]
+          }
+        },
+        "required": [
+          "revisionId",
+          "itemIds",
+          "reason",
+          "policy"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationPolicy": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "KEEP_ENROLLED_VERSION"
+          },
+          {
+            "type": "string",
+            "const": "MIGRATE_AFFECTED_ITEMS"
+          }
+        ]
       },
       "MutationHeaders": {
         "type": "object",
@@ -7935,6 +8259,42 @@
         ],
         "additionalProperties": false
       },
+      "RevisionChangeType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "ADDED"
+          },
+          {
+            "type": "string",
+            "const": "UPDATED"
+          },
+          {
+            "type": "string",
+            "const": "DELETED"
+          }
+        ]
+      },
+      "RevisionEntityType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "CHAPTER"
+          },
+          {
+            "type": "string",
+            "const": "LESSON"
+          },
+          {
+            "type": "string",
+            "const": "LEARNING_ITEM"
+          },
+          {
+            "type": "string",
+            "const": "QUIZ"
+          }
+        ]
+      },
       "RevisionReorderRequest": {
         "type": "object",
         "properties": {
@@ -7960,6 +8320,18 @@
           "expectedVersion"
         ],
         "additionalProperties": false
+      },
+      "RevisionUpdateType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "NORMAL"
+          },
+          {
+            "type": "string",
+            "const": "CRITICAL"
+          }
+        ]
       },
       "RevisionVersionRequest": {
         "type": "object",

@@ -14,6 +14,9 @@ export class Lesson {
   @Column({ type: 'uuid' })
   courseId!: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  revisionId!: string | null;
+
   @Column({ type: 'uuid' })
   chapterId!: string;
 

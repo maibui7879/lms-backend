@@ -7,6 +7,7 @@ import { LearningItem } from './modules/learning-items/entities/learning-item.en
 import { CompletionPolicy } from './modules/completion-policy/entities/completion-policy.entity';
 import { Enrollment } from './modules/enrollments/entities/enrollment.entity';
 import { CourseReview } from './modules/course-revisions/entities/course-review.entity';
+import { CourseRevision } from './modules/course-revisions/entities/course-revision.entity';
 
 export const envFiles = [
   resolve(__dirname, '../.env'),
@@ -71,6 +72,7 @@ export function databaseOptions(
       CompletionPolicy,
       Enrollment,
       CourseReview,
+      CourseRevision,
     ],
     synchronize: config.DB_SYNC === 'true',
     retryAttempts: 1,

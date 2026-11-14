@@ -311,6 +311,39 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     success: 200,
   },
   {
+    operationId: 'listCourseRevisionChanges',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/course-revisions/{id}/changes',
+    access: 'COURSE_OWNER',
+    description:
+      'Liệt kê chapter, lesson, learning item hoặc quiz đã được thêm, sửa hoặc xóa trong một revision; dùng để audit và xác định nội dung cần migration.',
+    response: 'CourseRevisionChangeData',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'listCoursePatchNotices',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/courses/{id}/patch-notices',
+    access: 'ENROLLED',
+    description:
+      'Liệt kê thông báo thay đổi nội dung của course mà learner có quyền xem, bao gồm cảnh báo critical và yêu cầu học lại nếu có.',
+    response: 'CoursePatchNoticeData',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'markCoursePatchNoticeRead',
+    service: 'course',
+    method: 'post',
+    path: '/api/v1/patch-notices/{id}/read',
+    access: 'AUTHENTICATED',
+    description: 'Ghi nhận learner đã đọc một thông báo thay đổi nội dung.',
+    success: 204,
+  },
+  {
     operationId: 'getCourseOutline',
     service: 'course',
     method: 'get',
@@ -1124,5 +1157,16 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     response: 'LearnerProgressSummary',
     list: true,
     success: 200,
+  },
+  {
+    operationId: 'migrateCourseItems',
+    service: 'learning',
+    method: 'post',
+    path: '/api/v1/internal/courses/{id}/migrations',
+    access: 'INTERNAL',
+    description:
+      'Đánh dấu các learning item bị ảnh hưởng bởi critical revision để learner phải hoàn thành lại hoặc chỉ nhận thông báo theo migration policy.',
+    request: 'MigrateCourseItemsRequest',
+    success: 204,
   },
 ];

@@ -3755,6 +3755,465 @@
         }
       }
     },
+    "/api/v1/course-revisions/{id}/changes": {
+      "get": {
+        "operationId": "listCourseRevisionChanges",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Liệt kê chapter, lesson, learning item hoặc quiz đã được thêm, sửa hoặc xóa trong một revision; dùng để audit và xác định nội dung cần migration.",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "items",
+                        "page",
+                        "limit",
+                        "total"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/CourseRevisionChangeData"
+                          }
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/courses/{id}/patch-notices": {
+      "get": {
+        "operationId": "listCoursePatchNotices",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: ENROLLED. Liệt kê thông báo thay đổi nội dung của course mà learner có quyền xem, bao gồm cảnh báo critical và yêu cầu học lại nếu có.",
+        "x-access-policy": "ENROLLED",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "items",
+                        "page",
+                        "limit",
+                        "total"
+                      ],
+                      "additionalProperties": false,
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/CoursePatchNoticeData"
+                          }
+                        },
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/patch-notices/{id}/read": {
+      "post": {
+        "operationId": "markCoursePatchNoticeRead",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: AUTHENTICATED. Ghi nhận learner đã đọc một thông báo thay đổi nội dung.",
+        "x-access-policy": "AUTHENTICATED",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Thành công"
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/courses/{id}/outline": {
       "get": {
         "operationId": "getCourseOutline",
@@ -14437,6 +14896,137 @@
           }
         }
       }
+    },
+    "/api/v1/internal/courses/{id}/migrations": {
+      "post": {
+        "operationId": "migrateCourseItems",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: INTERNAL. Đánh dấu các learning item bị ảnh hưởng bởi critical revision để learner phải hoàn thành lại hoặc chỉ nhận thông báo theo migration policy.",
+        "x-access-policy": "INTERNAL",
+        "security": [
+          {
+            "serviceAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Thành công"
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MigrateCourseItemsRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -15989,6 +16579,65 @@
         ],
         "additionalProperties": false
       },
+      "CoursePatchNoticeData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              },
+              {
+                "type": "string",
+                "const": "INFO"
+              },
+              {
+                "type": "string",
+                "const": "WARNING"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "message": {
+            "type": "string"
+          },
+          "requiresAction": {
+            "type": "boolean"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "revisionId",
+          "severity",
+          "title",
+          "message",
+          "requiresAction",
+          "publishedAt"
+        ],
+        "additionalProperties": false
+      },
       "CourseProgressData": {
         "type": "object",
         "properties": {
@@ -16021,6 +16670,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -16101,6 +16758,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -16380,6 +17045,104 @@
         ],
         "additionalProperties": false
       },
+      "CourseRevisionChangeData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "CHAPTER"
+              },
+              {
+                "type": "string",
+                "const": "LESSON"
+              },
+              {
+                "type": "string",
+                "const": "LEARNING_ITEM"
+              },
+              {
+                "type": "string",
+                "const": "QUIZ"
+              }
+            ]
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changeType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ADDED"
+              },
+              {
+                "type": "string",
+                "const": "UPDATED"
+              },
+              {
+                "type": "string",
+                "const": "DELETED"
+              }
+            ]
+          },
+          "oldVersion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ]
+          },
+          "newVersion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ]
+          },
+          "isCritical": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "revisionId",
+          "entityType",
+          "entityId",
+          "changeType",
+          "oldVersion",
+          "newVersion",
+          "isCritical",
+          "summary",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
       "CourseRevisionData": {
         "type": "object",
         "properties": {
@@ -16458,6 +17221,30 @@
           "version": {
             "type": "integer",
             "minimum": 1
+          },
+          "updateType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "NORMAL"
+              },
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              }
+            ]
+          },
+          "migrationPolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "KEEP_ENROLLED_VERSION"
+              },
+              {
+                "type": "string",
+                "const": "MIGRATE_AFFECTED_ITEMS"
+              }
+            ]
           }
         },
         "required": [
@@ -16470,7 +17257,9 @@
           "createdAt",
           "submittedAt",
           "publishedAt",
-          "version"
+          "version",
+          "updateType",
+          "migrationPolicy"
         ],
         "additionalProperties": false
       },
@@ -16577,10 +17366,36 @@
           "baseContentVersion": {
             "type": "integer",
             "minimum": 1
+          },
+          "updateType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "NORMAL"
+              },
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              }
+            ]
+          },
+          "migrationPolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "KEEP_ENROLLED_VERSION"
+              },
+              {
+                "type": "string",
+                "const": "MIGRATE_AFFECTED_ITEMS"
+              }
+            ]
           }
         },
         "required": [
-          "baseContentVersion"
+          "baseContentVersion",
+          "updateType",
+          "migrationPolicy"
         ],
         "additionalProperties": false
       },
@@ -17924,6 +18739,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -17937,13 +18760,36 @@
                 "format": "date-time"
               }
             ]
+          },
+          "invalidatedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "invalidationReason": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
           }
         },
         "required": [
           "learningItemId",
           "contentVersion",
           "status",
-          "completedAt"
+          "completedAt",
+          "invalidatedAt",
+          "invalidationReason"
         ],
         "additionalProperties": false
       },
@@ -18461,6 +19307,14 @@
           {
             "type": "string",
             "const": "NOT_STARTED"
+          },
+          {
+            "type": "string",
+            "const": "OUTDATED"
+          },
+          {
+            "type": "string",
+            "const": "RESET"
           }
         ]
       },
@@ -18862,6 +19716,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -19040,6 +19902,58 @@
           "updatedAt"
         ],
         "additionalProperties": false
+      },
+      "MigrateCourseItemsRequest": {
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "REQUIRE_RECOMPLETION"
+              },
+              {
+                "type": "string",
+                "const": "NOTIFY_ONLY"
+              }
+            ]
+          }
+        },
+        "required": [
+          "revisionId",
+          "itemIds",
+          "reason",
+          "policy"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationPolicy": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "KEEP_ENROLLED_VERSION"
+          },
+          {
+            "type": "string",
+            "const": "MIGRATE_AFFECTED_ITEMS"
+          }
+        ]
       },
       "MutationHeaders": {
         "type": "object",
@@ -20566,6 +21480,42 @@
         ],
         "additionalProperties": false
       },
+      "RevisionChangeType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "ADDED"
+          },
+          {
+            "type": "string",
+            "const": "UPDATED"
+          },
+          {
+            "type": "string",
+            "const": "DELETED"
+          }
+        ]
+      },
+      "RevisionEntityType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "CHAPTER"
+          },
+          {
+            "type": "string",
+            "const": "LESSON"
+          },
+          {
+            "type": "string",
+            "const": "LEARNING_ITEM"
+          },
+          {
+            "type": "string",
+            "const": "QUIZ"
+          }
+        ]
+      },
       "RevisionReorderRequest": {
         "type": "object",
         "properties": {
@@ -20591,6 +21541,18 @@
           "expectedVersion"
         ],
         "additionalProperties": false
+      },
+      "RevisionUpdateType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "NORMAL"
+          },
+          {
+            "type": "string",
+            "const": "CRITICAL"
+          }
+        ]
       },
       "RevisionVersionRequest": {
         "type": "object",

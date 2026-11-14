@@ -1,7 +1,13 @@
 import { BadRequestException } from '@nestjs/common';
 import type { PipeTransform } from '@nestjs/common';
 import { ContractValidationError, parseContract } from '@lms/contracts';
-import type { PageQuery, ReviewCourseRequest } from '@lms/contracts';
+import type {
+  CreateCourseRevisionRequest,
+  PageQuery,
+  ReviewCourseRevisionRequest,
+  ReviewCourseRequest,
+  VersionRequest,
+} from '@lms/contracts';
 
 function validationError(error: unknown): never {
   if (error instanceof ContractValidationError)
@@ -38,6 +44,45 @@ export class ReviewQueueQueryPipe implements PipeTransform<unknown, PageQuery> {
     }
     try {
       return parseContract('PageQuery', input);
+    } catch (error) {
+      return validationError(error);
+    }
+  }
+}
+
+export class CreateCourseRevisionPipe implements PipeTransform<
+  unknown,
+  CreateCourseRevisionRequest
+> {
+  transform(value: unknown): CreateCourseRevisionRequest {
+    try {
+      return parseContract('CreateCourseRevisionRequest', value);
+    } catch (error) {
+      return validationError(error);
+    }
+  }
+}
+
+export class ReviewCourseRevisionPipe implements PipeTransform<
+  unknown,
+  ReviewCourseRevisionRequest
+> {
+  transform(value: unknown): ReviewCourseRevisionRequest {
+    try {
+      return parseContract('ReviewCourseRevisionRequest', value);
+    } catch (error) {
+      return validationError(error);
+    }
+  }
+}
+
+export class RevisionVersionPipe implements PipeTransform<
+  unknown,
+  VersionRequest
+> {
+  transform(value: unknown): VersionRequest {
+    try {
+      return parseContract('VersionRequest', value);
     } catch (error) {
       return validationError(error);
     }

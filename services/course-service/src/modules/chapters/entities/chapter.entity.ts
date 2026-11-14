@@ -14,6 +14,9 @@ export class Chapter {
   @Column({ type: 'uuid' })
   courseId!: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  revisionId!: string | null;
+
   @Column({ type: 'varchar', length: 200 })
   title!: string;
 

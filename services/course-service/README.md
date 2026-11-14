@@ -232,3 +232,8 @@ npm.cmd run test:e2e -w @lms/course-service -- --runInBand
 Acceptance tests cần bổ sung: Instructor khác không sửa course; Student không review; reject thiếu lý do; published content không sửa; stale version/reorder sai parent; enrollment trùng và course draft; snapshot/version đúng; outbox không mất khi crash; access dependency unavailable; canceled enrollment bị chặn; discussion parent/author đúng course.
 
 PR bàn giao cho Quiz/Learning phải nêu provider routes đã chạy, policy snapshot, event sample đã validate và failure paths. Dataset/seed chỉ làm sau review contracts, theo [IDs chung](../../packages/contracts/fixtures/ids.json), idempotent và không tạo foreign key xuyên DB. Scaffold test pass chưa đáp ứng các acceptance trên.
+## Revision và critical update
+
+Course IN_REVIEW bị khóa chỉnh sửa. Instructor phải chờ Admin REJECT để sửa lại. Course PUBLISHED chỉ được thay đổi qua CourseRevision; enrollment cũ tiếp tục dùng contentVersion đã pin.
+
+Revision NORMAL chỉ áp dụng cho learner mới. Revision CRITICAL có thể tạo patch notice và gọi Learning migration theo item. Item không thay đổi giữ COMPLETED; item bị ảnh hưởng có thể thành OUTDATED hoặc RESET. Không tự động reset toàn bộ course và không xóa attempt quiz cũ.

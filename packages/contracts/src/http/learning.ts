@@ -1,7 +1,12 @@
 import type { Uuid } from './common';
 import type { ProgressSyncStatus } from './quiz';
 
-export type LearningStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type LearningStatus =
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'OUTDATED'
+  | 'RESET';
 export type ChapterAccessStatus = 'LOCKED' | 'UNLOCKED' | 'COMPLETED';
 export type ChapterAccessReason =
   | 'ENROLLMENT_REQUIRED'
@@ -27,6 +32,8 @@ export interface ItemProgressData {
   contentVersion: number;
   status: LearningStatus;
   completedAt: string | null;
+  invalidatedAt: string | null;
+  invalidationReason: string | null;
 }
 export interface LessonProgressData {
   userId: Uuid;
