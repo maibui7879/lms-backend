@@ -5,7 +5,7 @@ export class CompletionPolicy {
   @PrimaryColumn({ type: 'uuid' })
   courseId!: string;
 
-  @Column({ type: 'integer' })
+  @PrimaryColumn({ type: 'integer' })
   contentVersion!: number;
 
   @Column({ type: 'jsonb', default: () => "'[]'" })

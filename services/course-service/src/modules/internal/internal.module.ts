@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { CompletionPolicyModule } from '../completion-policy/completion-policy.module';
 import { Course } from '../courses/entities/course.entity';
+import { CourseRevision } from '../course-revisions/entities/course-revision.entity';
 import { EnrollmentsModule } from '../enrollments/enrollments.module';
 import { Enrollment } from '../enrollments/entities/enrollment.entity';
 import { LearningItem } from '../learning-items/entities/learning-item.entity';
@@ -14,6 +15,7 @@ import { InternalService } from './internal.service';
   imports: [
     TypeOrmModule.forFeature([
       Course,
+      CourseRevision,
       Chapter,
       Lesson,
       LearningItem,

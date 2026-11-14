@@ -25,7 +25,7 @@ import { CourseRevision } from './entities/course-revision.entity';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Lesson } from '../lessons/entities/lesson.entity';
 import { LearningItem } from '../learning-items/entities/learning-item.entity';
-import { DataSource, In } from 'typeorm';
+import { DataSource, In, IsNull } from 'typeorm';
 
 @Injectable()
 export class CourseRevisionsService {
@@ -84,8 +84,9 @@ export class CourseRevisionsService {
           migrationPolicy: dto.migrationPolicy,
         }),
       );
+      const sourceRevisionId = course.publishedRevisionId ?? IsNull();
       const sourceChapters = await manager.find(Chapter, {
-        where: { courseId },
+        where: { courseId, revisionId: sourceRevisionId },
         order: { order: 'ASC' },
       });
       const chapterMap = new Map<string, string>();
@@ -101,7 +102,9 @@ export class CourseRevisionsService {
         );
         chapterMap.set(source.id, clone.id);
       }
-      const sourceLessons = await manager.find(Lesson, { where: { courseId } });
+      const sourceLessons = await manager.find(Lesson, {
+        where: { courseId, revisionId: sourceRevisionId },
+      });
       const lessonMap = new Map<string, string>();
       for (const source of sourceLessons) {
         const clone = await manager.save(
@@ -117,7 +120,7 @@ export class CourseRevisionsService {
         lessonMap.set(source.id, clone.id);
       }
       const sourceItems = await manager.find(LearningItem, {
-        where: { courseId },
+        where: { courseId, revisionId: sourceRevisionId },
       });
       for (const source of sourceItems) {
         await manager.save(
@@ -232,7 +235,10 @@ export class CourseRevisionsService {
             id: revision.courseId,
             contentVersion: revision.baseContentVersion,
           },
-          { contentVersion: revision.baseContentVersion + 1 },
+          {
+            contentVersion: revision.baseContentVersion + 1,
+            publishedRevisionId: revision.id,
+          },
         );
       }
     });

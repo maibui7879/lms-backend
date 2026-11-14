@@ -23,8 +23,7 @@ export type CourseRevisionStatus =
   'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'REJECTED';
 export type RevisionUpdateType = 'NORMAL' | 'CRITICAL';
 export type MigrationPolicy =
-  | 'KEEP_ENROLLED_VERSION'
-  | 'MIGRATE_AFFECTED_ITEMS';
+  'KEEP_ENROLLED_VERSION' | 'MIGRATE_AFFECTED_ITEMS';
 export interface CourseRevisionData {
   id: Uuid;
   courseId: Uuid;
@@ -49,10 +48,7 @@ export interface ReviewCourseRevisionRequest extends VersionRequest {
   reason?: string;
 }
 export type RevisionEntityType =
-  | 'CHAPTER'
-  | 'LESSON'
-  | 'LEARNING_ITEM'
-  | 'QUIZ';
+  'CHAPTER' | 'LESSON' | 'LEARNING_ITEM' | 'QUIZ';
 export type RevisionChangeType = 'ADDED' | 'UPDATED' | 'DELETED';
 export interface CourseRevisionChangeData {
   id: Uuid;

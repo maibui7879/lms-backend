@@ -18,7 +18,8 @@ import type {
   ChapterData,
   CourseOutlineData,
   CreateChapterRequest,
-  ReorderRequest,
+  RevisionReorderRequest,
+  RevisionVersionRequest,
   UpdateChapterRequest,
   VersionRequest,
 } from '@lms/contracts';
@@ -68,7 +69,7 @@ export class ChaptersController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Param('id') id: string,
-    @Body(ChapterVersionRequestPipe) body: VersionRequest,
+    @Body(ChapterVersionRequestPipe) body: RevisionVersionRequest,
     @CurrentUser() user: AuthUser,
   ): Promise<void> {
     await this.chapters.remove(validateChapterId(id), body, user);
@@ -77,7 +78,7 @@ export class ChaptersController {
   @Put('courses/:id/chapters/order')
   async reorder(
     @Param('id') courseId: string,
-    @Body(ReorderChapterPipe) body: ReorderRequest,
+    @Body(ReorderChapterPipe) body: RevisionReorderRequest,
     @CurrentUser() user: AuthUser,
     @Req() request: Request,
   ): Promise<ApiResponse<CourseOutlineData>> {

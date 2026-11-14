@@ -11,11 +11,12 @@ import type {
   CourseLearningStructure,
   ContentVersionQuery,
 } from '@lms/contracts';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { chapterData } from '../chapters/chapters.service';
 import { CompletionPolicyService } from '../completion-policy/completion-policy.service';
 import { Course } from '../courses/entities/course.entity';
+import { CourseRevision } from '../course-revisions/entities/course-revision.entity';
 import { Enrollment } from '../enrollments/entities/enrollment.entity';
 import { LearningItem } from '../learning-items/entities/learning-item.entity';
 import { learningItemData } from '../learning-items/learning-items.service';
@@ -27,6 +28,8 @@ export class InternalService {
   constructor(
     @InjectRepository(Course)
     private readonly courses: Repository<Course>,
+    @InjectRepository(CourseRevision)
+    private readonly revisions: Repository<CourseRevision>,
     @InjectRepository(Chapter)
     private readonly chapters: Repository<Chapter>,
     @InjectRepository(Lesson)
@@ -91,7 +94,7 @@ export class InternalService {
   ): Promise<CourseLearningStructure> {
     const course = await this.courses.findOneBy({ id: courseId });
     if (!course) throw new NotFoundException('Course not found');
-    if (course.contentVersion !== query.contentVersion)
+    if (query.contentVersion > course.contentVersion)
       throw new ConflictException({
         code: 'CONTENT_VERSION_UNAVAILABLE',
         message: 'Requested course content version is not available',
@@ -102,15 +105,30 @@ export class InternalService {
         },
       });
 
+    const revision = await this.revisions.findOneBy({
+      courseId,
+      contentVersion: query.contentVersion,
+      status: 'PUBLISHED',
+    });
+    const revisionId = revision?.id ?? IsNull();
     const [chapters, lessons, items] = await Promise.all([
-      this.chapters.find({ where: { courseId }, order: { order: 'ASC' } }),
-      this.lessons.find({ where: { courseId }, order: { order: 'ASC' } }),
-      this.items.find({ where: { courseId }, order: { order: 'ASC' } }),
+      this.chapters.find({
+        where: { courseId, revisionId },
+        order: { order: 'ASC' },
+      }),
+      this.lessons.find({
+        where: { courseId, revisionId },
+        order: { order: 'ASC' },
+      }),
+      this.items.find({
+        where: { courseId, revisionId },
+        order: { order: 'ASC' },
+      }),
     ]);
     return {
       outline: {
         courseId,
-        revisionId: courseId,
+        revisionId: revision?.id ?? courseId,
         contentVersion: query.contentVersion,
         chapters: chapters.map((chapter) => ({
           ...chapterData(chapter),
