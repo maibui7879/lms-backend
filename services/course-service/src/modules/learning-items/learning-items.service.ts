@@ -10,12 +10,14 @@ import type {
   CourseOutlineData,
   CreateLearningItemRequest,
   LearningItemData,
-  ReorderRequest,
+  RevisionReorderRequest,
+  RevisionVersionRequest,
   UpdateLearningItemRequest,
   VersionRequest,
 } from '@lms/contracts';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Course } from '../courses/entities/course.entity';
+import { CourseRevision } from '../course-revisions/entities/course-revision.entity';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Lesson } from '../lessons/entities/lesson.entity';
 import { LearningItem } from './entities/learning-item.entity';
@@ -25,7 +27,7 @@ export function learningItemData(item: LearningItem): LearningItemData {
     id: item.id,
     courseId: item.courseId,
     lessonId: item.lessonId,
-    revisionId: item.courseId,
+    revisionId: item.revisionId ?? item.courseId,
     title: item.title,
     required: item.required,
     order: item.order,
@@ -57,6 +59,8 @@ export class LearningItemsService {
     @InjectRepository(Lesson) private readonly lessons: Repository<Lesson>,
     @InjectRepository(Chapter) private readonly chapters: Repository<Chapter>,
     @InjectRepository(Course) private readonly courses: Repository<Course>,
+    @InjectRepository(CourseRevision)
+    private readonly revisions: Repository<CourseRevision>,
   ) {}
 
   async create(
@@ -64,9 +68,13 @@ export class LearningItemsService {
     dto: CreateLearningItemRequest,
     user: AuthUser,
   ): Promise<LearningItemData> {
-    const { lesson, course } = await this.assertEditableLesson(lessonId, user);
+    const { lesson, course, revision } = await this.assertEditableLesson(
+      lessonId,
+      dto.revisionId,
+      user,
+    );
     const last = await this.items.findOne({
-      where: { lessonId },
+      where: { lessonId, revisionId: revision?.id ?? IsNull() },
       order: { order: 'DESC' },
     });
     const item = this.items.create({
@@ -76,11 +84,12 @@ export class LearningItemsService {
       title: dto.title,
       required: dto.required,
       order: (last?.order ?? 0) + 1,
-      contentVersion: course.contentVersion + 1,
+      revisionId: revision?.id ?? null,
+      contentVersion: revision?.baseContentVersion ?? course.contentVersion + 1,
       version: 1,
     });
     const saved = await this.items.save(item);
-    await this.bumpCourse(course);
+    await this.bumpContent(course, revision);
     return learningItemData(saved);
   }
 
@@ -90,31 +99,51 @@ export class LearningItemsService {
     user: AuthUser,
   ): Promise<LearningItemData> {
     const item = await this.findItem(id);
-    const { course } = await this.assertEditableLesson(item.lessonId, user);
+    const { course, revision } = await this.assertEditableLesson(
+      item.lessonId,
+      dto.revisionId,
+      user,
+    );
+    this.assertBelongsToRevision(item.revisionId, revision?.id);
     this.assertVersion(item.version, dto.expectedVersion);
     const result = await this.items.update(
-      { id, version: dto.expectedVersion },
+      {
+        id,
+        version: dto.expectedVersion,
+        revisionId: revision?.id ?? IsNull(),
+      },
       {
         ...this.contentFields(dto),
         title: dto.title,
         required: dto.required,
-        contentVersion: course.contentVersion + 1,
+        contentVersion:
+          revision?.baseContentVersion ?? course.contentVersion + 1,
         version: dto.expectedVersion + 1,
       },
     );
     if (!result.affected)
       throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
-    await this.bumpCourse(course);
+    await this.bumpContent(course, revision);
     return learningItemData(await this.items.findOneByOrFail({ id }));
   }
 
-  async remove(id: string, dto: VersionRequest, user: AuthUser): Promise<void> {
+  async remove(
+    id: string,
+    dto: RevisionVersionRequest,
+    user: AuthUser,
+  ): Promise<void> {
     const item = await this.findItem(id);
-    const { course } = await this.assertEditableLesson(item.lessonId, user);
+    const { course, revision } = await this.assertEditableLesson(
+      item.lessonId,
+      dto.revisionId,
+      user,
+    );
+    this.assertBelongsToRevision(item.revisionId, revision?.id);
     this.assertVersion(item.version, dto.expectedVersion);
     const result = await this.items.delete({
       id,
       version: dto.expectedVersion,
+      revisionId: revision?.id ?? IsNull(),
     });
     if (!result.affected)
       throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
@@ -122,24 +151,32 @@ export class LearningItemsService {
       .createQueryBuilder()
       .update(LearningItem)
       .set({ order: () => '"order" - 1' })
-      .where('"lessonId" = :lessonId AND "order" > :order', {
-        lessonId: item.lessonId,
-        order: item.order,
-      })
+      .where(
+        '"lessonId" = :lessonId AND "revisionId" IS NOT DISTINCT FROM :revisionId AND "order" > :order',
+        {
+          lessonId: item.lessonId,
+          revisionId: revision?.id ?? null,
+          order: item.order,
+        },
+      )
       .execute();
-    await this.bumpCourse(course);
+    await this.bumpContent(course, revision);
   }
 
   async reorder(
     lessonId: string,
-    dto: ReorderRequest,
+    dto: RevisionReorderRequest,
     user: AuthUser,
   ): Promise<CourseOutlineData> {
-    const { course } = await this.assertEditableLesson(lessonId, user);
-    if (course.version !== dto.expectedVersion)
+    const { course, revision } = await this.assertEditableLesson(
+      lessonId,
+      dto.revisionId,
+      user,
+    );
+    if ((revision?.version ?? course.version) !== dto.expectedVersion)
       throw this.versionConflict(dto.expectedVersion, course.version);
     const items = await this.items.find({
-      where: { lessonId },
+      where: { lessonId, revisionId: revision?.id ?? IsNull() },
       order: { order: 'ASC' },
     });
     const actualIds = new Set(items.map((item) => item.id));
@@ -156,16 +193,21 @@ export class LearningItemsService {
     for (const [index, id] of dto.orderedIds.entries()) {
       const item = items.find((value) => value.id === id)!;
       await this.items.update(
-        { id, lessonId },
+        { id, lessonId, revisionId: revision?.id ?? IsNull() },
         {
           order: index + 1,
           version: item.version + 1,
-          contentVersion: course.contentVersion + 1,
+          contentVersion:
+            revision?.baseContentVersion ?? course.contentVersion + 1,
         },
       );
     }
-    await this.bumpCourse(course);
-    return this.courseOutline(course.id, course.contentVersion + 1);
+    await this.bumpContent(course, revision);
+    return this.courseOutline(
+      course.id,
+      revision?.baseContentVersion ?? course.contentVersion + 1,
+      revision?.id,
+    );
   }
 
   private contentFields(
@@ -184,27 +226,28 @@ export class LearningItemsService {
   private async courseOutline(
     courseId: string,
     contentVersion: number,
+    revisionId?: string,
   ): Promise<CourseOutlineData> {
     const chapters = await this.chapters.find({
-      where: { courseId },
+      where: { courseId, revisionId: revisionId ?? IsNull() },
       order: { order: 'ASC' },
     });
     const lessons = await this.lessons.find({
-      where: { courseId },
+      where: { courseId, revisionId: revisionId ?? IsNull() },
       order: { order: 'ASC' },
     });
     const items = await this.items.find({
-      where: { courseId },
+      where: { courseId, revisionId: revisionId ?? IsNull() },
       order: { order: 'ASC' },
     });
     return {
       courseId,
-      revisionId: courseId,
+      revisionId: revisionId ?? courseId,
       contentVersion,
       chapters: chapters.map((chapter) => ({
         id: chapter.id,
         courseId,
-        revisionId: courseId,
+        revisionId: revisionId ?? courseId,
         title: chapter.title,
         order: chapter.order,
         version: chapter.version,
@@ -214,7 +257,7 @@ export class LearningItemsService {
           .map((lesson) => ({
             id: lesson.id,
             courseId,
-            revisionId: courseId,
+            revisionId: revisionId ?? courseId,
             chapterId: lesson.chapterId,
             title: lesson.title,
             order: lesson.order,
@@ -235,8 +278,13 @@ export class LearningItemsService {
 
   private async assertEditableLesson(
     lessonId: string,
+    revisionId: string | undefined,
     user: AuthUser,
-  ): Promise<{ lesson: Lesson; course: Course }> {
+  ): Promise<{
+    lesson: Lesson;
+    course: Course;
+    revision: CourseRevision | null;
+  }> {
     if (user.role !== 'INSTRUCTOR' || user.status !== 'ACTIVE')
       throw new ForbiddenException('Active instructor account required');
     const lesson = await this.lessons.findOneBy({ id: lessonId });
@@ -245,13 +293,37 @@ export class LearningItemsService {
     if (!course) throw new NotFoundException('Course not found');
     if (course.instructorId !== user.id)
       throw new ForbiddenException('Course ownership required');
-    if (course.status === 'PUBLISHED')
+    if (revisionId) {
+      const revision = await this.revisions.findOneBy({
+        id: revisionId,
+        courseId: course.id,
+      });
+      if (!revision) throw new NotFoundException('Course revision not found');
+      if (!['DRAFT', 'REJECTED'].includes(revision.status))
+        throw new ConflictException({
+          code: 'INVALID_COURSE_TRANSITION',
+          message: 'Only draft or rejected revisions can be edited',
+          details: {},
+        });
+      if (
+        (await this.lessons.findOneBy({ id: lessonId }))?.revisionId !==
+        revision.id
+      )
+        throw new ConflictException({
+          code: 'REVISION_CONTENT_MISMATCH',
+          message: 'Content does not belong to the requested course revision',
+          details: {},
+        });
+      return { lesson, course, revision };
+    }
+    if (course.status === 'PUBLISHED' || course.status === 'IN_REVIEW')
       throw new ConflictException({
         code: 'INVALID_COURSE_TRANSITION',
-        message: 'Published course content must be updated through a revision',
+        message:
+          'Published or in-review course content must be updated through a revision',
         details: {},
       });
-    return { lesson, course };
+    return { lesson, course, revision: null };
   }
 
   private assertVersion(currentVersion: number, expectedVersion: number): void {
@@ -259,7 +331,19 @@ export class LearningItemsService {
       throw this.versionConflict(expectedVersion, currentVersion);
   }
 
-  private async bumpCourse(course: Course): Promise<void> {
+  private async bumpContent(
+    course: Course,
+    revision: CourseRevision | null,
+  ): Promise<void> {
+    if (revision) {
+      const result = await this.revisions.update(
+        { id: revision.id, version: revision.version },
+        { version: revision.version + 1 },
+      );
+      if (!result.affected)
+        throw this.versionConflict(revision.version, revision.version + 1);
+      return;
+    }
     const result = await this.courses.update(
       { id: course.id, version: course.version },
       {
@@ -269,6 +353,18 @@ export class LearningItemsService {
     );
     if (!result.affected)
       throw this.versionConflict(course.version, course.version + 1);
+  }
+
+  private assertBelongsToRevision(
+    actual: string | null,
+    expected?: string,
+  ): void {
+    if ((actual ?? undefined) !== expected)
+      throw new ConflictException({
+        code: 'REVISION_CONTENT_MISMATCH',
+        message: 'Content does not belong to the requested course revision',
+        details: {},
+      });
   }
 
   private versionConflict(expectedVersion: number, currentVersion: number) {

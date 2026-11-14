@@ -33,6 +33,9 @@ export class Course {
   @Column({ type: 'integer', default: 1 })
   contentVersion!: number;
 
+  @Column({ type: 'uuid', nullable: true })
+  publishedRevisionId!: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 

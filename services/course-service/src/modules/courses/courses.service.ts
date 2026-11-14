@@ -6,7 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, In, Repository } from 'typeorm';
+import { ILike, In, IsNull, Repository } from 'typeorm';
 import type {
   AuthUser,
   CourseData,
@@ -63,13 +63,31 @@ export class CoursesService {
   async outline(id: string, user: AuthUser): Promise<CourseOutlineData> {
     const course = await this.findReadableCourse(id, user);
     const [chapters, lessons, items] = await Promise.all([
-      this.chapters.find({ where: { courseId: id }, order: { order: 'ASC' } }),
-      this.lessons.find({ where: { courseId: id }, order: { order: 'ASC' } }),
-      this.items.find({ where: { courseId: id }, order: { order: 'ASC' } }),
+      this.chapters.find({
+        where: {
+          courseId: id,
+          revisionId: course.publishedRevisionId ?? IsNull(),
+        },
+        order: { order: 'ASC' },
+      }),
+      this.lessons.find({
+        where: {
+          courseId: id,
+          revisionId: course.publishedRevisionId ?? IsNull(),
+        },
+        order: { order: 'ASC' },
+      }),
+      this.items.find({
+        where: {
+          courseId: id,
+          revisionId: course.publishedRevisionId ?? IsNull(),
+        },
+        order: { order: 'ASC' },
+      }),
     ]);
     return {
       courseId: id,
-      revisionId: id,
+      revisionId: course.publishedRevisionId ?? id,
       contentVersion: course.contentVersion,
       chapters: chapters.map((chapter) => ({
         ...chapterData(chapter),
@@ -258,10 +276,11 @@ export class CoursesService {
 
     const current = await this.repository.findOneBy({ id });
     this.assertOwnerAndVersion(current, id, user, dto.expectedVersion);
-    if (current.status === 'PUBLISHED')
+    if (current.status === 'PUBLISHED' || current.status === 'IN_REVIEW')
       throw new ConflictException({
         code: 'INVALID_COURSE_TRANSITION',
-        message: 'Published course must be updated through a revision',
+        message:
+          'Courses in review or published must be updated through the appropriate review flow',
         details: {},
       });
 
@@ -279,10 +298,10 @@ export class CoursesService {
     this.requireInstructor(user);
     const current = await this.repository.findOneBy({ id });
     this.assertOwnerAndVersion(current, id, user, dto.expectedVersion);
-    if (current!.status === 'PUBLISHED')
+    if (current!.status === 'PUBLISHED' || current!.status === 'IN_REVIEW')
       throw new ConflictException({
         code: 'INVALID_COURSE_TRANSITION',
-        message: 'Published course cannot be deleted',
+        message: 'Courses in review or published cannot be deleted',
         details: {},
       });
     const result = await this.repository.delete({

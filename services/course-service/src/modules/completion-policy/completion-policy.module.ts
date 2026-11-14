@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Course } from '../courses/entities/course.entity';
+import { CourseRevision } from '../course-revisions/entities/course-revision.entity';
 import { LearningItem } from '../learning-items/entities/learning-item.entity';
 import { Lesson } from '../lessons/entities/lesson.entity';
 import { CompletionPolicyController } from './completion-policy.controller';
@@ -13,6 +14,7 @@ import { CompletionPolicy } from './entities/completion-policy.entity';
     TypeOrmModule.forFeature([
       CompletionPolicy,
       Course,
+      CourseRevision,
       Chapter,
       Lesson,
       LearningItem,

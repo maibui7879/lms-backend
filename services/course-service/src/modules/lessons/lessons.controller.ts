@@ -17,7 +17,8 @@ import type {
   AuthUser,
   CreateLessonRequest,
   LessonData,
-  ReorderRequest,
+  RevisionReorderRequest,
+  RevisionVersionRequest,
   UpdateLessonRequest,
   VersionRequest,
 } from '@lms/contracts';
@@ -67,7 +68,7 @@ export class LessonsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Param('id') id: string,
-    @Body(LessonVersionRequestPipe) body: VersionRequest,
+    @Body(LessonVersionRequestPipe) body: RevisionVersionRequest,
     @CurrentUser() user: AuthUser,
   ): Promise<void> {
     await this.lessons.remove(validateLessonId(id), body, user);
@@ -76,7 +77,7 @@ export class LessonsController {
   @Put('chapters/:id/lessons/order')
   async reorder(
     @Param('id') chapterId: string,
-    @Body(ReorderLessonPipe) body: ReorderRequest,
+    @Body(ReorderLessonPipe) body: RevisionReorderRequest,
     @CurrentUser() user: AuthUser,
     @Req() request: Request,
   ): Promise<ApiResponse<LessonData[]>> {

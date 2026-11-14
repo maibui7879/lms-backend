@@ -11,9 +11,10 @@ import type {
   ChapterCompletionPolicy,
   UpdateCompletionPolicyRequest,
 } from '@lms/contracts';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Course } from '../courses/entities/course.entity';
+import { CourseRevision } from '../course-revisions/entities/course-revision.entity';
 import { LearningItem } from '../learning-items/entities/learning-item.entity';
 import { Lesson } from '../lessons/entities/lesson.entity';
 import { CompletionPolicy } from './entities/completion-policy.entity';
@@ -24,6 +25,8 @@ export class CompletionPolicyService {
     @InjectRepository(CompletionPolicy)
     private readonly policies: Repository<CompletionPolicy>,
     @InjectRepository(Course) private readonly courses: Repository<Course>,
+    @InjectRepository(CourseRevision)
+    private readonly revisions: Repository<CourseRevision>,
     @InjectRepository(Chapter)
     private readonly chapters: Repository<Chapter>,
     @InjectRepository(Lesson)
@@ -43,7 +46,7 @@ export class CompletionPolicyService {
   ): Promise<CourseCompletionPolicy> {
     const course = await this.courses.findOneBy({ id: courseId });
     if (!course) throw new NotFoundException('Course not found');
-    if (course.contentVersion !== contentVersion)
+    if (contentVersion > course.contentVersion)
       throw new ConflictException({
         code: 'CONTENT_VERSION_UNAVAILABLE',
         message: 'Requested course content version is not available',
@@ -53,13 +56,35 @@ export class CompletionPolicyService {
           currentVersion: course.contentVersion,
         },
       });
-    return this.getForCourse(course);
+    const revision = await this.revisions.findOneBy({
+      courseId,
+      contentVersion,
+      status: 'PUBLISHED',
+    });
+    const policy = await this.policies.findOneBy({ courseId, contentVersion });
+    const content = await this.loadContent(courseId, revision?.id);
+    if (policy) return this.toContract(course, policy);
+    return this.toContract(
+      { ...course, contentVersion },
+      this.defaultPolicy(
+        { ...course, contentVersion },
+        content.items,
+        content.chapters,
+        content.lessons,
+      ),
+    );
   }
 
   private async getForCourse(course: Course): Promise<CourseCompletionPolicy> {
     const { id: courseId } = course;
-    const policy = await this.policies.findOneBy({ courseId });
-    const content = await this.loadContent(courseId);
+    const policy = await this.policies.findOneBy({
+      courseId,
+      contentVersion: course.contentVersion,
+    });
+    const content = await this.loadContent(
+      courseId,
+      course.publishedRevisionId ?? undefined,
+    );
     if (policy) return this.toContract(course, policy);
     return this.toContract(
       course,
@@ -92,7 +117,10 @@ export class CompletionPolicyService {
       content.items,
     );
     const nextContentVersion = course.contentVersion + 1;
-    const current = await this.policies.findOneBy({ courseId });
+    const current = await this.policies.findOne({
+      where: { courseId },
+      order: { contentVersion: 'DESC' },
+    });
     const policy = this.policies.create({
       ...(current ?? {}),
       courseId,
@@ -176,15 +204,27 @@ export class CompletionPolicyService {
     });
   }
 
-  private async loadContent(courseId: string): Promise<{
+  private async loadContent(
+    courseId: string,
+    revisionId?: string,
+  ): Promise<{
     chapters: Chapter[];
     lessons: Lesson[];
     items: LearningItem[];
   }> {
     const [chapters, lessons, items] = await Promise.all([
-      this.chapters.find({ where: { courseId }, order: { order: 'ASC' } }),
-      this.lessons.find({ where: { courseId }, order: { order: 'ASC' } }),
-      this.items.find({ where: { courseId }, order: { order: 'ASC' } }),
+      this.chapters.find({
+        where: { courseId, revisionId: revisionId ?? IsNull() },
+        order: { order: 'ASC' },
+      }),
+      this.lessons.find({
+        where: { courseId, revisionId: revisionId ?? IsNull() },
+        order: { order: 'ASC' },
+      }),
+      this.items.find({
+        where: { courseId, revisionId: revisionId ?? IsNull() },
+        order: { order: 'ASC' },
+      }),
     ]);
     return { chapters, lessons, items };
   }

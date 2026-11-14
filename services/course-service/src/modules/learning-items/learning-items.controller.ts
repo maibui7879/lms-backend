@@ -18,7 +18,8 @@ import type {
   CourseOutlineData,
   CreateLearningItemRequest,
   LearningItemData,
-  ReorderRequest,
+  RevisionReorderRequest,
+  RevisionVersionRequest,
   UpdateLearningItemRequest,
   VersionRequest,
 } from '@lms/contracts';
@@ -76,7 +77,7 @@ export class LearningItemsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Param('id') id: string,
-    @Body(LearningItemVersionRequestPipe) body: VersionRequest,
+    @Body(LearningItemVersionRequestPipe) body: RevisionVersionRequest,
     @CurrentUser() user: AuthUser,
   ): Promise<void> {
     await this.learningItems.remove(validateLearningItemId(id), body, user);
@@ -85,7 +86,7 @@ export class LearningItemsController {
   @Put('lessons/:id/items/order')
   async reorder(
     @Param('id') lessonId: string,
-    @Body(ReorderLearningItemPipe) body: ReorderRequest,
+    @Body(ReorderLearningItemPipe) body: RevisionReorderRequest,
     @CurrentUser() user: AuthUser,
     @Req() request: Request,
   ): Promise<ApiResponse<CourseOutlineData>> {
