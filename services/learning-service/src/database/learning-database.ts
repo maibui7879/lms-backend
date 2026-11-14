@@ -15,6 +15,11 @@ import { CreateLessonCompletions1794528000004 } from './migrations/1794528000004
 import { CreateResumeCheckpoints1794528000005 } from './migrations/1794528000005-create-resume-checkpoints';
 import { CourseItemMigration } from '../modules/progress/entities/course-item-migration.entity';
 import { AddItemInvalidations1794528000006 } from './migrations/1794528000006-add-item-invalidations';
+import { CourseSkill } from '../modules/mastery/entities/course-skill.entity';
+import { CreateCourseSkills1794528000007 } from './migrations/1794528000007-create-course-skills';
+import { MasteryCurrent } from '../modules/mastery/entities/mastery-current.entity';
+import { MasterySnapshot } from '../modules/mastery/entities/mastery-snapshot.entity';
+import { SaveMastery1794528000008 } from './migrations/1794528000008-save-mastery';
 
 export function createLearningDataSource(url: string | undefined): DataSource {
   if (!url) throw new Error('DATABASE_URL is required for Learning PostgreSQL');
@@ -28,6 +33,9 @@ export function createLearningDataSource(url: string | undefined): DataSource {
       AssessmentAttempt,
       AssessmentSyncReceipt,
       CourseItemMigration,
+      CourseSkill,
+      MasteryCurrent,
+      MasterySnapshot,
     ],
     migrations: [
       CreateItemCompletions1794528000000,
@@ -37,6 +45,8 @@ export function createLearningDataSource(url: string | undefined): DataSource {
       CreateLessonCompletions1794528000004,
       CreateResumeCheckpoints1794528000005,
       AddItemInvalidations1794528000006,
+      CreateCourseSkills1794528000007,
+      SaveMastery1794528000008,
     ],
     synchronize: false,
     connectTimeoutMS: 5000,

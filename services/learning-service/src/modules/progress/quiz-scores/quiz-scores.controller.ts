@@ -17,22 +17,10 @@ import type {
 } from '@lms/contracts';
 import type { Response } from 'express';
 import { ApiExceptionFilter } from '../../../common/api-error';
+import { pageQuery } from '../../../common/page-query';
 import { requestId } from '../../../common/request-context';
 import { validateRequest } from '../../../common/validate-request';
 import { QuizScoresService } from './quiz-scores.service';
-
-function pageQuery(query: Record<string, unknown>) {
-  const normalized = { ...query };
-  for (const key of ['page', 'limit']) {
-    const value = normalized[key];
-    if (typeof value === 'string' && /^[0-9]+$/.test(value)) {
-      const parsed = Number(value);
-      if (Number.isSafeInteger(parsed)) normalized[key] = parsed;
-    }
-  }
-  const { page = 1, limit = 20 } = validateRequest('PageQuery', normalized);
-  return { page, limit };
-}
 
 @Controller('api/v1/learning/courses/:id')
 @UseFilters(ApiExceptionFilter)

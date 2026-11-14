@@ -5,8 +5,10 @@ import { apiError } from './api-error';
 
 @Injectable()
 export class InternalServiceGuard implements CanActivate {
+  protected readonly credentialVariable: string = 'LEARNING_SERVICE_TOKEN';
+
   canActivate(context: ExecutionContext): boolean {
-    const token = process.env.LEARNING_SERVICE_TOKEN?.trim();
+    const token = process.env[this.credentialVariable]?.trim();
     if (!token)
       throw apiError(
         'SERVICE_UNAVAILABLE',
