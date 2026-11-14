@@ -5,6 +5,9 @@ import type {
   AttemptGradedV2Event,
   EnrollmentSnapshotData,
   GradedAssessmentSummary,
+  LearnerAssessmentSummary,
+  PageData,
+  PageQuery,
 } from '@lms/contracts';
 import { IsNull, MoreThanOrEqual } from 'typeorm';
 import type { EntityManager } from 'typeorm';
@@ -149,6 +152,51 @@ export class AssessmentAttemptsRepository {
         gradedAt: MoreThanOrEqual(new Date(enrolledAt)),
       }),
     );
+  }
+
+  async summarizeQuizScores(
+    courseId: string,
+    { page, limit }: Required<PageQuery>,
+    enrollment?: EnrollmentSnapshotData,
+  ): Promise<PageData<LearnerAssessmentSummary>> {
+    const [result] = await this.database.run((database) =>
+      database.query<
+        Pick<PageData<LearnerAssessmentSummary>, 'items' | 'total'>[]
+      >(
+        `
+          WITH summaries AS (
+            SELECT user_id AS "userId", course_id AS "courseId",
+                   result->>'quizId' AS "quizId",
+                   assessment_version AS "assessmentVersion",
+                   count(*)::int AS "gradedAttempts",
+                   max((result->>'score')::numeric * 100 /
+                       (result->>'maxScore')::numeric) AS "bestScorePercent",
+                   bool_or((result->>'passed')::boolean) AS passed
+            FROM learning_assessment_attempts
+            WHERE course_id = $1
+              AND result->>'quizType' = 'GRADED'
+              AND ($4::uuid IS NULL OR (user_id = $4 AND graded_at >= $5::timestamptz))
+            GROUP BY user_id, course_id, result->>'quizId', assessment_version
+          ),
+          paged AS (
+            SELECT * FROM summaries
+            ORDER BY "userId", "quizId", "assessmentVersion"
+            LIMIT $3::int OFFSET ($2::bigint - 1) * $3::int
+          )
+          SELECT (SELECT count(*)::int FROM summaries) AS total,
+                 coalesce(jsonb_agg(paged ORDER BY "userId", "quizId", "assessmentVersion"), '[]') AS items
+          FROM paged
+        `,
+        [
+          courseId,
+          page,
+          limit,
+          enrollment?.userId ?? null,
+          enrollment?.enrolledAt ?? null,
+        ],
+      ),
+    );
+    return { ...result, page, limit };
   }
 
   private async writeReceipt(
