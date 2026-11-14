@@ -2,11 +2,7 @@ import type { Uuid } from './common';
 import type { ProgressSyncStatus } from './quiz';
 
 export type LearningStatus =
-  | 'NOT_STARTED'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'OUTDATED'
-  | 'RESET';
+  'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OUTDATED' | 'RESET';
 export type ChapterAccessStatus = 'LOCKED' | 'UNLOCKED' | 'COMPLETED';
 export type ChapterAccessReason =
   | 'ENROLLMENT_REQUIRED'
