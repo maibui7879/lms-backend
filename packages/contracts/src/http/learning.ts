@@ -1,5 +1,6 @@
 import type { Uuid } from './common';
 import type { ProgressSyncStatus } from './quiz';
+import type { VersionRequest } from '../common/pagination';
 
 export type LearningStatus =
   | 'NOT_STARTED'
@@ -123,17 +124,67 @@ export interface LearningDashboardData {
   recentQuizzes: LearningRecentQuiz[];
   updatedAt: string;
 }
+export type CourseSkillStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface CreateCourseSkillRequest {
+  name: string;
+  description: string;
+}
+
+export interface UpdateCourseSkillRequest extends VersionRequest {
+  name?: string;
+  description?: string;
+  status?: CourseSkillStatus;
+}
+
+export interface CourseSkillData extends CreateCourseSkillRequest {
+  id: Uuid;
+  courseId: Uuid;
+  status: CourseSkillStatus;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseSkillsData {
+  skills: CourseSkillData[];
+}
+
+/** Check the skills newly added to a Quiz question in one request. */
+export interface ValidateCourseSkillsRequest {
+  skillIds: Uuid[];
+}
+
+export interface SkillMasteryData {
+  skillId: Uuid;
+  skillName?: string;
+  scorePercent: number;
+  level: 'BEGINNER' | 'DEVELOPING' | 'PROFICIENT';
+  /** Number of graded attempts that contributed to this result. */
+  evidenceCount: number;
+  /** Sum of graded questions across contributing attempts, null if a count is missing. */
+  questionCount?: number | null;
+}
+
 export interface MasteryData {
   courseId: Uuid;
   userId: Uuid;
-  skills: {
-    skillId: Uuid;
-    scorePercent: number;
-    level: 'BEGINNER' | 'DEVELOPING' | 'PROFICIENT';
-    evidenceCount: number;
-  }[];
+  skills: SkillMasteryData[];
   algorithmVersion: string;
   updatedAt: string;
+}
+
+export interface MasteryHistoryPoint {
+  attemptId: Uuid;
+  assessmentVersion: number;
+  contentVersion: number;
+  gradedAt: string;
+  /** Date the attempt becomes eligible in the learner's content scope. */
+  effectiveAt: string;
+  /** When Learning stored the immutable point. */
+  recordedAt?: string;
+  algorithmVersion: string;
+  skills: SkillMasteryData[];
 }
 export interface RecommendationData {
   courseId: Uuid;

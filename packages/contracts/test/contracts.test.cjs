@@ -246,6 +246,16 @@ test('v1 events remain readable; v2 requires versioned grading evidence', () => 
     },
   };
   parseContract('AttemptGradedV2Event', v2);
+  const skillScore = { skillId: id, score: 7, maxScore: 10 };
+  const withSkill = (entry) => ({
+    ...v2,
+    payload: { ...v2.payload, skillScores: [entry] },
+  });
+  parseContract('AttemptGradedV2Event', withSkill(skillScore));
+  parseContract('AttemptGradedV2Event', withSkill({ ...skillScore, questionCount: 3 }));
+  for (const questionCount of [0, -1, 1.5, '3', null]) {
+    invalid('AttemptGradedV2Event', withSkill({ ...skillScore, questionCount }));
+  }
   invalid('AttemptGradedV2Event', {
     ...v2,
     payload: { ...v2.payload, passed: false },

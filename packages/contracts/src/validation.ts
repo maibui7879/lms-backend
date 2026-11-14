@@ -2,6 +2,7 @@ import Ajv from 'ajv';
 import type { ValidateFunction } from 'ajv';
 import schemas from './schemas.json';
 import type { SchemaTypes } from './schema-types';
+import type { ValidateCourseSkillsRequest } from './http/learning';
 
 const ajv = new Ajv({
   allErrors: true,
@@ -62,6 +63,11 @@ export function parseContract<K extends keyof SchemaTypes>(
       ),
     );
   const issues: string[] = [];
+  if (name === 'ValidateCourseSkillsRequest') {
+    const { skillIds } = value as ValidateCourseSkillsRequest;
+    if (new Set(skillIds.map((id) => id.toLowerCase())).size !== skillIds.length)
+      issues.push('/skillIds must be unique regardless of UUID letter case');
+  }
   function inspect(input: unknown, location: string): void {
     if (input === null || typeof input !== 'object') return;
     if (Array.isArray(input)) {

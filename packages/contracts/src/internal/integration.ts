@@ -67,7 +67,13 @@ export interface GradedAssessmentSummary {
   passed: boolean;
   gradedAt: string;
   /** Aggregated question scores per author-assigned skill; no answer keys. */
-  skillScores: { skillId: Uuid; score: number; maxScore: number }[];
+  skillScores: {
+    skillId: Uuid;
+    score: number;
+    maxScore: number;
+    /** Questions graded for this skill in this attempt. Absent in legacy results. */
+    questionCount?: number;
+  }[];
 }
 export interface AttemptAccessData {
   attemptId: Uuid;

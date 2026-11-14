@@ -93,6 +93,7 @@ function propertyRules(name, schema) {
         'correctResponses',
         'gradedAttempts',
         'evidenceCount',
+        'questionCount',
         'enrolledCount',
         'completedCount',
         'completedLessons',
@@ -113,6 +114,7 @@ function propertyRules(name, schema) {
         'baseContentVersion',
         'assessmentVersion',
         'expectedVersion',
+        'questionCount',
       ].includes(name)
     )
       schema.minimum = 1;
@@ -186,6 +188,28 @@ const definitions = Object.fromEntries(
 );
 definitions.Uuid.format = 'uuid';
 definitions.IsoDateTime.format = 'date-time';
+for (const name of [
+  'CreateCourseSkillRequest',
+  'UpdateCourseSkillRequest',
+  'CourseSkillData',
+]) {
+  Object.assign(definitions[name].properties.name, {
+    minLength: 1,
+    maxLength: 200,
+    pattern: '^(?=[^\\u0000]*\\S)[^\\u0000]+$',
+  });
+  Object.assign(definitions[name].properties.description, {
+    maxLength: 2000,
+    pattern: '^[^\\u0000]*$',
+  });
+}
+definitions.UpdateCourseSkillRequest.minProperties = 2;
+definitions.UpdateCourseSkillRequest.properties.expectedVersion.maximum =
+  2147483647;
+Object.assign(definitions.ValidateCourseSkillsRequest.properties.skillIds, {
+  minItems: 1,
+  maxItems: 100,
+});
 // Contract-specific shape constraints. Cross-record/domain rules live in validation.ts and README.
 for (const name of [
   'CreateQuestionRequest',

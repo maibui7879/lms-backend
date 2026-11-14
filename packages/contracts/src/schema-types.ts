@@ -53,10 +53,14 @@ export interface SchemaTypes {
   CourseRevisionChangeData: Contracts.CourseRevisionChangeData;
   CourseRevisionData: Contracts.CourseRevisionData;
   CourseRevisionStatus: Contracts.CourseRevisionStatus;
+  CourseSkillData: Contracts.CourseSkillData;
+  CourseSkillStatus: Contracts.CourseSkillStatus;
+  CourseSkillsData: Contracts.CourseSkillsData;
   CourseStatus: Contracts.CourseStatus;
   CreateChapterRequest: Contracts.CreateChapterRequest;
   CreateCourseRequest: Contracts.CreateCourseRequest;
   CreateCourseRevisionRequest: Contracts.CreateCourseRevisionRequest;
+  CreateCourseSkillRequest: Contracts.CreateCourseSkillRequest;
   CreateDiscussionRequest: Contracts.CreateDiscussionRequest;
   CreateEnrollmentRequest: Contracts.CreateEnrollmentRequest;
   CreateEnrollmentResponse: Contracts.CreateEnrollmentResponse;
@@ -107,6 +111,7 @@ export interface SchemaTypes {
   LoginResponse: Contracts.LoginResponse;
   LogoutRequest: Contracts.LogoutRequest;
   MasteryData: Contracts.MasteryData;
+  MasteryHistoryPoint: Contracts.MasteryHistoryPoint;
   MigrateCourseItemsRequest: Contracts.MigrateCourseItemsRequest;
   MigrationPolicy: Contracts.MigrationPolicy;
   MutationHeaders: Contracts.MutationHeaders;
@@ -151,6 +156,7 @@ export interface SchemaTypes {
   SectionEndQuizRef: Contracts.SectionEndQuizRef;
   SessionData: Contracts.SessionData;
   SessionResponse: Contracts.SessionResponse;
+  SkillMasteryData: Contracts.SkillMasteryData;
   StartAttemptData: Contracts.StartAttemptData;
   StartAttemptRequest: Contracts.StartAttemptRequest;
   SubmitAttemptRequest: Contracts.SubmitAttemptRequest;
@@ -158,6 +164,7 @@ export interface SchemaTypes {
   UpdateChapterRequest: Contracts.UpdateChapterRequest;
   UpdateCompletionPolicyRequest: Contracts.UpdateCompletionPolicyRequest;
   UpdateCourseRequest: Contracts.UpdateCourseRequest;
+  UpdateCourseSkillRequest: Contracts.UpdateCourseSkillRequest;
   UpdateDiscussionRequest: Contracts.UpdateDiscussionRequest;
   UpdateLearningItemRequest: Contracts.UpdateLearningItemRequest;
   UpdateLessonRequest: Contracts.UpdateLessonRequest;
@@ -171,5 +178,6 @@ export interface SchemaTypes {
   UserRole: Contracts.UserRole;
   UserSummary: Contracts.UserSummary;
   Uuid: Contracts.Uuid;
+  ValidateCourseSkillsRequest: Contracts.ValidateCourseSkillsRequest;
   VersionRequest: Contracts.VersionRequest;
 }
