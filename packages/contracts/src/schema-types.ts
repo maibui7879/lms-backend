@@ -17,6 +17,7 @@ export interface SchemaTypes {
   CertificateData: Contracts.CertificateData;
   CertificateIssuedEvent: Contracts.CertificateIssuedEvent;
   CertificateIssuedPayload: Contracts.CertificateIssuedPayload;
+  CertificateStatus: Contracts.CertificateStatus;
   CertificateVerificationData: Contracts.CertificateVerificationData;
   ChapterData: Contracts.ChapterData;
   ChapterOutline: Contracts.ChapterOutline;
