@@ -13697,6 +13697,10 @@
               },
               {
                 "type": "string",
+                "const": "CERTIFICATE_REVOKED"
+              },
+              {
+                "type": "string",
                 "const": "VERSION_CONFLICT"
               },
               {
@@ -15847,6 +15851,10 @@
           {
             "type": "string",
             "const": "CERTIFICATE_NOT_ELIGIBLE"
+          },
+          {
+            "type": "string",
+            "const": "CERTIFICATE_REVOKED"
           },
           {
             "type": "string",

@@ -326,3 +326,19 @@ test('certificates are versioned and preserve superseded history', () => {
     issuedAt: time,
   });
 });
+
+test('re-enrollment pins a new snapshot and exposes certificate revocation', () => {
+  parseContract('EnrollmentSnapshotData', {
+    enrollmentId: id2,
+    courseId: id,
+    userId: id,
+    status: 'ACTIVE',
+    enrolledAt: time,
+    contentVersion: 2,
+  });
+  parseContract('ApiError', {
+    code: 'CERTIFICATE_REVOKED',
+    message: 'Certificate has been revoked',
+    details: {},
+  });
+});

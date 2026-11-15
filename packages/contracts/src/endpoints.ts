@@ -369,6 +369,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/courses/{id}/enrollments',
     access: 'STUDENT',
+    description:
+      'Chỉ ghi danh course PUBLISHED. Nếu learner đã có enrollment ACTIVE hoặc COMPLETED thì trả ALREADY_ENROLLED; nếu enrollment cũ là CANCELLED thì tạo enrollment mới, pin contentVersion hiện tại và dùng enrolledAt làm mốc bắt đầu phiên học mới.',
     request: 'CreateEnrollmentRequest',
     response: 'EnrollmentSnapshotData',
     success: 201,
@@ -746,7 +748,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/learning/courses/{id}/certificate',
     access: 'ENROLLED',
     description:
-      'Phát hành certificate khi learner đủ điều kiện của contentVersion hiện tại. Nếu certificate cùng enrollmentId và contentVersion đã tồn tại thì trả bản ghi hiện có; chỉ cấp certificate mới khi course có contentVersion mới và learner hoàn thành lại requirement.',
+      'Phát hành certificate khi learner đủ điều kiện của contentVersion hiện tại. Khóa chống trùng là userId, courseId và contentVersion, không phụ thuộc enrollmentId. Nếu certificate đã tồn tại thì trả bản ghi hiện có; nếu certificate cùng phiên bản đã REVOKED thì trả CERTIFICATE_REVOKED; chỉ cấp certificate mới khi contentVersion tăng và learner hoàn thành lại requirement.',
     response: 'CertificateData',
     success: 201,
     idempotent: true,
