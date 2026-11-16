@@ -6,6 +6,7 @@ import { ProgressModule } from './modules/progress/progress.module';
 import { MasteryModule } from './modules/mastery/mastery.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
 import { CertificatesModule } from './modules/certificates/certificates.module';
+import { InstructorReportsModule } from './modules/instructor-reports/instructor-reports.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CertificatesModule } from './modules/certificates/certificates.module';
     MasteryModule,
     RecommendationsModule,
     CertificatesModule,
+    InstructorReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
