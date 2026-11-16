@@ -9,6 +9,8 @@ import { HealthController } from './health/health.controller';
 import { UserEntity } from './modules/users/entities/user.entity';
 import { RefreshSessionEntity } from './modules/users/entities/refresh-session.entity';
 import { UserAuditEntity } from './modules/users/entities/user-audit.entity';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { UserAuditEntity } from './modules/users/entities/user-audit.entity';
     DatabaseModule,
     TypeOrmModule.forFeature([UserEntity, RefreshSessionEntity, UserAuditEntity]),
     TerminusModule,
+    UsersModule,
+    AuthModule,
   ],
   controllers: [HealthController],
 })
