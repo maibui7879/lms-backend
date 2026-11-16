@@ -17,6 +17,8 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendOtpDto, VerifyEmailDto } from './dto/verify-email.dto';
 import { EmailOtpEntity } from './entities/email-otp.entity';
+import { JwtAccessPayload } from '../../common/auth/jwt-payload.interface';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +28,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     @InjectRepository(EmailOtpEntity)
     private readonly otpRepo: Repository<EmailOtpEntity>,
+    private readonly jwtService: JwtService,
   ) {}
 
   private toUserProfile(user: UserEntity) {
@@ -220,7 +223,22 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.validateCredentials(dto);
+
+    const payload: JwtAccessPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const accessToken = await this.jwtService.signAsync(payload);
+    const expiresIn = Number(
+      this.configService.get<number>('ACCESS_TOKEN_TTL_SECONDS', 900),
+    );
+
     return {
+      accessToken,
+      tokenType: 'Bearer',
+      expiresIn,
       user: this.toUserProfile(user),
     };
   }

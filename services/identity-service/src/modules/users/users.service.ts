@@ -1,13 +1,10 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
+import { Role } from './dto/update-role.dto';
 
-export enum Role {
-  STUDENT = 'STUDENT',
-  ADMIN = 'ADMIN',
-  MODERATOR = 'MODERATOR',
-}
+export { Role };
 
 export enum AccountStatus {
   ACTIVE = 'ACTIVE',
@@ -72,6 +69,17 @@ export class UsersService {
     }
     user.status = AccountStatus.ACTIVE;
     user.emailVerifiedAt = new Date();
+    return this.userRepo.save(user);
+  }
+  async updateRole(userId: string, role: Role): Promise<UserEntity> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+    user.role = role;
     return this.userRepo.save(user);
   }
 }
