@@ -11,6 +11,7 @@ import { connect } from 'amqplib';
 import type { ChannelModel, ConfirmChannel } from 'amqplib';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import { In } from 'typeorm';
 import type { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { CourseSkill } from '../src/modules/mastery/entities/course-skill.entity';
@@ -280,14 +281,16 @@ suite(
       await broker?.close();
       for (const server of [course, quiz]) {
         if (server?.listening)
-          await new Promise<void>((resolve) => server.close(() => resolve()));
+          await new Promise<void>((resolve) => {
+            server.close(() => resolve());
+            server.closeAllConnections();
+          });
       }
       if (source?.isInitialized) {
         await source.getRepository(CourseSkill).delete({ id: masterySkillId });
-        for (const eventId of events) {
-          await source.getRepository(AssessmentSyncReceipt).delete({ eventId });
-          await source.getRepository(AssessmentAttempt).delete({ eventId });
-        }
+        const testEvents = { eventId: In([...events]) };
+        await source.getRepository(AssessmentSyncReceipt).delete(testEvents);
+        await source.getRepository(AssessmentAttempt).delete(testEvents);
         await source
           .getRepository(ItemCompletion)
           .delete({ enrollmentId: enrollment.enrollmentId });
@@ -303,7 +306,7 @@ suite(
         await source.destroy();
       }
       process.env = oldEnv;
-    });
+    }, 15000);
 
     function progress(student = learner) {
       return request(app!.getHttpServer())
@@ -488,6 +491,7 @@ suite(
         attempt(10, '2026-01-15T10:24:00Z', {
           skillScores: [{ skillId: randomUUID(), score: 10, maxScore: 10 }],
         }),
+        attempt(10, new Date(Date.now() + 86400000).toISOString(), {}, 10, 5),
       ]) {
         await publish(extra);
         await waitFor(
@@ -1131,6 +1135,38 @@ suite(
       );
       await publish(failed);
       await syncStatus(failed, 'SYNCED');
+      const futureAt = new Date(Date.now() + 86400000).toISOString();
+      const future = makeEvent({
+        ...providers.quiz.chapterAttempt80,
+        occurredAt: futureAt,
+        payload: {
+          ...providers.quiz.chapterAttempt80.payload,
+          gradedAt: futureAt,
+        },
+      });
+      await publish(future);
+      await syncStatus(future, 'SYNCED');
+      await complete(reading.id).expect(403);
+      for (const [actor, suffix] of [
+        [learner, 'me/quiz-scores'],
+        ['instructorA', 'quiz-scores'],
+      ]) {
+        const scores = await request(app!.getHttpServer())
+          .get(`${learningPath}/${suffix}`)
+          .set('X-Mock-User', actor)
+          .expect(200);
+        expect(scores.body).toMatchObject({
+          data: {
+            items: [
+              {
+                quizId: future.payload.quizId,
+                gradedAttempts: 1,
+                passed: false,
+              },
+            ],
+          },
+        });
+      }
       const awaitingChapterQuiz = await dashboardData();
       expect(awaitingChapterQuiz.courses[0]).toMatchObject({
         completedRequiredLessons: 1,

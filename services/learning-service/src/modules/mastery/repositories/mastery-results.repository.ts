@@ -8,6 +8,7 @@ import type {
   PageData,
 } from '@lms/contracts';
 import type { EntityManager } from 'typeorm';
+import { LessThanOrEqual } from 'typeorm';
 import { LearningDatabase } from '../../../database/learning-database';
 import { MasteryCurrent } from '../entities/mastery-current.entity';
 import { MasterySnapshot } from '../entities/mastery-snapshot.entity';
@@ -117,7 +118,12 @@ export class MasteryResultsRepository {
     { page, limit }: Required<PageQuery>,
   ): Promise<PageData<MasteryHistoryPoint>> {
     const repository = manager.getRepository(MasterySnapshot);
-    const where = enrollmentKey(enrollment);
+    const where = {
+      ...enrollmentKey(enrollment),
+      effectiveAt: LessThanOrEqual(
+        new Date(await this.database.readTime(manager)),
+      ),
+    };
     const total = await repository.countBy(where);
     const offset = (page - 1) * limit;
     const rows =

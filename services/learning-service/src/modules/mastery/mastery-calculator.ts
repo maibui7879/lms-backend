@@ -1,25 +1,6 @@
 import { Injectable } from '@nestjs/common';
-
-export interface SkillEvidenceScore {
-  score: number;
-  maxScore: number;
-}
-
-function sum(
-  evidence: readonly SkillEvidenceScore[],
-  field: keyof SkillEvidenceScore,
-): number {
-  let total = 0;
-  let correction = 0;
-  // Recover the low bits lost when adding many decimal scores.
-  for (const row of evidence) {
-    const value = row[field] - correction;
-    const next = total + value;
-    correction = next - total - value;
-    total = next;
-  }
-  return total;
-}
+import { weightedScorePercent } from './rules/weighted-score';
+import type { SkillEvidenceScore } from './rules/weighted-score';
 
 @Injectable()
 export class MasteryCalculator {
@@ -27,8 +8,6 @@ export class MasteryCalculator {
 
   // The caller supplies at least one valid graded result for the same skill.
   scorePercent(evidence: readonly SkillEvidenceScore[]): number {
-    const totalScore = sum(evidence, 'score');
-    const totalMaxScore = sum(evidence, 'maxScore');
-    return (totalScore / totalMaxScore) * 100;
+    return weightedScorePercent(evidence);
   }
 }

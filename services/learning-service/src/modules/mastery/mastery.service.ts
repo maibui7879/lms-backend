@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { MoreThanOrEqual } from 'typeorm';
 import type { EntityManager } from 'typeorm';
 import type {
   AuthUser,
+  CourseLearningStructure,
   EnrollmentSnapshotData,
   GradedAssessmentSummary,
   MasteryData,
@@ -16,7 +16,7 @@ import { CourseClient } from '../../integrations/course.client';
 import type { CourseRequestContext } from '../../integrations/course.client';
 import { lockCourseMigration } from '../../database/course-migration-lock';
 import { CourseItemMigration } from '../progress/entities/course-item-migration.entity';
-import { AssessmentAttempt } from '../progress-sync/entities/assessment-attempt.entity';
+import { AssessmentAttemptsRepository } from '../progress-sync/repositories/assessment-attempts.repository';
 import { MasteryCalculator } from './mastery-calculator';
 import { CourseSkill } from './entities/course-skill.entity';
 import {
@@ -57,6 +57,7 @@ export class MasteryService {
     private readonly courses: CourseClient,
     private readonly saved: MasteryResultsRepository,
     private readonly calculator: MasteryCalculator,
+    private readonly attempts: AssessmentAttemptsRepository,
   ) {}
 
   async current(
@@ -86,6 +87,32 @@ export class MasteryService {
     );
   }
 
+  async recommendationEvidence(
+    enrollment: EnrollmentSnapshotData,
+    structure: CourseLearningStructure,
+    asOf: number,
+  ) {
+    return this.saved.refresh(enrollment, async (manager) => {
+      const { currentSkills, courseSkills, contributing } =
+        await this.loadEvidence(manager, enrollment, structure, asOf);
+      return {
+        skills: currentSkills,
+        activeSkills: new Map(
+          courseSkills
+            .filter(({ status }) => status === 'ACTIVE')
+            .map(({ id, name }) => [id, name]),
+        ),
+        history: contributing.map(({ result, effectiveAt, scores }) => ({
+          effectiveAt,
+          gradedAt: result.gradedAt,
+          attemptId: result.attemptId,
+          assessmentVersion: result.assessmentVersion,
+          scores,
+        })),
+      };
+    });
+  }
+
   private async refresh<T>(
     courseId: string,
     user: AuthUser,
@@ -108,36 +135,11 @@ export class MasteryService {
         continue;
       const structure = await this.courses.structure(enrollment, context);
       return this.saved.refresh(enrollment, async (manager) => {
-        await lockCourseMigration(manager, courseId);
-        const migrations = await manager
-          .getRepository(CourseItemMigration)
-          .find({
-            where: { courseId },
-            order: {
-              contentVersion: 'DESC',
-              appliedAt: 'DESC',
-              targetItemId: 'ASC',
-            },
-          });
-        const attempts = await manager.getRepository(AssessmentAttempt).findBy({
-          courseId,
-          userId: user.id,
-          gradedAt: MoreThanOrEqual(new Date(enrollment.enrolledAt)),
-        });
-        const skills = await manager
-          .getRepository(CourseSkill)
-          .findBy({ courseId });
-        const skillNames = new Map(skills.map(({ id, name }) => [id, name]));
-        const timeline = masteryTimeline(
+        const { results, skillNames, currentSkills } = await this.loadEvidence(
+          manager,
           enrollment,
           structure,
-          migrations,
-          attempts,
         );
-        const results = timeline.results.flatMap((entry) => {
-          const scores = usableScores(entry.result, skillNames);
-          return scores.length ? [{ ...entry, scores }] : [];
-        });
         const existing = await this.saved.snapshotKeys(manager, enrollment);
         const recordedAt = new Date().toISOString();
         const points = results.flatMap(
@@ -164,21 +166,56 @@ export class MasteryService {
           },
         );
         await this.saved.saveSnapshots(manager, enrollment, points);
-        const contributing = results.filter(({ key }) =>
-          timeline.currentScope.keys.has(key),
-        );
         return finish(manager, enrollment, {
           courseId,
           userId: user.id,
-          skills: this.summarize(
-            contributing.map(({ scores }) => scores),
-            skillNames,
-          ),
+          skills: currentSkills,
           algorithmVersion: this.calculator.algorithmVersion,
         });
       });
     }
     throw apiError('ENROLLMENT_REQUIRED', 'Course access is required');
+  }
+
+  private async loadEvidence(
+    manager: EntityManager,
+    enrollment: EnrollmentSnapshotData,
+    structure: CourseLearningStructure,
+    asOf = Infinity,
+  ) {
+    const { courseId } = enrollment;
+    await lockCourseMigration(manager, courseId);
+    const migrations = await manager.getRepository(CourseItemMigration).find({
+      where: { courseId },
+      order: {
+        contentVersion: 'DESC',
+        appliedAt: 'DESC',
+        targetItemId: 'ASC',
+      },
+    });
+    const attempts = await this.attempts.list(enrollment, manager);
+    const courseSkills = await manager
+      .getRepository(CourseSkill)
+      .findBy({ courseId });
+    const skillNames = new Map(courseSkills.map(({ id, name }) => [id, name]));
+    const timeline = masteryTimeline(
+      enrollment,
+      structure,
+      migrations.filter(({ appliedAt }) => appliedAt.getTime() <= asOf),
+      attempts.filter(({ gradedAt }) => gradedAt.getTime() <= asOf),
+    );
+    const results = timeline.results.flatMap((entry) => {
+      const scores = usableScores(entry.result, skillNames);
+      return scores.length ? [{ ...entry, scores }] : [];
+    });
+    const contributing = results.filter(({ key }) =>
+      timeline.currentScope.keys.has(key),
+    );
+    const currentSkills = this.summarize(
+      contributing.map(({ scores }) => scores),
+      skillNames,
+    );
+    return { results, skillNames, currentSkills, courseSkills, contributing };
   }
 
   private summarize(

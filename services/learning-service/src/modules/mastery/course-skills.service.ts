@@ -88,7 +88,7 @@ export class CourseSkillsService {
     }
   }
 
-  private async requireManager(
+  async requireManager(
     courseId: string,
     user: AuthUser,
     context: CourseRequestContext,
