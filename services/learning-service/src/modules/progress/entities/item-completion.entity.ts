@@ -9,6 +9,9 @@ export class ItemCompletion {
   @PrimaryColumn('integer', { name: 'content_version' })
   contentVersion!: number;
 
+  @PrimaryColumn('timestamptz', { name: 'enrolled_at' })
+  enrolledAt!: Date;
+
   @PrimaryColumn('uuid', { name: 'learning_item_id' })
   learningItemId!: string;
 

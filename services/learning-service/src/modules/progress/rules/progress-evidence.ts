@@ -14,7 +14,7 @@ function assessmentKey({
   quizId,
   assessmentVersion,
 }: Pick<RequiredAssessment, 'quizId' | 'assessmentVersion'>): string {
-  return `${quizId}:${assessmentVersion}`;
+  return `${quizId.toLowerCase()}:${assessmentVersion}`;
 }
 
 export function progressEvidence(
@@ -183,6 +183,37 @@ export function progressEvidence(
     }
   }
 
+  const activityTimes = [
+    ...completions.map(({ completedAt }) => completedAt),
+    ...relevantAttempts.map(({ gradedAt }) => gradedAt),
+  ];
+  const itemIds = new Set(items.map(({ id }) => id));
+  const replacedQuizKeys = new Set(
+    migrations.flatMap(({ policy, contentVersion, context }) => {
+      if (
+        policy !== 'REQUIRE_RECOMPLETION' ||
+        contentVersion <= outline.contentVersion
+      )
+        return [];
+      const previous = context.previousItems.filter(
+        ({ id, contentVersion }) =>
+          contentVersion === outline.contentVersion && itemIds.has(id),
+      );
+      if (!previous.length) return [];
+      return [...previous, context.item].flatMap((item) =>
+        item.type === 'QUIZ' ? [assessmentKey(item)] : [],
+      );
+    }),
+  );
+  const learningActivityTimes = [
+    ...activityTimes,
+    ...attempts
+      .filter(({ result }) => {
+        const key = assessmentKey(result);
+        return replacedQuizKeys.has(key) && !assessmentKeys.has(key);
+      })
+      .map(({ gradedAt }) => gradedAt),
+  ];
   return {
     completedItems,
     itemStates,
@@ -199,11 +230,8 @@ export function progressEvidence(
           result.passed &&
           result.passingScorePercent === assessment.passingScorePercent,
       ),
-    activityTimes: [
-      ...completions.map(({ completedAt }) => completedAt),
-      ...relevantAttempts.map(({ gradedAt }) => gradedAt),
-      ...invalidatedSince.values(),
-    ],
+    learningActivityTimes,
+    activityTimes: [...activityTimes, ...invalidatedSince.values()],
   };
 }
 

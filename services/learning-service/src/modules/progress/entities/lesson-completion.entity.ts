@@ -8,6 +8,9 @@ export class LessonCompletion {
   @PrimaryColumn('integer', { name: 'content_version' })
   contentVersion!: number;
 
+  @PrimaryColumn('timestamptz', { name: 'enrolled_at' })
+  enrolledAt!: Date;
+
   @PrimaryColumn('uuid', { name: 'lesson_id' })
   lessonId!: string;
 

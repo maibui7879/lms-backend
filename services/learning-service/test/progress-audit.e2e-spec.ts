@@ -42,14 +42,23 @@ describe('PRG boundary cases through the NestJS APIs', () => {
 
   const lessonRepository = {
     list: () => Promise.resolve(finished),
-    find: ({ lessonId }: { lessonId: string }) =>
+    find: (_enrollment: typeof enrollment, lessonId: string) =>
       Promise.resolve(
         finished.find((row) => row.lessonId === lessonId) ?? null,
       ),
-    complete: (key: Omit<LessonCompletion, 'completedAt'>) => {
-      let saved = finished.find((row) => row.lessonId === key.lessonId);
+    complete: (
+      { enrollmentId, contentVersion, enrolledAt }: typeof enrollment,
+      lessonId: string,
+    ) => {
+      let saved = finished.find((row) => row.lessonId === lessonId);
       if (!saved) {
-        saved = { ...key, completedAt: new Date() };
+        saved = {
+          enrollmentId,
+          contentVersion,
+          enrolledAt: new Date(enrolledAt),
+          lessonId,
+          completedAt: new Date(),
+        };
         finished.push(saved);
       }
       return Promise.resolve(saved);
@@ -79,8 +88,7 @@ describe('PRG boundary cases through the NestJS APIs', () => {
       .useValue({
         list: () => Promise.resolve(records),
         complete: (
-          enrollmentId: string,
-          contentVersion: number,
+          { enrollmentId, contentVersion, enrolledAt }: typeof enrollment,
           learningItemId: string,
         ) => {
           let saved = records.find(
@@ -90,6 +98,7 @@ describe('PRG boundary cases through the NestJS APIs', () => {
             saved = {
               enrollmentId,
               contentVersion,
+              enrolledAt: new Date(enrolledAt),
               learningItemId,
               completedAt: new Date(),
             };
@@ -239,7 +248,12 @@ describe('PRG boundary cases through the NestJS APIs', () => {
     const first = structure.outline.chapters[0].lessons[0];
     const second = structure.outline.chapters[1].lessons[0];
     await completeItem(first.items[0].id).expect(200);
-    addResult(parseContract('GradedAssessmentSummary', providers.quiz.chapterAttempt80.payload));
+    addResult(
+      parseContract(
+        'GradedAssessmentSummary',
+        providers.quiz.chapterAttempt80.payload,
+      ),
+    );
     await completeItem(second.items[0].id).expect(200);
     addResult();
     const progress = async () =>

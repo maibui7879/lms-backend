@@ -3,11 +3,15 @@ import { parseContract } from '@lms/contracts';
 import type {
   CourseData,
   CourseItemMigrationContext,
+  CourseLearnerData,
   CourseLearningStructure,
   EnrolledCourseData,
   EnrollmentSnapshotData,
+  PageData,
+  PageQuery,
 } from '@lms/contracts';
 import { apiError } from '../common/api-error';
+import { validateCourseStructure } from './course-learning-structure';
 
 export interface CourseRequestContext {
   mockUser: string;
@@ -94,6 +98,56 @@ export class CourseClient {
     }
   }
 
+  async learnerPage(
+    courseId: string,
+    context: CourseRequestContext,
+    { page, limit }: Required<PageQuery>,
+  ): Promise<PageData<CourseLearnerData>> {
+    let data: unknown;
+    try {
+      data = await this.get(
+        `/api/v1/courses/${courseId}/learners?page=${page}&limit=${limit}`,
+        context,
+      );
+    } catch (error) {
+      if (error instanceof HttpException && error.getStatus() === 403)
+        throw apiError(
+          'NOT_COURSE_OWNER',
+          'Course did not authorize access to learner progress',
+        );
+      throw error;
+    }
+
+    return this.parse(() => {
+      const result = this.readPage(data, page, limit);
+      const seen = new Set<string>();
+      const items = result.items.map((item) => {
+        const learner = parseContract('CourseLearnerData', item);
+        const userId = learner.userId.toLowerCase();
+        const enrollment = learner.enrollment;
+        if (
+          seen.has(userId) ||
+          enrollment.userId.toLowerCase() !== userId ||
+          enrollment.courseId.toLowerCase() !== courseId ||
+          enrollment.status === 'CANCELLED'
+        )
+          throw new Error('Invalid learner enrollment');
+        seen.add(userId);
+        return {
+          ...learner,
+          userId,
+          enrollment: {
+            ...enrollment,
+            userId,
+            courseId,
+            enrollmentId: enrollment.enrollmentId.toLowerCase(),
+          },
+        };
+      });
+      return { page, limit, total: result.total, items };
+    });
+  }
+
   async *enrolledCourses(
     context: CourseRequestContext,
   ): AsyncGenerator<EnrolledCourseData> {
@@ -104,19 +158,7 @@ export class CourseClient {
         context,
       );
       const { items, total } = this.parse(() => {
-        if (!data || typeof data !== 'object')
-          throw new Error('Invalid enrollment page');
-        const result = data as Record<string, unknown>;
-        if (
-          result.page !== page ||
-          result.limit !== limit ||
-          !Array.isArray(result.items) ||
-          result.items.length > limit ||
-          typeof result.total !== 'number' ||
-          !Number.isSafeInteger(result.total) ||
-          result.total < 0
-        )
-          throw new Error('Invalid enrollment page');
+        const result = this.readPage(data, page, limit);
         return {
           items: result.items.map((item: unknown) =>
             parseContract('EnrolledCourseData', item),
@@ -125,9 +167,11 @@ export class CourseClient {
         };
       });
       for (const { enrollment, course } of items) {
+        const userId = enrollment.userId.toLowerCase();
+        const courseId = enrollment.courseId.toLowerCase();
         if (
-          enrollment.userId !== context.userId ||
-          course.id !== enrollment.courseId
+          userId !== context.userId.toLowerCase() ||
+          course.id.toLowerCase() !== courseId
         ) {
           throw apiError(
             'SERVICE_UNAVAILABLE',
@@ -135,10 +179,36 @@ export class CourseClient {
           );
         }
         if (course.status === 'PUBLISHED' && enrollment.status !== 'CANCELLED')
-          yield { enrollment, course };
+          yield {
+            enrollment: {
+              ...enrollment,
+              userId,
+              courseId,
+              enrollmentId: enrollment.enrollmentId.toLowerCase(),
+            },
+            course: { ...course, id: courseId },
+          };
       }
       if (page * limit >= total) return;
     }
+  }
+
+  private readPage(data: unknown, page: number, limit: number) {
+    if (!data || typeof data !== 'object')
+      throw new Error('Invalid Course page');
+    const result = data as Record<string, unknown>;
+    if (
+      result.page !== page ||
+      result.limit !== limit ||
+      !Array.isArray(result.items) ||
+      typeof result.total !== 'number' ||
+      !Number.isSafeInteger(result.total) ||
+      result.total < 0 ||
+      result.items.length !==
+        Math.min(limit, Math.max(0, result.total - (page - 1) * limit))
+    )
+      throw new Error('Invalid Course page');
+    return { total: result.total, items: result.items as unknown[] };
   }
 
   async structure(
@@ -171,7 +241,7 @@ export class CourseClient {
         'CONTENT_VERSION_MISMATCH',
         'The enrolled course version is unavailable',
       );
-    return structure;
+    return validateCourseStructure(structure, enrollment);
   }
 
   private serviceToken(): string {

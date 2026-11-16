@@ -4,6 +4,7 @@ import type {
   CourseItemMigrationContext,
   MigrateCourseItemsRequest,
 } from '@lms/contracts';
+import type { EntityManager } from 'typeorm';
 import { apiError } from '../../../common/api-error';
 import { lockCourseMigration } from '../../../database/course-migration-lock';
 import { LearningDatabase } from '../../../database/learning-database';
@@ -13,17 +14,19 @@ import { CourseItemMigration } from '../entities/course-item-migration.entity';
 export class CourseItemMigrationsRepository {
   constructor(private readonly database: LearningDatabase) {}
 
-  list(courseId: string) {
-    return this.database.run((database) =>
-      database.getRepository(CourseItemMigration).find({
+  list(courseId: string, manager?: EntityManager) {
+    const read = (reader: EntityManager) =>
+      reader.getRepository(CourseItemMigration).find({
         where: { courseId },
         order: {
           contentVersion: 'DESC',
           appliedAt: 'DESC',
           targetItemId: 'ASC',
         },
-      }),
-    );
+      });
+    return manager
+      ? read(manager)
+      : this.database.run((db) => read(db.manager));
   }
 
   apply(

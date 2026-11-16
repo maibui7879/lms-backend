@@ -142,8 +142,7 @@ describe('Learning progress (e2e)', () => {
   );
   const complete = jest.fn(
     async (
-      enrollmentId: string,
-      contentVersion: number,
+      { enrollmentId, contentVersion, enrolledAt }: typeof enrollment,
       learningItemId: string,
     ) => {
       const existing = records.find(
@@ -156,6 +155,7 @@ describe('Learning progress (e2e)', () => {
       const row = {
         enrollmentId,
         contentVersion,
+        enrolledAt: new Date(enrolledAt),
         learningItemId,
         completedAt: new Date(videoCompleted.completedAt),
       };
@@ -211,7 +211,7 @@ describe('Learning progress (e2e)', () => {
       })
       .overrideProvider(ItemCompletionsRepository)
       .useValue({
-        list: (enrollmentId: string, contentVersion: number) =>
+        list: ({ enrollmentId, contentVersion }: typeof enrollment) =>
           Promise.resolve(
             records.filter(
               (row) =>

@@ -1,6 +1,7 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import type { OnApplicationShutdown } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 import { apiError } from '../common/api-error';
 import { AssessmentAttempt } from '../modules/progress-sync/entities/assessment-attempt.entity';
 import { AssessmentSyncReceipt } from '../modules/progress-sync/entities/assessment-sync-receipt.entity';
@@ -20,6 +21,7 @@ import { CreateCourseSkills1794528000007 } from './migrations/1794528000007-crea
 import { MasteryCurrent } from '../modules/mastery/entities/mastery-current.entity';
 import { MasterySnapshot } from '../modules/mastery/entities/mastery-snapshot.entity';
 import { SaveMastery1794528000008 } from './migrations/1794528000008-save-mastery';
+import { ScopeProgressToEnrollmentStart1794528000014 } from './migrations/1794528000014-scope-progress-to-enrollment-start';
 
 export function createLearningDataSource(url: string | undefined): DataSource {
   if (!url) throw new Error('DATABASE_URL is required for Learning PostgreSQL');
@@ -47,6 +49,7 @@ export function createLearningDataSource(url: string | undefined): DataSource {
       AddItemInvalidations1794528000006,
       CreateCourseSkills1794528000007,
       SaveMastery1794528000008,
+      ScopeProgressToEnrollmentStart1794528000014,
     ],
     synchronize: false,
     connectTimeoutMS: 5000,
@@ -56,6 +59,29 @@ export function createLearningDataSource(url: string | undefined): DataSource {
 @Injectable()
 export class LearningDatabase implements OnApplicationShutdown {
   private connection?: Promise<DataSource>;
+
+  // Take the cutoff from the same clock that timestamps progress writes.
+  async readTime(manager?: EntityManager): Promise<number> {
+    const read = async (reader: EntityManager) => {
+      const [row] = await reader.query<{ now: Date }[]>(
+        'SELECT clock_timestamp() AS now',
+      );
+      return row.now.getTime();
+    };
+    return manager
+      ? read(manager)
+      : this.run((database) => read(database.manager));
+  }
+
+  async readSnapshot<T>(
+    read: (manager: EntityManager, asOf: number) => Promise<T>,
+  ): Promise<T> {
+    return this.run((database) =>
+      database.transaction('REPEATABLE READ', async (manager) => {
+        return read(manager, await this.readTime(manager));
+      }),
+    );
+  }
 
   async run<T>(operation: (database: DataSource) => Promise<T>): Promise<T> {
     try {

@@ -9,6 +9,7 @@ import type {
   EnrollmentSnapshotData,
   ItemProgressData,
   LearningDashboardCourse,
+  LearningItemData,
   LearningNextStep,
   LearningRecentQuiz,
   LearningResumeData,
@@ -16,12 +17,16 @@ import type {
   LessonProgressData,
   SaveResumeRequest,
 } from '@lms/contracts';
+import type { EntityManager } from 'typeorm';
 import { apiError } from '../../common/api-error';
+import { lockCourseMigration } from '../../database/course-migration-lock';
+import { LearningDatabase } from '../../database/learning-database';
 import { CourseClient } from '../../integrations/course.client';
 import type { CourseRequestContext } from '../../integrations/course.client';
 import { AssessmentAttemptsRepository } from '../progress-sync/repositories/assessment-attempts.repository';
 import { ItemCompletionsRepository } from './repositories/item-completions.repository';
 import type { LearningResume } from './entities/learning-resume.entity';
+import type { LessonCompletion } from './entities/lesson-completion.entity';
 import { LearningResumeRepository } from './repositories/learning-resume.repository';
 import { LessonCompletionsRepository } from './repositories/lesson-completions.repository';
 import {
@@ -46,6 +51,7 @@ export class ProgressService {
     private readonly lessonCompletions: LessonCompletionsRepository,
     private readonly resumes: LearningResumeRepository,
     private readonly migrations: CourseItemMigrationsRepository,
+    private readonly database: LearningDatabase,
   ) {}
 
   async getLessonProgress(
@@ -56,11 +62,7 @@ export class ProgressService {
       lessonId,
       context,
     );
-    const completion = await this.lessonCompletions.find({
-      enrollmentId: enrollment.enrollmentId,
-      contentVersion: enrollment.contentVersion,
-      lessonId: lesson.id,
-    });
+    const completion = await this.lessonCompletions.find(enrollment, lesson.id);
     const evidence = await this.getEvidence(enrollment, structure);
     return this.lessonProgress(
       enrollment,
@@ -78,7 +80,7 @@ export class ProgressService {
   ): Promise<LessonProgressData> {
     const { enrollment, structure, lesson, chapterId, earlierLessons } =
       await this.findLesson(lessonId, context);
-    const { enrollmentId, contentVersion } = enrollment;
+    const { contentVersion } = enrollment;
     if (body.contentVersion !== contentVersion) {
       throw apiError(
         'CONTENT_VERSION_MISMATCH',
@@ -115,11 +117,8 @@ export class ProgressService {
     }
 
     const completion = await this.lessonCompletions.complete(
-      {
-        enrollmentId,
-        contentVersion,
-        lessonId: lesson.id,
-      },
+      enrollment,
+      lesson.id,
       {
         courseId: enrollment.courseId,
         migrationCount: evidence.migrationCount,
@@ -144,6 +143,160 @@ export class ProgressService {
     return progress;
   }
 
+  async reportingProgress(
+    enrollment: EnrollmentSnapshotData,
+    snapshot: CourseLearningStructure,
+  ) {
+    return this.database.readSnapshot((manager, asOf) =>
+      this.readReportingProgress(enrollment, snapshot, asOf, manager),
+    );
+  }
+
+  async reportingDetail(
+    enrollment: EnrollmentSnapshotData,
+    snapshot: CourseLearningStructure,
+  ) {
+    return this.database.readSnapshot(async (manager, asOf) => {
+      const result = await this.readReportingProgress(
+        enrollment,
+        snapshot,
+        asOf,
+        manager,
+      );
+      const resume = await this.resumes.find(enrollment, manager);
+      const {
+        progress,
+        structure,
+        finishedLessons,
+        lessonCompletions,
+        evidence,
+      } = result;
+      const dates = new Map(
+        finishedLessons.map(({ lessonId, completedAt }) => [
+          lessonId,
+          completedAt,
+        ]),
+      );
+      const completedLessons = this.orderedLessons(structure).flatMap(
+        ({ lesson: { id, title } }) => {
+          const completedAt = dates.get(id);
+          return completedAt
+            ? [{ lessonId: id, title, completedAt: completedAt.toISOString() }]
+            : [];
+        },
+      );
+      return {
+        progress,
+        completedLessons,
+        lastActivityAt: this.latestLearningActivity(
+          evidence,
+          lessonCompletions,
+          resume,
+          asOf,
+        ),
+      };
+    });
+  }
+
+  private async readReportingProgress(
+    enrollment: EnrollmentSnapshotData,
+    snapshot: CourseLearningStructure,
+    asOf: number,
+    manager: EntityManager,
+  ) {
+    const structure = await this.applyMigrations(
+      enrollment,
+      snapshot,
+      asOf,
+      manager,
+    );
+    return this.readCourseProgress(enrollment, structure, asOf, manager);
+  }
+
+  async recommendableContent(
+    enrollment: EnrollmentSnapshotData,
+    pinnedStructure: CourseLearningStructure,
+    asOf: number,
+  ) {
+    const structure = await this.applyMigrations(
+      enrollment,
+      pinnedStructure,
+      asOf,
+    );
+    const evidence = await this.getEvidence(enrollment, structure, asOf);
+    const chapters = this.chapterAccess(structure, evidence);
+    const items = this.orderedItems(structure);
+    const accessibleLessons = new Set<string>();
+    const quizzes: Extract<LearningItemData, { type: 'QUIZ' }>[] = [];
+    const { completionPolicy } = structure;
+    const requiredQuizzes = [
+      ...completionPolicy.requiredAssessments,
+      ...completionPolicy.chapterPolicies.flatMap(
+        ({ requiredAssessments }) => requiredAssessments,
+      ),
+    ];
+    const quizKeys = new Set(
+      requiredQuizzes.map(
+        ({ quizId, assessmentVersion }) => `${quizId}:${assessmentVersion}`,
+      ),
+    );
+    items.forEach(({ item, lessonId }, index) => {
+      if (item.type !== 'QUIZ') {
+        if (
+          !accessibleLessons.has(lessonId) &&
+          this.canAccessItem(structure, evidence, items, index, chapters)
+        )
+          accessibleLessons.add(lessonId);
+        return;
+      }
+      const key = `${item.quizId}:${item.assessmentVersion}`;
+      if (
+        !quizKeys.has(key) &&
+        this.canAccessItem(structure, evidence, items, index, chapters)
+      ) {
+        quizzes.push(item);
+        quizKeys.add(key);
+      }
+    });
+    const lessons = this.orderedLessons(structure).map(({ lesson }) => lesson);
+    return {
+      lessons: lessons.filter(({ id }) => accessibleLessons.has(id)),
+      lessonOrders: new Map(lessons.map(({ id }, index) => [id, index])),
+      quizzes,
+    };
+  }
+
+  async certificateEligible(
+    enrollment: EnrollmentSnapshotData,
+    pinnedStructure: CourseLearningStructure,
+    manager: EntityManager,
+  ): Promise<boolean> {
+    if (!pinnedStructure.completionPolicy.certificateEnabled) return false;
+    await lockCourseMigration(manager, enrollment.courseId);
+    const asOf = await this.database.readTime(manager);
+    if (Date.parse(enrollment.enrolledAt) > asOf) return false;
+    const structure = await this.applyMigrations(
+      enrollment,
+      pinnedStructure,
+      asOf,
+      manager,
+    );
+    const evidence = await this.getEvidence(
+      enrollment,
+      structure,
+      asOf,
+      manager,
+    );
+    const lessons = await this.lessonCompletions.list(enrollment, manager);
+    const { progress } = this.summarizeCourseProgress(
+      enrollment,
+      structure,
+      evidence,
+      lessons.filter(({ completedAt }) => completedAt.getTime() <= asOf),
+    );
+    return progress.status === 'COMPLETED';
+  }
+
   async dashboardCourse(
     enrollment: EnrollmentSnapshotData,
     title: string,
@@ -152,21 +305,22 @@ export class ProgressService {
     course: LearningDashboardCourse;
     recentQuizzes: LearningRecentQuiz[];
   }> {
-    const [{ structure, evidence, progress, completedLessons }, checkpoint] =
-      await Promise.all([
-        this.loadCourseProgress(enrollment, context),
-        this.resumes.find(enrollment.enrollmentId, enrollment.contentVersion),
-      ]);
+    const [
+      { structure, evidence, progress, completedLessons, lessonCompletions },
+      checkpoint,
+    ] = await Promise.all([
+      this.loadCourseProgress(enrollment, context),
+      this.resumes.find(enrollment),
+    ]);
     const allDone =
       progress.status === 'COMPLETED' &&
       progress.completedRequiredLessons === progress.totalRequiredLessons;
     const nextStep = allDone
       ? null
       : this.nextStep(structure, evidence, completedLessons, checkpoint);
-    const lastActivityAt = this.latestTime(
-      checkpoint ? [checkpoint.updatedAt] : [],
-      Date.parse(progress.updatedAt),
-    );
+    const lastActivityAt =
+      this.latestLearningActivity(evidence, lessonCompletions, checkpoint) ??
+      new Date(enrollment.enrolledAt).toISOString();
     return {
       course: { ...progress, title, lastActivityAt, nextStep },
       recentQuizzes: evidence.attempts
@@ -181,13 +335,44 @@ export class ProgressService {
     enrollment: EnrollmentSnapshotData,
     context: CourseRequestContext,
   ) {
-    const { courseId, contentVersion, enrollmentId } = enrollment;
     const structure = await this.getStructure(enrollment, context);
+    return this.readCourseProgress(enrollment, structure);
+  }
+
+  private async readCourseProgress(
+    enrollment: EnrollmentSnapshotData,
+    structure: LearningStructure,
+    asOf = Infinity,
+    manager?: EntityManager,
+  ) {
+    const evidence = await this.getEvidence(
+      enrollment,
+      structure,
+      asOf,
+      manager,
+    );
+    const lessonCompletions = await this.lessonCompletions.list(
+      enrollment,
+      manager,
+    );
+    return this.summarizeCourseProgress(
+      enrollment,
+      structure,
+      evidence,
+      lessonCompletions.filter(
+        ({ completedAt }) => completedAt.getTime() <= asOf,
+      ),
+    );
+  }
+
+  private summarizeCourseProgress(
+    enrollment: EnrollmentSnapshotData,
+    structure: LearningStructure,
+    evidence: ProgressEvidence,
+    lessonCompletions: LessonCompletion[],
+  ) {
+    const { courseId } = enrollment;
     const { completionPolicy } = structure;
-    const [evidence, lessonCompletions] = await Promise.all([
-      this.getEvidence(enrollment, structure),
-      this.lessonCompletions.list(enrollmentId, contentVersion),
-    ]);
     const courseLessons = this.orderedLessons(structure).map(
       ({ lesson }) => lesson,
     );
@@ -313,7 +498,14 @@ export class ProgressService {
       completedAt,
       updatedAt,
     };
-    return { structure, evidence, progress, completedLessons };
+    return {
+      structure,
+      evidence,
+      progress,
+      completedLessons,
+      finishedLessons,
+      lessonCompletions,
+    };
   }
 
   async getCourseChapterAccess(
@@ -323,10 +515,7 @@ export class ProgressService {
     for await (const enrollment of this.course.enrollments(context)) {
       if (enrollment.courseId !== courseId) continue;
       const structure = await this.getStructure(enrollment, context);
-      const completedLessons = await this.lessonCompletions.list(
-        enrollment.enrollmentId,
-        enrollment.contentVersion,
-      );
+      const completedLessons = await this.lessonCompletions.list(enrollment);
       const evidence = await this.getEvidence(enrollment, structure);
       const allLessons = this.orderedLessons(structure).map(
         ({ lesson }) => lesson,
@@ -404,15 +593,10 @@ export class ProgressService {
         index,
       );
 
-      const result = await this.completions.complete(
-        enrollment.enrollmentId,
-        enrollment.contentVersion,
-        itemId,
-        {
-          courseId: enrollment.courseId,
-          migrationCount: evidence.migrationCount,
-        },
-      );
+      const result = await this.completions.complete(enrollment, itemId, {
+        courseId: enrollment.courseId,
+        migrationCount: evidence.migrationCount,
+      });
       return {
         learningItemId: itemId,
         contentVersion: enrollment.contentVersion,
@@ -435,10 +619,7 @@ export class ProgressService {
     context: CourseRequestContext,
   ): Promise<LearningResumeData | null> {
     const enrollment = await this.findCourseEnrollment(courseId, context);
-    const checkpoint = await this.resumes.find(
-      enrollment.enrollmentId,
-      enrollment.contentVersion,
-    );
+    const checkpoint = await this.resumes.find(enrollment);
     if (!checkpoint) return null;
 
     const structure = await this.getStructure(enrollment, context);
@@ -480,7 +661,7 @@ export class ProgressService {
       body,
       context,
     );
-    const checkpoint = await this.resumes.save(enrollment.enrollmentId, body, {
+    const checkpoint = await this.resumes.save(enrollment, body, {
       courseId: enrollment.courseId,
       migrationCount: structure.migrations?.length ?? 0,
     });
@@ -840,12 +1021,31 @@ export class ProgressService {
   private async getEvidence(
     enrollment: EnrollmentSnapshotData,
     structure: LearningStructure,
+    asOf = Infinity,
+    manager?: EntityManager,
   ): Promise<ProgressEvidence> {
-    const [completions, attempts] = await Promise.all([
-      this.completions.list(enrollment.enrollmentId, enrollment.contentVersion),
-      this.assessments.list(enrollment),
-    ]);
-    return progressEvidence(structure, completions, attempts);
+    const completions = await this.completions.list(enrollment, manager);
+    const attempts = await this.assessments.list(enrollment, manager);
+    return progressEvidence(
+      structure,
+      completions.filter(({ completedAt }) => completedAt.getTime() <= asOf),
+      attempts.filter(({ gradedAt }) => gradedAt.getTime() <= asOf),
+    );
+  }
+
+  private latestLearningActivity(
+    evidence: ProgressEvidence,
+    lessons: LessonCompletion[],
+    resume: Pick<LearningResume, 'updatedAt'> | null,
+    asOf = Infinity,
+  ) {
+    const times = [
+      ...evidence.learningActivityTimes,
+      ...lessons.map(({ completedAt }) => completedAt),
+    ];
+    if (resume) times.push(resume.updatedAt);
+    const observed = times.filter((date) => date.getTime() <= asOf);
+    return observed.length ? this.latestTime(observed, -Infinity) : null;
   }
 
   private latestTime(times: Date[], startingAt: number): string {
@@ -873,11 +1073,15 @@ export class ProgressService {
   private async applyMigrations(
     enrollment: EnrollmentSnapshotData,
     structure: CourseLearningStructure,
+    asOf = Infinity,
+    manager?: EntityManager,
   ) {
     return applyItemMigrations(
       structure,
       enrollment,
-      await this.migrations.list(enrollment.courseId),
+      (await this.migrations.list(enrollment.courseId, manager)).filter(
+        ({ appliedAt }) => appliedAt.getTime() <= asOf,
+      ),
     );
   }
 

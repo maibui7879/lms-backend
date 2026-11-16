@@ -9,7 +9,7 @@ import type {
   PageData,
   PageQuery,
 } from '@lms/contracts';
-import { IsNull, MoreThanOrEqual } from 'typeorm';
+import { IsNull, Raw } from 'typeorm';
 import type { EntityManager } from 'typeorm';
 import { LearningDatabase } from '../../../database/learning-database';
 import { AssessmentAttempt } from '../entities/assessment-attempt.entity';
@@ -144,14 +144,22 @@ export class AssessmentAttemptsRepository {
     );
   }
 
-  list({ userId, courseId, enrolledAt }: EnrollmentSnapshotData) {
-    return this.database.run((database) =>
-      database.getRepository(AssessmentAttempt).findBy({
+  list(
+    { userId, courseId, enrolledAt }: EnrollmentSnapshotData,
+    manager?: EntityManager,
+  ) {
+    const read = (reader: EntityManager) =>
+      reader.getRepository(AssessmentAttempt).findBy({
         userId,
         courseId,
-        gradedAt: MoreThanOrEqual(new Date(enrolledAt)),
-      }),
-    );
+        gradedAt: Raw(
+          (column) => `${column} BETWEEN :enrolledAt AND statement_timestamp()`,
+          { enrolledAt },
+        ),
+      });
+    return manager
+      ? read(manager)
+      : this.database.run((db) => read(db.manager));
   }
 
   async summarizeQuizScores(
@@ -175,6 +183,7 @@ export class AssessmentAttemptsRepository {
             FROM learning_assessment_attempts
             WHERE course_id = $1
               AND result->>'quizType' = 'GRADED'
+              AND graded_at <= statement_timestamp()
               AND ($4::uuid IS NULL OR (user_id = $4 AND graded_at >= $5::timestamptz))
             GROUP BY user_id, course_id, result->>'quizId', assessment_version
           ),

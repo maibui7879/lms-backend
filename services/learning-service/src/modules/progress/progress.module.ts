@@ -34,6 +34,7 @@ import { CourseItemsMigrationService } from './migrations/course-items-migration
     CourseItemMigrationsRepository,
     CourseItemsMigrationService,
   ],
+  exports: [ProgressService],
 })
 export class ProgressModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
