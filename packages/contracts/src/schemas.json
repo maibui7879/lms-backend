@@ -178,6 +178,10 @@
             },
             {
               "type": "string",
+              "const": "CERTIFICATE_REVOKED"
+            },
+            {
+              "type": "string",
               "const": "VERSION_CONFLICT"
             },
             {
@@ -600,6 +604,33 @@
           "type": "integer",
           "minimum": 1
         },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "ACTIVE"
+            },
+            {
+              "type": "string",
+              "const": "SUPERSEDED"
+            },
+            {
+              "type": "string",
+              "const": "REVOKED"
+            }
+          ]
+        },
+        "supersededByCertificateId": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "format": "uuid"
+            }
+          ]
+        },
         "issuedAt": {
           "type": "string",
           "format": "date-time"
@@ -618,6 +649,8 @@
         "userId",
         "enrollmentId",
         "contentVersion",
+        "status",
+        "supersededByCertificateId",
         "issuedAt",
         "verificationCode",
         "downloadUrl"
@@ -693,11 +726,46 @@
       ],
       "additionalProperties": false
     },
+    "CertificateStatus": {
+      "anyOf": [
+        {
+          "type": "string",
+          "const": "ACTIVE"
+        },
+        {
+          "type": "string",
+          "const": "SUPERSEDED"
+        },
+        {
+          "type": "string",
+          "const": "REVOKED"
+        }
+      ]
+    },
     "CertificateVerificationData": {
       "type": "object",
       "properties": {
         "valid": {
           "type": "boolean"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "const": "ACTIVE"
+            },
+            {
+              "type": "string",
+              "const": "SUPERSEDED"
+            },
+            {
+              "type": "string",
+              "const": "REVOKED"
+            }
+          ]
         },
         "courseTitle": {
           "anyOf": [
@@ -733,6 +801,7 @@
       },
       "required": [
         "valid",
+        "status",
         "courseTitle",
         "recipientName",
         "issuedAt"
@@ -2902,6 +2971,10 @@
         {
           "type": "string",
           "const": "CERTIFICATE_NOT_ELIGIBLE"
+        },
+        {
+          "type": "string",
+          "const": "CERTIFICATE_REVOKED"
         },
         {
           "type": "string",

@@ -523,7 +523,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/courses/{id}/enrollments',
     access: 'STUDENT',
     description:
-      'Tạo enrollment cho learner vào course PUBLISHED nếu chưa đăng ký trước đó và chốt contentVersion hiện tại.',
+      'Chỉ ghi danh course PUBLISHED. Nếu learner đã có enrollment ACTIVE hoặc COMPLETED thì trả ALREADY_ENROLLED; nếu enrollment cũ là CANCELLED thì tạo enrollment mới, pin contentVersion hiện tại và dùng enrolledAt làm mốc bắt đầu phiên học mới.',
     request: 'CreateEnrollmentRequest',
     response: 'EnrollmentSnapshotData',
     success: 201,
@@ -981,7 +981,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/learning/courses/{id}/certificate',
     access: 'ENROLLED',
     description:
-      'Phát hành certificate khi learner đủ điều kiện hoàn thành course; thao tác idempotent để không tạo trùng certificate.',
+      'Phát hành certificate khi learner đủ điều kiện của contentVersion hiện tại. Khóa chống trùng là userId, courseId và contentVersion, không phụ thuộc enrollmentId. Nếu certificate đã tồn tại thì trả bản ghi hiện có; nếu certificate cùng phiên bản đã REVOKED thì trả CERTIFICATE_REVOKED; chỉ cấp certificate mới khi contentVersion tăng và learner hoàn thành lại requirement.',
     response: 'CertificateData',
     success: 201,
     idempotent: true,
@@ -992,7 +992,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/me/certificates',
     access: 'AUTHENTICATED',
-    description: 'Liệt kê các certificate đã phát hành cho user hiện tại.',
+    description:
+      'Liệt kê certificate của user hiện tại, bao gồm trạng thái ACTIVE, SUPERSEDED hoặc REVOKED; không xóa certificate cũ khi có contentVersion mới.',
     query: 'PageQuery',
     response: 'CertificateData',
     list: true,
@@ -1005,7 +1006,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/certificates/verify/{code}',
     access: 'PUBLIC',
     description:
-      'Xác minh certificate công khai bằng code và trả trạng thái hợp lệ cùng thông tin certificate.',
+      'Xác minh certificate công khai bằng code và trả trạng thái ACTIVE, SUPERSEDED hoặc REVOKED. Certificate SUPERSEDED vẫn là bằng chứng lịch sử; certificate REVOKED không còn hợp lệ.',
     response: 'CertificateVerificationData',
     success: 200,
   },

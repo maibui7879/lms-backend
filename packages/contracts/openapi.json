@@ -6397,7 +6397,7 @@
         "tags": [
           "course"
         ],
-        "description": "Role sử dụng: STUDENT. Tạo enrollment cho learner vào course PUBLISHED nếu chưa đăng ký trước đó và chốt contentVersion hiện tại.",
+        "description": "Role sử dụng: STUDENT. Chỉ ghi danh course PUBLISHED. Nếu learner đã có enrollment ACTIVE hoặc COMPLETED thì trả ALREADY_ENROLLED; nếu enrollment cũ là CANCELLED thì tạo enrollment mới, pin contentVersion hiện tại và dùng enrolledAt làm mốc bắt đầu phiên học mới.",
         "x-access-policy": "STUDENT",
         "security": [
           {
@@ -12426,7 +12426,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: ENROLLED. Phát hành certificate khi learner đủ điều kiện hoàn thành course; thao tác idempotent để không tạo trùng certificate.",
+        "description": "Role sử dụng: ENROLLED. Phát hành certificate khi learner đủ điều kiện của contentVersion hiện tại. Khóa chống trùng là userId, courseId và contentVersion, không phụ thuộc enrollmentId. Nếu certificate đã tồn tại thì trả bản ghi hiện có; nếu certificate cùng phiên bản đã REVOKED thì trả CERTIFICATE_REVOKED; chỉ cấp certificate mới khi contentVersion tăng và learner hoàn thành lại requirement.",
         "x-access-policy": "ENROLLED",
         "security": [
           {
@@ -12577,7 +12577,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: AUTHENTICATED. Liệt kê các certificate đã phát hành cho user hiện tại.",
+        "description": "Role sử dụng: AUTHENTICATED. Liệt kê certificate của user hiện tại, bao gồm trạng thái ACTIVE, SUPERSEDED hoặc REVOKED; không xóa certificate cũ khi có contentVersion mới.",
         "x-access-policy": "AUTHENTICATED",
         "security": [
           {
@@ -12756,7 +12756,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: PUBLIC. Xác minh certificate công khai bằng code và trả trạng thái hợp lệ cùng thông tin certificate.",
+        "description": "Role sử dụng: PUBLIC. Xác minh certificate công khai bằng code và trả trạng thái ACTIVE, SUPERSEDED hoặc REVOKED. Certificate SUPERSEDED vẫn là bằng chứng lịch sử; certificate REVOKED không còn hợp lệ.",
         "x-access-policy": "PUBLIC",
         "security": [],
         "parameters": [
@@ -15208,6 +15208,10 @@
               },
               {
                 "type": "string",
+                "const": "CERTIFICATE_REVOKED"
+              },
+              {
+                "type": "string",
                 "const": "VERSION_CONFLICT"
               },
               {
@@ -15630,6 +15634,33 @@
             "type": "integer",
             "minimum": 1
           },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "SUPERSEDED"
+              },
+              {
+                "type": "string",
+                "const": "REVOKED"
+              }
+            ]
+          },
+          "supersededByCertificateId": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
           "issuedAt": {
             "type": "string",
             "format": "date-time"
@@ -15648,6 +15679,8 @@
           "userId",
           "enrollmentId",
           "contentVersion",
+          "status",
+          "supersededByCertificateId",
           "issuedAt",
           "verificationCode",
           "downloadUrl"
@@ -15723,11 +15756,46 @@
         ],
         "additionalProperties": false
       },
+      "CertificateStatus": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "ACTIVE"
+          },
+          {
+            "type": "string",
+            "const": "SUPERSEDED"
+          },
+          {
+            "type": "string",
+            "const": "REVOKED"
+          }
+        ]
+      },
       "CertificateVerificationData": {
         "type": "object",
         "properties": {
           "valid": {
             "type": "boolean"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "SUPERSEDED"
+              },
+              {
+                "type": "string",
+                "const": "REVOKED"
+              }
+            ]
           },
           "courseTitle": {
             "anyOf": [
@@ -15763,6 +15831,7 @@
         },
         "required": [
           "valid",
+          "status",
           "courseTitle",
           "recipientName",
           "issuedAt"
@@ -17932,6 +18001,10 @@
           {
             "type": "string",
             "const": "CERTIFICATE_NOT_ELIGIBLE"
+          },
+          {
+            "type": "string",
+            "const": "CERTIFICATE_REVOKED"
           },
           {
             "type": "string",

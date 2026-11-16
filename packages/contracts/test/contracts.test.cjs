@@ -303,3 +303,55 @@ test('new enrollments require pinned snapshots and the correct event producer', 
     certificateEnabled: true,
   });
 });
+
+test('certificates are versioned and preserve superseded history', () => {
+  const certificate = {
+    id,
+    courseId: id,
+    userId: id2,
+    enrollmentId: id,
+    contentVersion: 2,
+    status: 'ACTIVE',
+    supersededByCertificateId: null,
+    issuedAt: time,
+    verificationCode: 'certificate-code',
+    downloadUrl: 'https://example.test/certificates/certificate-code.pdf',
+  };
+  parseContract('CertificateData', certificate);
+  parseContract('CertificateData', {
+    ...certificate,
+    status: 'SUPERSEDED',
+    supersededByCertificateId: id2,
+  });
+  parseContract('CertificateVerificationData', {
+    valid: true,
+    status: 'SUPERSEDED',
+    courseTitle: 'Course',
+    recipientName: 'Student',
+    issuedAt: time,
+  });
+  invalid('CertificateData', { ...certificate, status: 'INVALID' });
+  parseContract('CertificateVerificationData', {
+    valid: false,
+    status: 'REVOKED',
+    courseTitle: 'Course',
+    recipientName: 'Student',
+    issuedAt: time,
+  });
+});
+
+test('re-enrollment pins a new snapshot and exposes certificate revocation', () => {
+  parseContract('EnrollmentSnapshotData', {
+    enrollmentId: id2,
+    courseId: id,
+    userId: id,
+    status: 'ACTIVE',
+    enrolledAt: time,
+    contentVersion: 2,
+  });
+  parseContract('ApiError', {
+    code: 'CERTIFICATE_REVOKED',
+    message: 'Certificate has been revoked',
+    details: {},
+  });
+});

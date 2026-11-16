@@ -103,12 +103,15 @@ export interface RecommendationData {
   reason: 'NEXT_REQUIRED_ITEM' | 'LOW_MASTERY' | 'RETRY_ASSESSMENT';
   explanation: string;
 }
+export type CertificateStatus = 'ACTIVE' | 'SUPERSEDED' | 'REVOKED';
 export interface CertificateData {
   id: Uuid;
   courseId: Uuid;
   userId: Uuid;
   enrollmentId: Uuid;
   contentVersion: number;
+  status: CertificateStatus;
+  supersededByCertificateId: Uuid | null;
   issuedAt: string;
   verificationCode: string;
   downloadUrl: string;
@@ -116,6 +119,7 @@ export interface CertificateData {
 /** Public verification intentionally excludes email, userId and enrollmentId. */
 export interface CertificateVerificationData {
   valid: boolean;
+  status: CertificateStatus | null;
   courseTitle: string | null;
   recipientName: string | null;
   issuedAt: string | null;
