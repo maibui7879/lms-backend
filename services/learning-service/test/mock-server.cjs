@@ -40,7 +40,9 @@ const {
   rankRecommendations,
   rankTargets,
 } = require('../src/modules/recommendations/rules/rank-recommendations.ts');
-const { weightedScorePercent } = require('../src/modules/mastery/rules/weighted-score.ts');
+const {
+  weightedScorePercent,
+} = require('../src/modules/mastery/rules/weighted-score.ts');
 
 const enrollment = parseContract('EnrollmentSnapshotData', course.enrollment);
 const { outline, completionPolicy } = parseContract(
@@ -108,7 +110,8 @@ const masteryAttemptIds = new Set(
 for (const sample of masteryAttempts) {
   const { skillId } = masteryFixtures.question;
   const { eventId, attemptId, score, maxScore, questionCount } = sample;
-  const gradedAt = sample.gradedAt ??
+  const gradedAt =
+    sample.gradedAt ??
     new Date(Date.now() - sample.daysAgo * 86400000).toISOString();
   const event = parseContract('AttemptGradedV2Event', {
     ...quiz.attemptGraded,
@@ -570,16 +573,29 @@ function createLearningMockServer({ now = Date.now } = {}) {
     },
     saveSkillPrerequisites(_id, { expectedVersion, edges }) {
       if (expectedVersion !== prerequisites.version)
-        throw new MockApiError('VERSION_CONFLICT', 'Reload the latest prerequisite graph');
+        throw new MockApiError(
+          'VERSION_CONFLICT',
+          'Reload the latest prerequisite graph',
+        );
       const activeIds = new Set(
         [...skills.values()]
-          .filter((skill) => skill.courseId === courseId && skill.status === 'ACTIVE')
+          .filter(
+            (skill) => skill.courseId === courseId && skill.status === 'ACTIVE',
+          )
           .map(({ id }) => id),
       );
       const result = normalizePrerequisites(edges, activeIds);
       if (result.error)
-        throw new MockApiError(result.error, result.message, result.skillIds ? { skillIds: result.skillIds } : {});
-      prerequisites = { courseId, version: expectedVersion + 1, edges: result.edges };
+        throw new MockApiError(
+          result.error,
+          result.message,
+          result.skillIds ? { skillIds: result.skillIds } : {},
+        );
+      prerequisites = {
+        courseId,
+        version: expectedVersion + 1,
+        edges: result.edges,
+      };
       return prerequisites;
     },
     listRecommendations({ page, limit }, actor) {
@@ -602,17 +618,27 @@ function createLearningMockServer({ now = Date.now } = {}) {
       const current = fixtureMastery(grades).at(-1)?.skills ?? [];
       const weak = weakSkills(current, new Set(activeSkills.keys()));
       const trends = masteryTrends(
-        grades.map(({ gradedAt, attemptId, assessmentVersion, skillScores }) => ({
-          effectiveAt: Date.parse(gradedAt),
-          gradedAt,
-          attemptId,
-          assessmentVersion,
-          scores: skillScores,
-        })),
+        grades.map(
+          ({ gradedAt, attemptId, assessmentVersion, skillScores }) => ({
+            effectiveAt: Date.parse(gradedAt),
+            gradedAt,
+            attemptId,
+            assessmentVersion,
+            scores: skillScores,
+          }),
+        ),
         Date.now(),
         weightedScorePercent,
       );
-      const targets = rankTargets(recommendationTargets(weak, current, activeSkills, prerequisites.edges, trends));
+      const targets = rankTargets(
+        recommendationTargets(
+          weak,
+          current,
+          activeSkills,
+          prerequisites.edges,
+          trends,
+        ),
+      );
       const mappings = recommendationFixtures.lessonMappings.filter(
         (mapping) => mapping.contentVersion === contentVersion,
       );
@@ -641,7 +667,12 @@ function createLearningMockServer({ now = Date.now } = {}) {
             userId: actor.id,
             assessmentVersion: item.assessmentVersion,
           });
-          const recommendation = quizRecommendation(item, availability, targets, lessonOrders);
+          const recommendation = quizRecommendation(
+            item,
+            availability,
+            targets,
+            lessonOrders,
+          );
           if (recommendation) candidates.push(recommendation);
         }
       }
@@ -1157,7 +1188,10 @@ function createLearningMockServer({ now = Date.now } = {}) {
       const actor = publicRoute ? undefined : identity[name];
       if (route?.access === 'ADMIN') {
         if (actor.role !== 'ADMIN' || actor.status !== 'ACTIVE')
-          throw new MockApiError('FORBIDDEN', 'An active admin account is required');
+          throw new MockApiError(
+            'FORBIDDEN',
+            'An active admin account is required',
+          );
       } else if (!skillRoute && route?.access === 'COURSE_OWNER') {
         if (actor.role !== 'INSTRUCTOR' && actor.role !== 'ADMIN')
           throw new MockApiError(

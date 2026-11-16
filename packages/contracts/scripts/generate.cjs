@@ -208,17 +208,19 @@ for (const name of [
   });
 }
 definitions.UpdateCourseSkillRequest.minProperties = 2;
-definitions.UpdateCourseSkillRequest.properties.expectedVersion.maximum =
-  2147483647;
+definitions.UpdateCourseSkillRequest.properties.expectedVersion.maximum = 2147483647;
 Object.assign(definitions.ValidateCourseSkillsRequest.properties.skillIds, {
   minItems: 1,
   maxItems: 100,
 });
 definitions.CourseSkillPrerequisites.properties.version.minimum = 0;
-Object.assign(definitions.SaveSkillPrerequisitesRequest.properties.expectedVersion, {
-  minimum: 0,
-  maximum: 2147483646,
-});
+Object.assign(
+  definitions.SaveSkillPrerequisitesRequest.properties.expectedVersion,
+  {
+    minimum: 0,
+    maximum: 2147483646,
+  },
+);
 definitions.SaveSkillPrerequisitesRequest.properties.edges.maxItems = 500;
 Object.assign(definitions.RevokeCertificateRequest.properties.reason, {
   maxLength: 500,

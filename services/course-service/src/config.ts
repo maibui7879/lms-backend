@@ -1,6 +1,13 @@
 import { resolve } from 'node:path';
 import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { Course } from './courses/entities/course.entity';
+import { Course } from './modules/courses/entities/course.entity';
+import { Chapter } from './modules/chapters/entities/chapter.entity';
+import { Lesson } from './modules/lessons/entities/lesson.entity';
+import { LearningItem } from './modules/learning-items/entities/learning-item.entity';
+import { CompletionPolicy } from './modules/completion-policy/entities/completion-policy.entity';
+import { Enrollment } from './modules/enrollments/entities/enrollment.entity';
+import { CourseReview } from './modules/course-revisions/entities/course-review.entity';
+import { CourseRevision } from './modules/course-revisions/entities/course-revision.entity';
 
 export const envFiles = [
   resolve(__dirname, '../.env'),
@@ -57,7 +64,16 @@ export function databaseOptions(
   return {
     type: 'postgres',
     url: config.DATABASE_URL as string,
-    entities: [Course],
+    entities: [
+      Course,
+      Chapter,
+      Lesson,
+      LearningItem,
+      CompletionPolicy,
+      Enrollment,
+      CourseReview,
+      CourseRevision,
+    ],
     synchronize: config.DB_SYNC === 'true',
     retryAttempts: 1,
     // Keep TLS parameters from the provider URL; never disable certificate verification here.

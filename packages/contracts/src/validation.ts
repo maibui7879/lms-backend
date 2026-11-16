@@ -65,7 +65,9 @@ export function parseContract<K extends keyof SchemaTypes>(
   const issues: string[] = [];
   if (name === 'ValidateCourseSkillsRequest') {
     const { skillIds } = value as ValidateCourseSkillsRequest;
-    if (new Set(skillIds.map((id) => id.toLowerCase())).size !== skillIds.length)
+    if (
+      new Set(skillIds.map((id) => id.toLowerCase())).size !== skillIds.length
+    )
       issues.push('/skillIds must be unique regardless of UUID letter case');
   }
   function inspect(input: unknown, location: string): void {
@@ -137,7 +139,13 @@ export function parseContract<K extends keyof SchemaTypes>(
       row.requiredItemIds.length +
         row.requiredAssessments.length +
         row.chapterPolicies.reduce(
-          (total: number, policy: { requiredItemIds?: unknown[]; requiredAssessments?: unknown[] }) =>
+          (
+            total: number,
+            policy: {
+              requiredItemIds?: unknown[];
+              requiredAssessments?: unknown[];
+            },
+          ) =>
             total +
             (Array.isArray(policy.requiredItemIds)
               ? policy.requiredItemIds.length
@@ -157,7 +165,9 @@ export function parseContract<K extends keyof SchemaTypes>(
         (policy: { chapterId?: unknown }) => policy.chapterId,
       );
       if (new Set(chapterIds).size !== chapterIds.length)
-        issues.push(`${location} chapterPolicies must contain unique chapterId values`);
+        issues.push(
+          `${location} chapterPolicies must contain unique chapterId values`,
+        );
     }
   }
   inspect(value, '');

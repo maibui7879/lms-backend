@@ -6397,7 +6397,7 @@
         "tags": [
           "course"
         ],
-        "description": "Role sử dụng: STUDENT. Tạo enrollment cho learner vào course PUBLISHED nếu chưa đăng ký trước đó và chốt contentVersion hiện tại.",
+        "description": "Role sử dụng: STUDENT. Chỉ ghi danh course PUBLISHED. Nếu learner đã có enrollment ACTIVE hoặc COMPLETED thì trả ALREADY_ENROLLED; nếu enrollment cũ là CANCELLED thì tạo enrollment mới, pin contentVersion hiện tại và dùng enrolledAt làm mốc bắt đầu phiên học mới.",
         "x-access-policy": "STUDENT",
         "security": [
           {
@@ -14011,7 +14011,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: ENROLLED. Phát hành theo phiên bản đã ghi danh. Mỗi bộ (userId, courseId, contentVersion) có một chứng chỉ, kể cả khi enrollmentId thay đổi. Chỉ cấp bản mới khi contentVersion tăng và học viên hoàn thành yêu cầu bản mới.",
+        "description": "Role sử dụng: ENROLLED. Phát hành theo phiên bản đã ghi danh. Mỗi bộ (userId, courseId, contentVersion) có một chứng chỉ, kể cả khi enrollmentId thay đổi. Cùng phiên bản đã thu hồi trả CERTIFICATE_REVOKED. Chỉ cấp bản mới khi contentVersion tăng và học viên hoàn thành yêu cầu bản mới.",
         "x-access-policy": "ENROLLED",
         "security": [
           {
@@ -14341,7 +14341,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: PUBLIC. Xác minh công khai theo mã. ACTIVE là bản hiện hành, SUPERSEDED là bằng chứng lịch sử, REVOKED đã thu hồi. Mã không tồn tại trả status null. Chi tiết thu hồi chỉ dành cho Admin.",
+        "description": "Role sử dụng: PUBLIC. Xác minh công khai theo mã. ACTIVE là bản hiện hành, SUPERSEDED là bằng chứng lịch sử, REVOKED không còn hợp lệ. Mã không tồn tại trả status null. Chi tiết thu hồi chỉ dành cho Admin.",
         "x-access-policy": "PUBLIC",
         "security": [],
         "parameters": [

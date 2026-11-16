@@ -4878,7 +4878,7 @@
         "tags": [
           "course"
         ],
-        "description": "Role sử dụng: STUDENT. Tạo enrollment cho learner vào course PUBLISHED nếu chưa đăng ký trước đó và chốt contentVersion hiện tại.",
+        "description": "Role sử dụng: STUDENT. Chỉ ghi danh course PUBLISHED. Nếu learner đã có enrollment ACTIVE hoặc COMPLETED thì trả ALREADY_ENROLLED; nếu enrollment cũ là CANCELLED thì tạo enrollment mới, pin contentVersion hiện tại và dùng enrolledAt làm mốc bắt đầu phiên học mới.",
         "x-access-policy": "STUDENT",
         "security": [
           {

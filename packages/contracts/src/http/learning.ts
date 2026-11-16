@@ -3,11 +3,7 @@ import type { ProgressSyncStatus } from './quiz';
 import type { VersionRequest } from '../common/pagination';
 
 export type LearningStatus =
-  | 'NOT_STARTED'
-  | 'IN_PROGRESS'
-  | 'COMPLETED'
-  | 'OUTDATED'
-  | 'RESET';
+  'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OUTDATED' | 'RESET';
 export type ChapterAccessStatus = 'LOCKED' | 'UNLOCKED' | 'COMPLETED';
 export type ChapterAccessReason =
   | 'ENROLLMENT_REQUIRED'
@@ -190,7 +186,11 @@ export interface RecommendationData {
   courseId: Uuid;
   lessonId: Uuid;
   learningItemId: Uuid | null;
-  reason: 'NEXT_REQUIRED_ITEM' | 'LOW_MASTERY' | 'RETRY_ASSESSMENT' | 'SKILL_PREREQUISITE';
+  reason:
+    | 'NEXT_REQUIRED_ITEM'
+    | 'LOW_MASTERY'
+    | 'RETRY_ASSESSMENT'
+    | 'SKILL_PREREQUISITE';
   explanation: string;
 }
 export interface SkillPrerequisiteEdge {
@@ -281,7 +281,11 @@ export interface LearningAnalyticsData {
     assessmentVersion: number;
     gradedAttempts: number;
     scoreDistribution: LearningPercentBand[];
-    trend: { day: string; gradedAttempts: number; averageScorePercent: number }[];
+    trend: {
+      day: string;
+      gradedAttempts: number;
+      averageScorePercent: number;
+    }[];
   }[];
   updatedAt: string;
 }

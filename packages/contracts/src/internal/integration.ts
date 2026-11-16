@@ -1,8 +1,11 @@
 import type { Uuid } from '../http/common';
 import type { AccountStatus, UserRole } from '../http/auth';
 import type {
-  CourseCompletionPolicy, CourseOutlineData, CourseRevisionData,
-  LearningItemData, RequiredAssessment,
+  CourseCompletionPolicy,
+  CourseOutlineData,
+  CourseRevisionData,
+  LearningItemData,
+  RequiredAssessment,
 } from '../http/course';
 import type { CourseProgressData } from '../http/learning';
 import type { AttemptStatus, GradingStatus, QuizType } from '../http/quiz';

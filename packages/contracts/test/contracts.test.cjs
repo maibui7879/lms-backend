@@ -252,9 +252,15 @@ test('v1 events remain readable; v2 requires versioned grading evidence', () => 
     payload: { ...v2.payload, skillScores: [entry] },
   });
   parseContract('AttemptGradedV2Event', withSkill(skillScore));
-  parseContract('AttemptGradedV2Event', withSkill({ ...skillScore, questionCount: 3 }));
+  parseContract(
+    'AttemptGradedV2Event',
+    withSkill({ ...skillScore, questionCount: 3 }),
+  );
   for (const questionCount of [0, -1, 1.5, '3', null]) {
-    invalid('AttemptGradedV2Event', withSkill({ ...skillScore, questionCount }));
+    invalid(
+      'AttemptGradedV2Event',
+      withSkill({ ...skillScore, questionCount }),
+    );
   }
   invalid('AttemptGradedV2Event', {
     ...v2,
@@ -320,7 +326,7 @@ test('certificates are versioned and preserve superseded history', () => {
     courseId: id,
     userId: id2,
     enrollmentId: id,
-    contentVersion: 1,
+    contentVersion: 2,
     status: 'ACTIVE',
     supersededByCertificateId: null,
     issuedAt: time,
@@ -354,4 +360,20 @@ test('certificates are versioned and preserve superseded history', () => {
     status: 'REVOKED',
   });
   invalid('CertificateVerificationData', { ...unknown, status: 'NOT_FOUND' });
+});
+
+test('re-enrollment pins a new snapshot and exposes certificate revocation', () => {
+  parseContract('EnrollmentSnapshotData', {
+    enrollmentId: id2,
+    courseId: id,
+    userId: id,
+    status: 'ACTIVE',
+    enrolledAt: time,
+    contentVersion: 2,
+  });
+  parseContract('ApiError', {
+    code: 'CERTIFICATE_REVOKED',
+    message: 'Certificate has been revoked',
+    details: {},
+  });
 });
