@@ -1,6 +1,107 @@
 # Kế hoạch công việc Learning Service
 
-Cập nhật ngày **14/11/2026** cho nhánh `feat/learning/progress`. Mã và phạm vi nghiệp vụ bám Function List. Đặc tả kỹ thuật lấy từ [contract chung](packages/contracts/README.md) và [lộ trình Learning](services/learning-service/README.md#mục-tiêu-và-cách-thực-hiện). Xem [WORK.md](WORK.md) để tra file, API và chức năng đang chạy.
+Cập nhật ngày **16/11/2026** cho nhánh `feat/learning/progress`. Mã và phạm vi nghiệp vụ bám Function List. Đặc tả kỹ thuật lấy từ [contract chung](packages/contracts/README.md) và [lộ trình Learning](services/learning-service/README.md#mục-tiêu-và-cách-thực-hiện). Xem [WORK.md](WORK.md) để tra file, API và chức năng đang chạy.
+
+## Ghi danh lại — PRG-01/02/03/05/08, INS và ADP
+
+Đã triển khai tách lượt học từ `enrollmentId`, `contentVersion` và `enrolledAt`. Learning xử lý cả trường hợp bản Course hiện tại trả cùng ID sau khi ghi danh lại và cập nhật mốc bắt đầu. Chạy migration `1794528000014` trước khi bắt đầu bản Learning mới. [Luồng ghi danh lại](WORK.md#tách-tiến-độ-khi-ghi-danh-lại) · [Kiểm thử](services/learning-service/test/TEST_REPORT.md#ghi-danh-lại-giữ-nguyên-id-và-phiên-bản)
+
+Rà soát độc lập đã phát hiện và sửa xung đột **PRG-08** khi tab cũ ghi vị trí vào lượt mới. Mỗi lần lưu tiếp tục cấp revision mới trong cùng ID và phiên bản. Khi lưu lần đầu của lượt mới, client gửi `expectedRevision: 0` rồi dùng revision từ phản hồi cho các lần cập nhật. [Báo cáo rà toàn Learning](services/learning-service/test/TEST_REPORT.md#rà-soát-toàn-nhánh-learning-sau-thay-đổi-ghi-danh-lại)
+
+## Bàn giao phần Learning của TV4
+
+**Sẵn sàng bàn giao trong phạm vi mock.** Đã rà độc lập toàn nhóm PRG, MST, ADP, CERT và INS do Learning phụ trách. Hồi quy cuối đạt **104/104 E2E** sau khi sửa các xung đột về giờ chấm quiz, lần học gần nhất và mốc học lại khi cấp chứng chỉ mới. Việc ghép thật cần xác nhận dữ liệu Course, luồng Quiz và xác thực qua Gateway. [Báo cáo bàn giao và các điểm cần ghép](services/learning-service/test/TEST_REPORT.md#rà-soát-bàn-giao-toàn-nhánh-learning)
+
+## Dashboard giảng viên — INS-03, INS-06, INS-07 và INS-09
+
+**Trạng thái.** Đã chốt bốn chức năng của Learning trong phạm vi mock sau khi rà và kiểm thử độc lập. Bộ INS đạt 12/12 và hồi quy Learning đạt 103/103 E2E. Function List dòng 146–149 xếp **INS-03** là P0 và ba mục còn lại là P1. [Cách hoạt động và API](WORK.md#báo-cáo-giảng-viên--ins-03-ins-06-ins-07-và-ins-09) · [Báo cáo kiểm thử](services/learning-service/test/TEST_REPORT.md)
+
+| Mã chức năng | Phần Learning đã triển khai |
+| --- | --- |
+| **INS-03 — Tiến độ từng học viên** | Danh sách phân trang dùng phần trăm theo bài. API chi tiết trả bài đã hoàn thành và lần học gần nhất. Cả hai tính theo phiên bản ghi danh của từng người. |
+| **INS-06 — Tỷ lệ hoàn thành khóa** | Lọc người học theo thời điểm ghi danh, tính tỷ lệ có trạng thái chính thức `COMPLETED` và tiến độ bài trung bình. Trả tỷ lệ `null` nếu nhóm được chọn rỗng. |
+| **INS-07 — Thống kê kỹ năng yếu** | Đếm học viên ở mức `BEGINNER` trên số học viên có đủ bằng chứng cho kỹ năng. Mỗi học viên cần tối thiểu 5 câu có dữ liệu chấm của kỹ năng đó. |
+| **INS-09 — Biểu đồ điểm và tiến độ** | Phân bố tiến độ theo bài, số bài hoàn thành theo ngày, phân bố và điểm phần trăm trung bình theo ngày cho từng quiz và phiên bản. Hỗ trợ lọc theo thời gian, quiz và lớp khi Course trả `classId`. |
+
+**Khi ghép Course thật.** Kiểm tra quyền Admin trên API danh sách học viên. Bản `origin/main` được đối chiếu đang yêu cầu giảng viên sở hữu khóa. Với bộ lọc lớp, Course cần cung cấp `classId` trên từng bản ghi ghi danh. Kiểm tra thêm luồng đồng bộ điểm từ Quiz để biểu đồ có dữ liệu thực tế. [Mock INS-03](services/learning-service/test/fixtures/INS-03-MOCK.md)
+
+## Chứng chỉ CERT-01 đến CERT-07
+
+Function List dòng 139–145 giao nhóm chứng chỉ cho backend Learning (TV4). CERT-01–06 là P1, CERT-07 là P2. Bắt đầu với **CERT-01**, tạo mock kiểm tra đủ điều kiện bằng luồng Progress đã có. Phần cấp chứng chỉ có thể phát triển với dữ liệu Course, Quiz và Identity giả lập. [Function List](<C:/Users/LENOVO/Downloads/Lms hay cjd tuong tu.xlsm>) · [Quy tắc cấp chứng chỉ và chống gửi lặp](packages/contracts/README.md#learning-completion-resume-certificate)
+
+**Quy tắc cấp lại đã thống nhất.** Khi khóa chưa có bản sửa được xuất bản đủ điều kiện cấp lại, học viên dùng chứng chỉ đã cấp. Khi có bản mới đủ điều kiện, học viên có thể chọn học lại. Chứng chỉ cũ giữ hiệu lực cho đến khi học viên hoàn thành yêu cầu của bản mới và được cấp chứng chỉ mới. Sau khi cấp thành công, Learning lưu cả hai hồ sơ và đổi trạng thái chứng chỉ cũ thành đã được thay thế.
+
+**Tiến độ chứng chỉ.** Đã đóng CERT-01 đến CERT-07 ở phạm vi Learning dùng mock, sau khi hai agent rà soát và chạy API độc lập. Khi ghép thật, kiểm tra Course trả đúng phiên bản đã chọn và `enrolledAt` của lượt học lại, xác thực Admin và hồ sơ Identity, route qua Gateway và địa chỉ công khai trong QR. [Báo cáo rà soát](services/learning-service/test/TEST_REPORT.md) · [Luồng thu hồi](WORK.md#cert-07--admin-thu-hồi-chứng-chỉ)
+
+| Thứ tự | Mã và chức năng | Cách làm và tiêu chí hoàn thành |
+| --- | --- | --- |
+| 1 | **CERT-01 — Xác định hoàn thành 100%** | Dùng kết quả hoàn thành chính thức từ Progress và `certificateEnabled` từ cùng snapshot ghi danh. Chỉ học viên có lượt ghi danh hợp lệ, khóa ở trạng thái `COMPLETED` và policy bật cấp chứng chỉ mới đủ điều kiện. Ví dụ, 100% bài nhưng quiz bắt buộc chưa đạt thì trả `409 CERTIFICATE_NOT_ELIGIBLE`. Kiểm thử cả trường hợp đổi nội dung phải học lại trước khi cấp. [Luồng Progress](services/learning-service/src/modules/progress/progress.service.ts) |
+| 2 | **CERT-04 + CERT-06 — Mã duy nhất và chống cấp trùng** | Sinh mã ngẫu nhiên đủ khó đoán, đặt ràng buộc duy nhất trên mã và khóa nghiệp vụ đã chốt. Lưu theo `Idempotency-Key` của học viên và khóa, giữ kết quả tối thiểu 24 giờ theo contract. Kiểm thử hai request đồng thời, gửi lại cùng key, key khác và gửi lại sau khi hết hạn key. Các request hợp lệ cùng một chứng chỉ phải trả cùng ID và mã. |
+| 3 | **CERT-02 — Tạo PDF** | Dùng tên học viên từ Identity và tên khóa từ Course. Lưu tên in trên chứng chỉ, ngày cấp và mã tại thời điểm cấp. Nhúng font hỗ trợ tiếng Việt, thêm QR trỏ tới địa chỉ xác minh của môi trường. Lưu PDF ở nơi có kiểm soát truy cập. Chỉ trả cấp thành công khi PDF đã sẵn sàng tải. Test lỗi tạo/lưu PDF rồi retry, bảo đảm không tạo thêm chứng chỉ. |
+| 4 | **CERT-03 — Danh sách và tải PDF** | Dùng `listCertificates` để phân trang chứng chỉ của người đang đăng nhập. Bổ sung route tải theo mã chứng chỉ nội bộ (ID), kiểm tra chủ sở hữu trước khi trả `application/pdf`. Kiểm thử đúng chủ, học viên khác, danh sách rỗng và tên file. |
+| 5 | **CERT-05 — Xác minh QR/mã** | Dùng `verifyCertificate` để kiểm tra mã công khai. Chỉ trả tên khóa, ngày cấp và tên học viên khi được phép công khai. Kiểm tra QR và nhập mã dẫn đến cùng kết quả. Mã lạ trả `valid: false` với dữ liệu định danh rỗng theo contract. |
+| 6 | **CERT-07 — Thu hồi chứng chỉ** | Bổ sung API Admin thu hồi có lý do và lưu audit gồm người thao tác, thời điểm, lý do. Xác minh công khai phân biệt chứng chỉ đã thu hồi với mã không tồn tại, giữ lý do nội bộ. Kiểm thử gửi lặp, giảng viên/học viên bị từ chối, và xác minh sau thu hồi. |
+
+### Contract hiện có và phần cần chốt
+
+- **API quản trị và xác minh.** `PUT /api/v1/admin/certificates/{id}/revocation` chỉ dành cho Admin. `GET /api/v1/certificates/verify/{code}` trả `ACTIVE`, `SUPERSEDED`, `REVOKED` hoặc `status: null` với mã lạ. `SUPERSEDED` đi cùng `valid: true` vì vẫn là bằng chứng lịch sử. Chi tiết audit chỉ có trong phản hồi Admin. [Endpoint hiện có](packages/contracts/src/endpoints.ts) · [Kiểu dữ liệu](packages/contracts/src/http/learning.ts)
+- **CERT-06 và contract Course.** Đã đồng bộ thay đổi vòng đời chứng chỉ từ `f71e371`. Khi nối Course, cần chốt nơi trả phiên bản đã chọn, ID lượt ghi danh và mốc bắt đầu học lại. Learning dùng mốc đó để chọn bằng chứng hoàn thành khi quiz giữ nguyên phiên bản. [Commit contract](https://github.com/maibui7879/lms-backend/commit/f71e3719e3f360313c1b18b0fcf1496d1a12ca62)
+- **Quy tắc CERT-06 đã thống nhất.** Khóa chống cấp trùng là `(userId, courseId, contentVersion)`. `enrollmentId` lưu lượt ghi danh gốc làm căn cứ cấp. Mỗi học viên có tối đa một chứng chỉ hiện hành cho mỗi khóa. Cấp thành công bản mới và đánh dấu bản cũ `SUPERSEDED` trong cùng giao dịch. Admin thu hồi sang `REVOKED`. Bản thu hồi được lưu trong lịch sử, tải hoặc yêu cầu cấp cùng bản trả `409 CERTIFICATE_REVOKED`.
+- **Tên và quyền công khai.** Tên in được lấy từ Identity và lưu cùng PDF. API xác minh hiện trả `recipientName: null`. Khi ghép thật, kiểm tra nguồn tên, tín hiệu cho phép công khai và URL xác minh dùng trong QR. [Profile Identity](packages/contracts/src/http/identity.ts) · [Quy tắc xác minh](packages/contracts/README.md#learning-completion-resume-certificate)
+- **Cấp và thông báo.** Luồng đầu tiên bắt đầu từ yêu cầu cấp của học viên. Kiểm tra đủ điều kiện trước khi cấp lần đầu. Contract có sự kiện `learning.certificate.issued.v1`. Lộ trình Learning dùng outbox khi có consumer để chỉ phát thông báo sau khi đã cấp thành công. [CertificateIssuedEvent](packages/contracts/src/events/domain-events.ts)
+
+### Luồng cấp và chống cấp trùng CERT-01/04/06
+
+1. **Nhận yêu cầu.** Học viên đăng nhập và gọi `POST /api/v1/learning/courses/{id}/certificate` kèm `Idempotency-Key`. Learning lấy danh tính từ phiên đăng nhập. Đề xuất bổ sung phiên bản đích vào yêu cầu cấp lại sau khi đọc contract Course, để một request cũ gửi muộn vẫn chỉ yêu cầu bản ban đầu. Learning đối chiếu phiên bản đó với lựa chọn đã được Course ghi nhận.
+2. **Kiểm tra kết quả đã có.** Nếu cùng học viên, API, khóa và key đã có kết quả, trả lại chứng chỉ đã lưu cho yêu cầu đó. Với bản đã bị Admin thu hồi, trả `409 CERTIFICATE_REVOKED`. API hiện tại nhận body trống. Khi bổ sung trường chọn phiên bản, áp dụng `409 IDEMPOTENCY_CONFLICT` cho cùng key gửi với body khác. Yêu cầu dùng key mới nhưng cùng phiên bản đã cấp nhận cùng ID và mã. Trong thời hạn lưu key, gửi lại key cũ của bản 1 tiếp tục trỏ đến hồ sơ bản 1 dù sau đó đã cấp bản 2. Trạng thái hiệu lực hiện tại được đọc qua API xác minh.
+3. **Xét điều kiện khi cần cấp mới.** Kiểm tra lượt học thuộc đúng học viên và phiên bản đích. Progress phải báo `COMPLETED` theo policy của bản đó, gồm bài và quiz bắt buộc, và `certificateEnabled` phải bật. Nếu chưa đủ, trả `409 CERTIFICATE_NOT_ELIGIBLE`. Khi học viên đã có chứng chỉ, đối chiếu thêm phiên bản mới được Course cho phép cấp lại và bằng chứng học viên đã hoàn thành phiên bản đó.
+4. **Ghi chứng chỉ.** Tuần tự hóa thao tác cấp của cùng học viên và khóa trong PostgreSQL, rồi kiểm tra lại chứng chỉ đã có và phiên bản hiện hành trong transaction. Database giữ một chứng chỉ cho mỗi bộ học viên, khóa và phiên bản, một mã xác minh duy nhất và tối đa một chứng chỉ hiện hành cho mỗi học viên và khóa. Nếu request khác đã cấp cùng phiên bản, trả bản ghi đó. Yêu cầu cũ đến muộn giữ nguyên chứng chỉ hiện hành mới hơn.
+5. **Hoàn tất cấp hoặc thay thế.** Trong cùng transaction, lưu chứng chỉ mới và PDF, chuyển chứng chỉ trước đó sang `SUPERSEDED`, gắn `supersededByCertificateId` nếu có và ghi kết quả chống gửi lặp. Nếu transaction thất bại, chứng chỉ cũ vẫn hiện hành. Gửi lại key đã lưu nhận cùng chứng chỉ với trạng thái hiện tại, hoặc `409 CERTIFICATE_REVOKED` nếu chứng chỉ đã bị thu hồi.
+
+| Ca kiểm thử CERT-06 | Kết quả mong đợi |
+| --- | --- |
+| Bấm hai lần cùng key, hoặc request gửi lại sau khi mất kết nối | Cùng ID và mã xác minh. |
+| Hai request cùng phiên bản gửi đồng thời với hai key khác nhau | Chỉ có một dòng chứng chỉ cho phiên bản đó. Hai request nhận cùng ID và mã. |
+| Key cũ đã hết hạn và học viên yêu cầu lại phiên bản đã cấp | Tra theo ràng buộc phiên bản và trả chứng chỉ đã lưu. |
+| Bản 2 đã xuất bản, học viên chưa học lại hoặc đang học | Chứng chỉ bản 1 vẫn hiện hành. Chỉ có chứng chỉ mới sau khi đạt điều kiện của bản 2. |
+| Học viên hoàn thành bản 2, hai request cấp bản 2 đến đồng thời | Một chứng chỉ bản 2 hiện hành, bản 1 được đánh dấu đã thay thế một lần. |
+| PDF hoặc bước ghi bản 2 lỗi, hoặc request cấp bản 1 đến sau | Lỗi cấp bản 2 giữ hiệu lực bản 1. Khi bản 2 đã cấp thành công, request cũ giữ bản 2 hiện hành. |
+
+### Cấu trúc và kiểm thử đề xuất
+
+- Đặt `CertificateModule` ở `services/learning-service/src/modules/certificates/`. Controller xử lý API, service điều phối kiểm tra điều kiện và cấp, `rules/` giữ luật nghiệp vụ, `entities/` và `repositories/` lưu chứng chỉ và audit. Phần tạo/lưu PDF có thể kiểm thử qua adapter riêng, dùng kho file tạm trong test.
+- Tạo fixture ở `services/learning-service/test/fixtures/certificates.mock.json` và thêm mock vào server đang có. Ca Postman đầu tiên dùng hai học viên hoặc hai lượt ghi danh. Một ca 100% bài nhưng quiz chưa đạt phải nhận 409. Ca đủ điều kiện và bật `certificateEnabled` nhận 201. Gửi lặp trả cùng ID và mã. Kiểm tra thêm đúng phiên bản, policy tắt, ghi danh đã hủy, tải hộ người khác, dữ liệu công khai, mã QR và thu hồi.
+- Bổ sung ca cấp lại khi có contract Course. Khi An đã có chứng chỉ bản 1 và khóa xuất bản bản 2, QR bản 1 vẫn hợp lệ lúc An chưa học lại hoặc đang học dở. Khi cấp bản 2 thành công, QR bản 1 hiển thị đã được thay thế. Gửi lặp bản 2 trả cùng mã. Giả lập cấp bản 2 thất bại và kiểm tra chứng chỉ bản 1 vẫn hợp lệ.
+- Chạy unit cho điều kiện, mock HTTP cho Postman và E2E NestJS với PostgreSQL để kiểm tra ràng buộc duy nhất, cạnh tranh và retry. Dùng Course/Quiz/Identity giả lập để làm độc lập trước. Ghi kết quả từng mã vào [WORK.md](WORK.md) và [báo cáo kiểm thử](services/learning-service/test/TEST_REPORT.md).
+
+## Gợi ý học tập ADP-01 đến ADP-07
+
+Function List dòng 132–138 giao nhóm này cho backend Learning, thuộc phần TV4. Làm **ADP-01 trước**, dùng kết quả MST-03/04/06 đã có. Sau đó ghép ADP-02 và ADP-05 thành luồng đầu tiên để thử trên Postman. Tiếp tục với quiz và hoàn thiện thứ tự chung. ADP-01–05 thuộc P1, ADP-06–07 thuộc P2. [Function List](<C:/Users/LENOVO/Downloads/Lms hay cjd tuong tu.xlsm>)
+
+**Tiến độ ADP-01 đến ADP-07.** Đã triển khai toàn bộ nhóm phía Learning với Course/Quiz giả lập. API trả bài và quiz đã lọc quyền, xét kỹ năng tiên quyết, xếp hạng theo điểm và xu hướng rồi phân trang. Hai API riêng cho phép chủ khóa đọc và lưu đồ thị. Khi ghép thật, xác minh dữ liệu liên kết bài và số lượt từ hai service sở hữu. [Vị trí code và ví dụ Postman](WORK.md#adp-04--xếp-hạng-gợi-ý)
+
+| Thứ tự | Mã và chức năng | Cách làm và kết quả cần đạt |
+| --- | --- | --- |
+| 1 | **ADP-01 (P1) — Phát hiện kỹ năng yếu** | Dùng mastery hiện tại của chính học viên theo lượt ghi danh, lọc kỹ năng đang dùng, đủ bằng chứng và dưới ngưỡng. Dùng điểm gốc khi so ngưỡng. Sắp từ yếu nhất và dùng mã kỹ năng để phân định khi bằng điểm. Kiểm thử chưa có điểm, thiếu số câu, đúng ngưỡng và đủ số câu. |
+| 2 | **ADP-02 (P1) — Gợi ý bài học bổ trợ** | Dùng mapping kỹ năng–bài từ Course giả lập, lọc theo phiên bản ghi danh và quyền truy cập của PRG, gồm cả học tuần tự trong chương. Lọc lại theo cấu trúc hiệu lực nếu có migration. Một bài khớp nhiều kỹ năng chỉ xuất hiện một lần. Bài đã học vẫn có thể xuất hiện để ôn nếu truy cập được. |
+| 3 | **ADP-05 (P1) — Giải thích lý do đề xuất** | Dùng `reason` và `explanation` của API hiện có. Bắt đầu với bài học ở ADP-02 và dùng lại khi bổ sung quiz. Giải thích nêu tên kỹ năng, điểm, số câu và nội dung có thể mở. |
+| 4 | **ADP-03 (P1) — Gợi ý quiz ôn tập** | Dùng danh sách quiz liên quan kỹ năng theo phiên bản từ Quiz giả lập. Ghép với mục quiz còn truy cập được trong cấu trúc Course. Quiz xác định còn lượt và được bắt đầu hay không, gồm cả lượt chưa chấm theo policy của Quiz. Chỉ đọc thông tin khả dụng, nên gọi API gợi ý không tạo lượt làm. |
+| 5 | **ADP-04 (P1) — Xếp hạng gợi ý** | Đã xếp chung bài và quiz. Tiên quyết chưa đạt đứng trước, sau đó xét điểm kỹ năng có điều chỉnh theo xu hướng. Khi bằng ưu tiên, dùng điểm gốc, mã khóa, thứ tự bài và item, rồi mã định danh. Gom trùng trước khi phân trang. |
+| 6 | **ADP-06 (P2) — Prerequisite graph** | Đã có API đọc/lưu đồ thị theo khóa và phiên bản ghi. Chỉ nhận kỹ năng đang dùng cùng khóa. Kiểm tra chuỗi nhiều cấp, tự tham chiếu, chu trình và ghi đồng thời. Kỹ năng tiên quyết đạt khi Mastery xếp `PROFICIENT`. |
+| 7 | **ADP-07 (P2) — Cá nhân hóa theo lịch sử** | Đã lấy bốn lượt chấm có hiệu lực gần nhất trong 30 ngày, đúng học viên, lượt ghi danh và phiên bản hợp lệ. So điểm theo công thức MST-03 của hai lượt gần với hai lượt trước. Chênh lệch điều chỉnh tối đa 5 điểm xếp hạng. |
+
+### API và nguồn dữ liệu
+
+- **Learning** triển khai `listRecommendations` tại `GET /api/v1/learning/me/recommendations?page=1&limit=20`. Contract đã định nghĩa danh sách phân trang với `courseId`, `lessonId`, `learningItemId`, `reason` và `explanation`. Đề xuất đặt code trong `services/learning-service/src/modules/recommendations/`, dùng lại Mastery và luật truy cập của Progress trong cùng service. [Định nghĩa endpoint](packages/contracts/src/endpoints.ts) · [Kiểu dữ liệu](packages/contracts/src/http/learning.ts)
+- **Course** cung cấp cấu trúc theo `enrollment.contentVersion` qua API nội bộ. Contract đã bổ sung trường tùy chọn `LessonOutline.skillIds` và Course giả lập đã trả trường này. Khi ghép, Course cần lưu liên kết kỹ năng theo bài trong đúng snapshot và trả qua endpoint đó. [Kiểu cấu trúc Course](packages/contracts/src/http/course.ts) · [Course client](services/learning-service/src/integrations/course.client.ts)
+- **Quiz** cung cấp kỹ năng theo `quizId + assessmentVersion` và quyền tạo lượt mới của học viên qua contract nội bộ `getQuizRecommendationContext`. Learning đã kiểm thử bằng Quiz giả lập. Khi ghép, Quiz thật cần triển khai endpoint và đếm mọi lượt đã tạo theo policy. Với quiz cuối chương cần chốt cách điều hướng nếu đưa vào gợi ý, vì `RecommendationData.lessonId` bắt buộc. [Contract nội bộ](packages/contracts/src/internal/integration.ts)
+
+### Mock đầu tiên và tiêu chí kiểm thử
+
+1. **Chính sách thử ADP-01.** Tạm dùng ngưỡng bắt đầu mức `DEVELOPING` của MST-04, mặc định 40%, và tối thiểu 5 câu đã chấm cho một kỹ năng. Theo giả định này, 35% từ 8 câu được xếp cần ôn. Đúng 40%, 35% từ 3 câu hoặc `questionCount: null` chưa vào danh sách. Đây là giá trị đề xuất cho mock. Ngưỡng, số câu tối thiểu và phạm vi cấu hình cần chốt trước khi dùng thật.
+2. **Tạo fixture trước khi viết module.** Trong `services/learning-service/test/fixtures/`, chuẩn bị hai học viên, snapshot ghi danh cũ và bản Course mới hơn, một bài bổ trợ mở, một bài liên quan nằm ở chương khóa và quiz ôn còn/hết lượt. Thêm mock cho `listRecommendations` theo contract hiện có và ghi request Postman cùng kết quả mong đợi.
+3. **Kiểm thử ADP-01–05.** Gọi API với học viên có kỹ năng 35% từ 8 câu. Kết quả chứa bài đang mở và quiz đủ điều kiện, giải thích có tên kỹ năng, 35% và 8 câu. Bài ở chương khóa, quiz hết lượt và nội dung chỉ có ở phiên bản Course mới được lọc ra. Gọi lặp kiểm tra thứ tự, phân trang và chống trùng. Kiểm tra thêm học viên khác, ghi danh đã hủy, danh sách rỗng và lỗi từ provider.
+4. **Chốt theo phạm vi.** Chạy unit cho luật, mock HTTP/Postman và E2E Learning với Course/Quiz giả lập. Sau mỗi mã, ghi trạng thái, vị trí code, API và ví dụ trong [WORK.md](WORK.md), cùng kết quả trong [báo cáo kiểm thử](services/learning-service/test/TEST_REPORT.md). Khi ghép thật, đối chiếu mapping, lượt làm và quyền với service sở hữu rồi chạy lại E2E.
 
 ## Mastery (MST-01 đến MST-07)
 
@@ -37,14 +138,6 @@ Cập nhật ngày **14/11/2026** cho nhánh `feat/learning/progress`. Mã và p
 2. Đã chuẩn bị fixture hai khóa và các tài khoản khác quyền, thêm mock API thử bằng Postman.
 3. Đã triển khai `src/modules/mastery/`, migration PostgreSQL và kiểm tra quyền qua Course. Khóa nháp dùng cùng kiểm tra chủ khóa/Admin. Token tra kỹ năng dùng riêng cho API nội bộ đọc.
 4. Đã ghi vị trí, API, ví dụ và kết quả vào [WORK.md](WORK.md) và [báo cáo kiểm thử](services/learning-service/test/TEST_REPORT.md). Sau khi ghép, xác nhận quyền trên Course thật và để Quiz kiểm tra mã đúng khóa, đúng trạng thái ở MST-02.
-
-### Sau Mastery
-
-| Nhóm | Thứ tự đề xuất và phần phụ thuộc |
-| --- | --- |
-| **ADP-01 đến ADP-07 — Gợi ý học tập** | Làm ADP-01–05 sau MST P1. Dùng mastery để tìm kỹ năng yếu, mapping kỹ năng–bài/quiz và trạng thái mở chương để chọn nội dung, cùng thông tin lượt làm từ Quiz để lọc quiz còn khả dụng. API sẵn có là `listRecommendations`. ADP-06 cần đồ thị tiên quyết và ADP-07 cần lịch sử MST-07, làm sau. |
-| **CERT-01 đến CERT-07 — Chứng chỉ** | CERT-01/04/06 đặt nền điều kiện cấp, mã và chống trùng. Dùng trạng thái hoàn thành PRG và `certificateEnabled` của snapshot. CERT-02/03/05 thêm PDF, tải của chính học viên và xác minh công khai. CERT-07 P2 thêm thu hồi và audit. Có thể phát triển độc lập với mastery nếu nhóm cần ưu tiên chứng chỉ. Trước khi làm CERT-06, chốt chênh lệch giữa khóa duy nhất `userId/courseId` trong Function List và `enrollmentId/contentVersion` trong contract. |
-| **INS-03/06/07/09 — Dashboard giảng viên** | Function List đánh dấu Frontend. Backend Learning phối hợp cung cấp `listLearnerProgress` và `getLearningStatistics`. Xử lý nhu cầu dữ liệu **INS-03 P0** theo tiến độ giao diện, với danh sách ghi danh từ Course và đúng quyền chủ khóa/Admin. INS-07 dùng mastery. Bộ lọc thời gian/lớp/quiz của INS-06/09 cần đối chiếu contract và nguồn dữ liệu trước khi chốt API. |
 
 **Phạm vi mới.** Sau lần chốt nhóm PRG, main bổ sung quy tắc invalidation và yêu cầu học lại. Phần Learning cho quy tắc mới đã được triển khai và kiểm thử với Course giả lập.
 

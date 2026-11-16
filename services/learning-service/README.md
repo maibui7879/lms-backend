@@ -35,7 +35,7 @@ Xây dựng backend theo dõi học tập, tiếp tục bài đang học, xác �
 **Công việc cụ thể:**
 
 1. Triển khai config validation, PostgreSQL connection/migrations, health và kiểm tra user/service credentials.
-2. Thiết kế progress theo enrollment/contentVersion, checkpoint có revision, certificate unique theo enrollment/version.
+2. Thiết kế progress theo `enrollmentId` và `contentVersion`, checkpoint có revision. Khóa chống cấp trùng chứng chỉ là `(userId, courseId, contentVersion)`.
 3. Tạo processed_events và receipts; chuẩn bị transaction cập nhật cùng progress.
 4. Chuẩn bị kết nối Atlas bằng MongoDB Native Driver, collections/indexes và projection outbox theo mục kiến trúc bên dưới. Thiết kế cả hai DB ngay từ đầu, chưa cần triển khai toàn bộ truy vấn dashboard.
 
@@ -268,7 +268,7 @@ Sync endpoint phải xác minh attempt existence/ownership qua Quiz; không tìm
 
 Consume course.enrollment.created.v2 và quiz.attempt.graded.v2 qua queue riêng; tránh áp dụng cả v1/v2. Cancellation chặn mutation mới nhưng giữ lịch sử. Internal Course structure phải cùng course/contentVersion với policy. Không suy luận published content từ dữ liệu Atlas.
 
-Provide Course/Gateway: learner progress summaries, official course progress, dashboard và sync receipt. Completion/certificate events chỉ phát qua outbox khi có consumer thực tế. Certificate unique enrollment/version, retry không cấp trùng; public verification không lộ email/userId/enrollmentId.
+Provide Course/Gateway: learner progress summaries, official course progress, dashboard và sync receipt. Completion/certificate events chỉ phát qua outbox khi có consumer thực tế. Mỗi học viên có một chứng chỉ cho mỗi khóa và phiên bản, kể cả khi ID ghi danh thay đổi. Xác minh công khai ẩn email, `userId` và `enrollmentId`.
 
 Atlas unavailable cần retry/rebuild projection riêng; không đảo rollback progress chính thức đã commit hoặc tự báo progress chưa SYNCED chỉ vì Atlas lỗi. Không import Mongoose: workspace dùng MongoDB native driver theo thiết kế hiện tại.
 

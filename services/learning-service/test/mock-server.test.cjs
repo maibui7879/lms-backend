@@ -6,6 +6,8 @@ const { createLearningMockServer } = require('./mock-server.cjs');
 const { course, quiz } = require('./fixtures/learning-providers.mock.json');
 const skillFixtures = require('./fixtures/course-skills.mock.json');
 const masteryFixture = require('./fixtures/mastery.mock.json');
+const recommendationFixture = require('./fixtures/recommendations.mock.json');
+const { revocationReason } = require('./fixtures/certificates.mock.json');
 const {
   requests,
   expected,
@@ -19,8 +21,8 @@ const videoPath = `${base}/items/${expected.videoCompleted.learningItemId}/compl
 const readingPath = `${base}/items/${chapter2.lessons[0].items[0].id}/completion`;
 const lessonPath = `${base}/lessons/${firstLesson.id}`;
 
-async function start(t) {
-  const server = createLearningMockServer();
+async function start(t, options) {
+  const server = createLearningMockServer(options);
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
   t.after(() => new Promise((resolve) => server.close(resolve)));
@@ -34,11 +36,14 @@ async function start(t) {
       status = 200,
       schema,
       serviceToken,
+      idempotencyKey,
     } = {},
   ) {
     const headers = { 'X-Request-Id': 'learning-mock-test' };
     if (user) headers['X-Mock-User'] = user;
     if (serviceToken) headers.Authorization = `Bearer ${serviceToken}`;
+    if (idempotencyKey !== undefined)
+      headers['Idempotency-Key'] = idempotencyKey;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     const response = await fetch(
       `http://127.0.0.1:${server.address().port}${path}`,
@@ -211,6 +216,149 @@ test('MST-03/05/06/07 shows weighted mastery and paginated history from graded r
   assert.equal(page.items[0].skills[0].level, 'DEVELOPING');
   assert.equal(page.items[0].skills[0].questionCount, 3);
   assert.deepEqual((await call(`${path}/history`)).items[0], recorded);
+});
+
+test('ADP-01 suggests an accessible lesson only after there is enough mastery evidence', async (t) => {
+  const call = await start(t);
+  const path = `${base}/me/recommendations`;
+  const event = (event) =>
+    call('/__mock/events', { method: 'POST', body: { event } });
+  const empty = { items: [], page: 1, limit: 20, total: 0 };
+  assert.deepEqual(await call(path), empty);
+  await call(path, { user: '', status: 401 });
+  await call(path, { user: 'instructorA', status: 403 });
+  await call(`${path}?userId=${course.enrollment.userId}`, { status: 400 });
+  await call(`${path}?page=1&page=2`, { status: 400 });
+
+  await event('recommendationFewQuestions');
+  assert.deepEqual(await call(path), empty);
+  await event('recommendationMoreQuestions');
+  const suggestion = {
+    courseId: course.enrollment.courseId,
+    lessonId: firstLesson.id,
+    learningItemId: null,
+    reason: 'LOW_MASTERY',
+    explanation:
+      'Kỹ năng Tổ chức module đạt 35% từ 8 câu đã chấm. Ôn bài Giới thiệu module.',
+  };
+  assert.deepEqual(await call(path), {
+    ...empty,
+    items: [suggestion],
+    total: 1,
+  });
+  await event('recommendationMoreQuestions');
+  assert.deepEqual(await call(`${path}?page=1&limit=1`), {
+    items: [suggestion],
+    page: 1,
+    limit: 1,
+    total: 1,
+  });
+  assert.deepEqual(await call(`${path}?page=2&limit=1`), {
+    items: [],
+    page: 2,
+    limit: 1,
+    total: 1,
+  });
+  assert.deepEqual(await call(path, { user: 'studentA' }), empty);
+
+  await call(videoPath, { method: 'PUT', body: requests.completeItem });
+  const [practice, , , nextPractice] = recommendationFixture.quizzes;
+  const afterVideo = await call(path);
+  assert.equal(afterVideo.total, 2);
+  assert.deepEqual(afterVideo.items[1], {
+    ...suggestion,
+    learningItemId: practice.itemId,
+    explanation:
+      'Kỹ năng Tổ chức module đạt 35% từ 8 câu đã chấm. Làm “Quiz ôn tập module”. Còn 2 lượt.',
+  });
+  await event('chapterAttempt80');
+  assert.equal((await call(path)).total, 3);
+  await call(readingPath, { method: 'PUT', body: requests.completeItem });
+  const unlocked = await call(path);
+  assert.equal(unlocked.total, 4);
+  assert.deepEqual(unlocked.items.map(({ learningItemId }) => learningItemId), [
+    null, practice.itemId, null, nextPractice.itemId,
+  ]);
+  await call(`${coursePath}/skills/${skillFixtures.skills[0].id}`, {
+    user: 'instructorA',
+    method: 'PATCH',
+    body: { status: 'INACTIVE', expectedVersion: 1 },
+  });
+  assert.deepEqual(await call(path), empty);
+});
+
+test('ADP-06/07 mock validates the graph and recommends prerequisites before the dependent skill', async (t) => {
+  const call = await start(t);
+  const route = `${coursePath}/skill-prerequisites`;
+  const actor = { user: 'instructorA' };
+  const [skill, prerequisite] = skillFixtures.skills;
+  const graph = {
+    expectedVersion: 0,
+    edges: [{ skillId: skill.id, prerequisiteSkillId: prerequisite.id }],
+  };
+  const save = (body, status = 200) => call(route, {
+    ...actor, method: 'PUT', body, status,
+  });
+  assert.equal((await call(route, actor)).version, 0);
+  await call(route, { status: 403 });
+  await save(graph, 422);
+  await call(`${coursePath}/skills/${prerequisite.id}`, {
+    ...actor,
+    method: 'PATCH',
+    body: { status: 'ACTIVE', expectedVersion: prerequisite.version },
+  });
+  await save({
+    expectedVersion: 0,
+    edges: [...graph.edges, { skillId: prerequisite.id, prerequisiteSkillId: skill.id }],
+  }, 400);
+  for (const sample of recommendationFixture.attempts.filter(({ daysAgo }) => daysAgo)) {
+    await call('/__mock/events', { method: 'POST', body: { event: sample.name } });
+  }
+  const recommendations = `${base}/me/recommendations`;
+  assert.match((await call(recommendations)).items[0].explanation, /giảm 42 điểm phần trăm/);
+  assert.equal((await save(graph)).version, 1);
+  await save(graph, 409);
+  const [beforeAdvanced] = (await call(recommendations)).items;
+  assert.equal(beforeAdvanced.reason, 'SKILL_PREREQUISITE');
+  assert.match(beforeAdvanced.explanation, /Củng cố kỹ năng Cấu hình ứng dụng cũ trước khi ôn Tổ chức module/);
+  await save({ expectedVersion: 1, edges: [] });
+  assert.equal((await call(recommendations)).items[0].reason, 'LOW_MASTERY');
+});
+
+test('ADP-03 Quiz mock reads versioned eligibility without creating attempts', async (t) => {
+  const call = await start(t);
+  const [practice, spent, denied] = recommendationFixture.quizzes;
+  const { courseId, userId } = course.enrollment;
+  const route = ({ quizId, assessmentVersion }) =>
+    `/api/v1/internal/quizzes/${quizId}/recommendation-context?courseId=${courseId}&userId=${userId}&assessmentVersion=${assessmentVersion}`;
+  const credentials = {
+    user: '',
+    serviceToken: process.env.QUIZ_SERVICE_TOKEN ?? 'quiz-mock-service-token',
+    schema: 'QuizRecommendationContext',
+  };
+  await call(route(practice), { user: 'studentB', status: 401 });
+  const context = await call(route(practice), credentials);
+  assert.equal(context.canStart, true);
+  assert.equal(context.attemptsRemaining, 2);
+  assert.deepEqual(await call(route(practice), credentials), context);
+  assert.equal((await call(route(spent), credentials)).attemptsRemaining, 0);
+  assert.equal((await call(route(denied), credentials)).canStart, false);
+  await call(route({ ...practice, assessmentVersion: 999 }), { ...credentials, status: 404 });
+  await call(`${route(practice)}&assessmentVersion=2`, { ...credentials, status: 400 });
+});
+
+test('ADP-01 omits skills at the threshold and with unknown question counts', async (t) => {
+  const call = await start(t);
+  const path = `${base}/me/recommendations`;
+  const event = (event) =>
+    call('/__mock/events', { method: 'POST', body: { event } });
+  await event('recommendationAtThreshold');
+  assert.equal((await call(path)).total, 0);
+  await event('recommendationLegacyResult');
+  const [skill] = (await call(`${coursePath}/mastery`)).skills;
+  assert.equal(skill.scorePercent, 37.5);
+  assert.equal(skill.questionCount, null);
+  assert.equal((await call(path)).total, 0);
 });
 
 test('PRG-04 shows synced quiz scores to the learner and course owner', async (t) => {
@@ -390,6 +538,143 @@ test('PRG-01 to PRG-08 completes the full Postman workflow with mock providers',
   await apply('attemptGraded');
   assert.deepEqual(await progress(), done);
   assert.deepEqual(await call(dashboardPath), dashboard);
+});
+
+function applyCertificateFixture(call, event, status = 200) {
+  return call('/__mock/events', { method: 'POST', body: { event }, status });
+}
+
+async function completeCertificateLessons(call) {
+  const completion = { method: 'PUT', body: requests.completeItem };
+  await call(videoPath, completion);
+  await call(`${lessonPath}/completion`, completion);
+  await applyCertificateFixture(call, 'chapterAttempt80');
+  await call(readingPath, completion);
+  await call(`${base}/lessons/${chapter2.lessons[0].id}/completion`, completion);
+}
+
+test('CERT-01/04/06 gates issuance and deduplicates concurrent requests and expired keys', async (t) => {
+  let now = Date.parse('2026-11-15T08:00:00Z');
+  const call = await start(t, { now: () => now });
+  const path = `${coursePath}/certificate`;
+  const list = `${base}/me/certificates`;
+  const issue = (key, options) => call(path, {
+    method: 'POST',
+    idempotencyKey: key,
+    status: 201,
+    schema: 'CertificateData',
+    ...options,
+  });
+
+  await issue(undefined, { status: 400 });
+  await issue('x'.repeat(129), { status: 400 });
+  await issue('issue-1', { user: null, status: 401 });
+  await issue('issue-1', { user: 'studentA', status: 403 });
+  await issue('issue-1', { body: { contentVersion: 2 }, status: 400 });
+  assert.equal((await issue('early', { status: 409 })).code, 'CERTIFICATE_NOT_ELIGIBLE');
+  await completeCertificateLessons(call);
+  assert.equal((await call(`${coursePath}/progress`)).lessonProgressPercent, 100);
+  assert.equal((await issue('early', { status: 409 })).code, 'CERTIFICATE_NOT_ELIGIBLE');
+  assert.equal((await call(list)).total, 0);
+
+  await applyCertificateFixture(call, 'attemptGraded');
+  const [first, sameKey, otherKey] = await Promise.all([
+    issue('issue-1'), issue('issue-1'), issue('issue-2'),
+  ]);
+  assert.deepEqual(sameKey, first);
+  assert.deepEqual(otherKey, first);
+  assert.equal(first.contentVersion, course.enrollment.contentVersion);
+  assert.match(first.verificationCode, /^[A-Za-z0-9_-]{32}$/);
+  now += 25 * 60 * 60 * 1000;
+  assert.deepEqual(await issue('issue-1'), first);
+  assert.deepEqual((await call(list)).items, [first]);
+  assert.equal((await call(list, { user: 'studentA' })).total, 0);
+});
+
+test('CERT-06 keeps the old certificate valid until a voluntary retake earns the replacement', async (t) => {
+  const call = await start(t);
+  const issue = (key, status = 201) => call(`${coursePath}/certificate`, {
+    method: 'POST', idempotencyKey: key, status, schema: 'CertificateData',
+  });
+  const apply = (event, status) => applyCertificateFixture(call, event, status);
+  const verify = (code) => call(`/api/v1/certificates/verify/${code}`, {
+    user: null, schema: 'CertificateVerificationData',
+  });
+  await completeCertificateLessons(call);
+  await apply('attemptGraded');
+  const first = await issue('v1');
+  assert.equal((await verify(first.verificationCode)).valid, true);
+  assert.deepEqual(await verify('unknown-code'), {
+    valid: false, status: null, courseTitle: null, recipientName: null, issuedAt: null,
+  });
+  await apply('certificateStartRetake', 409);
+  await apply('certificatePublishVersion2');
+  assert.deepEqual(await issue('v1-new-key'), first);
+  await apply('certificateCompleteRetake', 409);
+  await apply('certificateStartRetake');
+  assert.equal((await issue('v2-early', 409)).code, 'CERTIFICATE_NOT_ELIGIBLE');
+  assert.equal((await verify(first.verificationCode)).valid, true);
+
+  await apply('certificateCompleteRetake');
+  const [second, repeated] = await Promise.all([issue('v2'), issue('v2-other')]);
+  assert.deepEqual(repeated, second);
+  assert.equal(second.contentVersion, 2);
+  assert.notEqual(second.id, first.id);
+  assert.notEqual(second.verificationCode, first.verificationCode);
+  const historical = { ...first, status: 'SUPERSEDED', supersededByCertificateId: second.id };
+  assert.deepEqual(await issue('v1'), historical);
+  assert.deepEqual(await verify(first.verificationCode), {
+    valid: true, status: 'SUPERSEDED', courseTitle: course.publishedCourse.title,
+    recipientName: null, issuedAt: first.issuedAt,
+  });
+  assert.equal((await verify(second.verificationCode)).valid, true);
+  assert.deepEqual(await issue('v2-third-key'), second);
+  const list = `${base}/me/certificates`;
+  assert.deepEqual((await call(list)).items, [second, historical]);
+  assert.deepEqual(await call(`${list}?page=2&limit=1`), {
+    items: [historical], page: 2, limit: 1, total: 2,
+  });
+});
+
+test('CERT-01 rejects an otherwise complete course when certification is disabled', async (t) => {
+  const call = await start(t);
+  await completeCertificateLessons(call);
+  await applyCertificateFixture(call, 'attemptGraded');
+  await applyCertificateFixture(call, 'certificateDisableIssuance');
+  assert.equal((await call(`${coursePath}/progress`)).status, 'COMPLETED');
+  const error = await call(`${coursePath}/certificate`, {
+    method: 'POST', idempotencyKey: 'disabled', status: 409,
+  });
+  assert.equal(error.code, 'CERTIFICATE_NOT_ELIGIBLE');
+});
+
+test('CERT-07 Admin revokes once and public verification distinguishes revoked from unknown', async (t) => {
+  const call = await start(t);
+  await completeCertificateLessons(call);
+  await applyCertificateFixture(call, 'attemptGraded');
+  const issue = (key, status) => call(`${coursePath}/certificate`, {
+    method: 'POST', idempotencyKey: key, status,
+  });
+  const first = await issue('before-revoke', 201);
+  const revoke = (user, status, reason = revocationReason) => call(`/api/v1/admin/certificates/${first.id}/revocation`, {
+    method: 'PUT', user, status, body: { reason }, schema: 'CertificateRevocationData',
+  });
+  await revoke(null, 401);
+  assert.equal((await revoke('studentB', 403)).code, 'FORBIDDEN');
+  assert.equal((await revoke('instructorA', 403)).code, 'FORBIDDEN');
+  assert.equal((await revoke('adminA', 400, '   ')).code, 'VALIDATION_ERROR');
+  const audit = await revoke('adminA', 200);
+  assert.equal(audit.reason, revocationReason);
+  assert.deepEqual(await revoke('adminA', 200, 'Lý do mới'), audit);
+  const verify = (code) => call(`/api/v1/certificates/verify/${code}`, {
+    user: null, schema: 'CertificateVerificationData',
+  });
+  assert.deepEqual(await verify(first.verificationCode), {
+    valid: false, status: 'REVOKED', courseTitle: null, recipientName: null, issuedAt: null,
+  });
+  assert.equal((await verify('unknown')).status, null);
+  assert.equal((await issue('before-revoke', 409)).code, 'CERTIFICATE_REVOKED');
+  assert.equal((await issue('after-revoke', 409)).code, 'CERTIFICATE_REVOKED');
 });
 
 test('critical migration invalidates a selected item and is idempotent after relearning', async (t) => {

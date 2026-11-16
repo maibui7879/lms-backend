@@ -1,5 +1,283 @@
 # Báo cáo kiểm thử luồng Learning
 
+## Rà soát toàn nhánh Learning sau thay đổi ghi danh lại
+
+Đối chiếu **PRG-01–08, MST-01–07, ADP-01–07, CERT-01–07 và INS-03/06/07/09** trên NestJS với PostgreSQL, RabbitMQ và các nguồn dữ liệu giả lập. Hai lượt rà độc lập dùng PostgreSQL tách riêng.
+
+Một lượt độc lập đạt **53/53 E2E** và **4/4 ca bổ sung** về ghi đồng thời, đổi lượt và phiên bản checkpoint. Lượt còn lại đạt **47 ca E2E** trong lượt chạy chung, **ca QR/PDF chạy riêng đạt** và **3/3 ca bổ sung** về giao thoa CERT, MST và ADP. Ca Poppler vượt giới hạn 20 giây lúc chạy song song. Đã tăng giới hạn của riêng ca render và quét QR lên 45 giây.
+
+Hồi quy cuối đạt **106/106 E2E**, gồm tải PDF và đọc QR trước và sau thu hồi. Đạt thêm **37/37 unit**, **22/22 HTTP mock** và **9/9 contract**. TypeScript và lint đạt. Có thể bàn giao phần Learning của TV4 trong phạm vi mock.
+
+| Ca kiểm thử | Kết quả |
+| --- | --- |
+| PRG-08 lưu vị trí từ tab cũ | Tái hiện trước sửa. Lượt mới cấp lại revision 1, nên yêu cầu từ lượt cũ có revision 1 trả 200 và ghi đè vị trí. Sau sửa, số revision tiếp tục tăng trong cùng ID và phiên bản. Yêu cầu giữ revision cũ trả `409 REVISION_CONFLICT` kể cả sau khi đã lưu vị trí ở lượt mới. |
+| Ghi song song và chuyển lượt | Hai yêu cầu lưu cùng revision cùng lúc cho kết quả một 200, một 409. Yêu cầu hoàn thành item đã lấy snapshot lượt A rồi ghi sau khi Course chuyển sang lượt B vẫn ghi riêng vào A. Tiến độ của B giữ nguyên. |
+| Tiến độ, mastery, gợi ý và báo cáo | Lượt mới bắt đầu với số bài bằng 0 và vị trí học rỗng. Mastery và gợi ý dùng bằng chứng của lượt hiện tại. Quiz đang khóa chỉ mở sau khi học viên hoàn thành nội dung bắt buộc của lượt mới. |
+| Chứng chỉ | Cùng học viên, khóa và phiên bản đã có chứng chỉ thì trả lại chứng chỉ đó dù tiến độ lượt mới bắt đầu lại. Nếu chưa có chứng chỉ, bằng chứng của lượt cũ không cấp được chứng chỉ cho lượt mới. Tải PDF theo quyền và mã xác minh tiếp tục hoạt động. |
+| Migration trên dữ liệu cũ | Giữ cả ba loại bản ghi cũ và thêm được dữ liệu cho lượt mới. Thử rollback khi đã có hai lượt cùng khóa cũ nhận lỗi ràng buộc PostgreSQL và giao dịch giữ nguyên các bản ghi. |
+
+API hoàn thành chọn lượt ghi danh Course trả tại thời điểm xử lý yêu cầu. Hành vi gửi lại thao tác đang chờ tại trình duyệt sau khi đổi lượt cần dấu lượt học từ client nếu nhóm muốn phân biệt với một thao tác mới. Phạm vi kiểm thử dùng hợp đồng HTTP hiện tại.
+
+[Ca chống ghi đè trong E2E](instructor-reports.db.e2e-spec.ts) · [Luồng và vị trí code](../../../WORK.md#tách-tiến-độ-khi-ghi-danh-lại)
+
+## Ghi danh lại giữ nguyên ID và phiên bản
+
+**PRG-01/02/05/08 và INS-03.** Course giả lập trả cùng `enrollmentId` và `contentVersion` với `enrolledAt` mới. Qua HTTP NestJS và PostgreSQL, học viên cũ có 1/2 bài và một vị trí đã lưu. Sau hủy, API học viên trả 403 và chi tiết giảng viên trả 404. Sau ghi danh lại, tiến độ là 0/2, vị trí học tiếp là `null`. Gửi revision cũ lúc lượt mới chưa có vị trí trả 409. Học và lưu vị trí lại thành công, PostgreSQL vẫn chứa dữ liệu của cả hai lượt. [Ca kiểm thử E2E](instructor-reports.db.e2e-spec.ts)
+
+**Dữ liệu cũ.** Đã thử migration trên PostgreSQL có sẵn dữ liệu item, bài và vị trí học. Cả ba bản ghi giữ nguyên dữ liệu, và cùng ID có thể lưu thêm bản ghi của lượt mới. Ca API riêng xác nhận dữ liệu cũ ghi trước mốc học mới được giữ lại trong PostgreSQL và không xuất hiện trong tiến độ hiện tại.
+
+**Hồi quy.** Đạt **106/106 E2E**, **37/37 unit** và **22/22 mock HTTP**. TypeScript và lint đạt.
+
+## Rà soát bàn giao toàn nhánh Learning
+
+Phạm vi TV4 gồm **PRG-01 đến PRG-08, MST-01 đến MST-07, ADP-01 đến ADP-07, CERT-01 đến CERT-07 và INS-03/06/07/09**. Kiểm thử HTTP trực tiếp vào Learning NestJS dùng PostgreSQL và RabbitMQ thật. Course, Quiz, Identity và tài khoản được giả lập. Lượt kiểm thử CERT tải PDF thật và giải mã QR từ PDF bằng Poppler.
+
+**Kết luận bàn giao.** Có thể đóng phần TV4 trong phạm vi mock để chuyển sang ghép nhóm. Lượt hồi quy cuối đạt **104/104 E2E**, **37/37 unit**, **22/22 HTTP mock** và **9/9 contract**. Build, TypeScript và lint đạt. Lượt chạy trước đạt đủ 104 ca nhưng vượt thời gian ở bước dọn môi trường thử nghiệm. Lượt cuối đã hoàn tất cả bước dọn.
+
+| Nhóm | Luồng đã xác nhận |
+| --- | --- |
+| PRG | Ghi hoàn thành bài, tính tiến độ theo policy, mở chương đúng điều kiện, lưu vị trí học, dùng snapshot lúc ghi danh. RabbitMQ giao lại, phục hồi và DLQ hoạt động. |
+| MST | Tính tổng điểm chia tổng điểm tối đa, dùng đúng bằng chứng theo kỹ năng, lọc lượt sai phiên bản và lưu lịch sử theo lần chấm. |
+| ADP | Chỉ gợi ý nội dung học viên mở được và quiz còn lượt. Kiểm tra thứ tự, tiên quyết, vòng lặp, xu hướng và đồng bộ với luật mở chương. |
+| CERT | Cấp một chứng chỉ cho một học viên, khóa và phiên bản. Chỉ cấp bản thay thế khi học lại đủ điều kiện. Tải PDF theo quyền, quét QR trước và sau thu hồi. |
+| INS | Danh sách và chi tiết theo bài khớp Progress. Tỷ lệ hoàn thành theo policy, kỹ năng yếu khớp Mastery, biểu đồ tách phiên bản quiz và phân quyền giảng viên. |
+
+**Lỗi liên module phát hiện và đã sửa.**
+
+- Kết quả quiz có `gradedAt` trong tương lai từng mở chương và xuất hiện trong bảng điểm trước thời điểm hiệu lực. Repo đọc giới hạn theo giờ PostgreSQL. PRG, MST, ADP, INS và CERT chỉ dùng điểm đã đến mốc. Receipt `SYNCED` vẫn xác nhận sự kiện đã được lưu.
+- Việc sửa nội dung từng đẩy một khóa lên đầu dashboard dù học viên chưa học thêm. Dashboard và INS dùng chung cách tính lần học thực tế. `progress.updatedAt` vẫn ghi nhận cập nhật của Course.
+- Khi Course dùng lại `enrollmentId` cho phiên bản mới với mốc ghi danh cũ, điểm phiên bản quiz không đổi từng đủ để cấp chứng chỉ thay thế. Learning từ chối nếu mốc học lại của ID dùng lại chưa sau thời điểm cấp bản cũ. Khi mốc đúng và học viên làm lại đủ, chứng chỉ mới được cấp và bản cũ chuyển `SUPERSEDED`.
+
+**Rà độc lập sau sửa.** Một agent đạt **92/92 E2E** trên tám suite và **3/3 ca bổ sung** về giờ chấm, lần học gần nhất và lượt học lại. Agent còn lại đạt **54/54 E2E** trên bốn suite và **4/4 ca bổ sung** về cấp lại, quiz tương lai và xác nhận bài sau migration. Hai lượt chạy dùng database riêng và có suite trùng nhau. [PRG/MST qua RabbitMQ](learning-workflow.db.e2e-spec.ts) · [INS qua HTTP](instructor-reports.db.e2e-spec.ts) · [CERT và QR](certificates.db.e2e-spec.ts)
+
+**Điểm cần ghép với nhóm.**
+
+- **Course.** Xác nhận snapshot lịch sử và `contentVersion` của các item sau khi duyệt revision, mốc `enrolledAt` khi tự nguyện học lại, cấu hình migration, `skillIds`, quyền Admin xem roster và `classId`. Ref `origin/main` local `0e63d67` cho thấy khi serialize outline, item có thể vẫn mang phiên bản gốc trong khi outline mang phiên bản mới. Ca giả lập tương ứng xác nhận Learning trả `503`.
+- **Quiz.** Chạy publisher `quiz.attempt.graded.v2`, nối kiểm tra kỹ năng, `questionCount` và quyền làm quiz theo phiên bản. Chốt với Course ngưỡng đạt của snapshot. Nếu lượt bắt đầu trước học lại nhưng được chấm sau cần bị loại, Quiz phải cung cấp căn cứ nhận diện lượt học hoặc thời điểm bắt đầu theo contract.
+- **Gateway và Identity.** Đối chiếu xác thực và vai trò thật, dữ liệu tên người nhận, route tải PDF và URL xác minh QR công khai. Luồng Notification/Analytics có thể ghép khi có consumer cho các sự kiện tùy chọn.
+
+## Rà soát độc lập và kiểm thử xung đột INS-03, INS-06, INS-07 và INS-09
+
+Bộ INS dùng HTTP NestJS, PostgreSQL và Course giả lập. Lượt cuối của bộ API INS đạt **12/12**. Hai agent chạy độc lập với cơ sở dữ liệu riêng. Một lượt kiểm tra thêm danh sách 102 học viên và chạy lại 2/2 ca tái hiện sau sửa. Lượt còn lại đạt 34/34 ca (11 INS, 13 ADP, 10 Course Skills/MST) sau sửa. [Bộ kiểm thử INS](instructor-reports.db.e2e-spec.ts)
+
+Hồi quy cuối đạt **103/103 E2E**, **37/37 unit**, **22/22 mock HTTP** và **9/9 contract**. TypeScript và lint đạt. Có thể đóng bốn chức năng INS của Learning trong phạm vi mock.
+
+| Ca đối chiếu | Kết quả |
+| --- | --- |
+| INS-03 và cập nhật khóa | Từng gặp báo cáo lấy trạng thái bài sau cập nhật và mốc tiến độ trước cập nhật. Sau khi đọc dữ liệu tiến độ của từng học viên trong cùng ảnh chụp PostgreSQL, lần đọc đang chạy thấy trạng thái cũ đầy đủ và lần đọc kế tiếp thấy trạng thái mới đầy đủ. |
+| INS-03 và đổi phiên bản quiz | Từng mất mốc làm quiz cũ khi Course yêu cầu phiên bản mới. Sau sửa, quiz cũ giữ vai trò mốc hoạt động. Điểm của phiên bản ngoài lượt học bị loại và điều kiện hoàn thành dùng phiên bản mới. |
+| INS-07/09 và cấu trúc Course | Từng mất điểm ở INS-09 khi UUID quiz viết hoa và từng chấp nhận item thuộc sai khóa hoặc sai phiên bản. Bộ kiểm tra chung nay chuẩn hóa UUID và trả 503 đối với cấu trúc sai. |
+| INS đối chiếu PRG và MST | Hoàn thành bài qua API học viên, nhận điểm quiz giả lập và gửi lại cùng event. Danh sách, chi tiết và tiến độ học viên khớp. Tỷ lệ hoàn thành đổi sau khi đạt đủ policy, điểm yếu khớp với mastery và biểu đồ tính điểm một lần cho mỗi lượt chấm. |
+| Phân trang Course | Dữ liệu 102 học viên trả đúng chi tiết của người ở trang sau. Trả 503 khi Course gửi trùng người hoặc thay đổi tổng số trong lúc tổng hợp. |
+
+Phạm vi ghép thật gồm quyền Admin ở Course, `classId` và sự kiện chấm điểm từ Quiz. [Kế hoạch INS](../../../PLAN.md#dashboard-giảng-viên--ins-03-ins-06-ins-07-và-ins-09)
+
+## Báo cáo giảng viên — INS-03, INS-06, INS-07 và INS-09
+
+Đạt **6/6 ca HTTP** gọi API NestJS với PostgreSQL thật, Course giả lập và dữ liệu điểm ghi qua repository đồng bộ. [Bộ ca kiểm thử](instructor-reports.db.e2e-spec.ts)
+
+Hồi quy đạt **97/97 E2E**, **22/22 mock HTTP**, **37/37 unit** và **9/9 contract**. TypeScript và lint đạt. Hai lượt chạy đầu gặp lỗi ADP khi thời điểm ghi của PostgreSQL đi trước giờ ứng dụng. Báo cáo và gợi ý học dùng mốc giờ đọc từ PostgreSQL để đọc được tiến độ vừa ghi và tiếp tục loại điểm chấm ở tương lai.
+
+| Mã | Kết quả kiểm thử |
+| --- | --- |
+| INS-03 | Hai lượt ghi danh bản 1 và bản 2 hiển thị đúng mẫu số bài, phân trang đúng. Chi tiết có tên bài, thời điểm hoàn thành và lần học gần nhất. Yêu cầu học lại làm mất hiệu lực hoàn thành bài và giữ mốc hoạt động của học viên. Kiểm tra cả quyền Admin giả lập, giảng viên ngoài khóa, thiếu xác thực, người ngoài khóa và phản hồi Course sai snapshot. |
+| INS-06 | Học đủ bài nhưng thiếu quiz bắt buộc vẫn cho tỷ lệ hoàn thành 0%. Khi một trong hai học viên đạt đầy đủ policy, tỷ lệ là 50%. Kiểm tra biên lọc ngày ghi danh và nhóm rỗng. |
+| INS-07 | Đếm theo học viên cho từng kỹ năng, dùng ngưỡng mastery và đủ ít nhất 5 câu đã chấm. Loại bằng chứng thiếu số câu hỏi khỏi thống kê. |
+| INS-09 | Kiểm tra phân bố tiến độ, số bài hoàn thành theo ngày, phân bố và trung bình điểm, tách phiên bản quiz, loại quiz luyện tập, lọc thời gian và lớp, cùng trường hợp nhà cung cấp thiếu dữ liệu lớp. |
+
+Chạy từ thư mục gốc khi PostgreSQL thử nghiệm đã cấu hình qua `TEST_DATABASE_URL`.
+
+```powershell
+npm.cmd run test:e2e -w @lms/learning-service -- --runInBand instructor-reports.db.e2e-spec.ts
+```
+
+Khi ghép thật, xác nhận quyền Admin và trường `classId` từ Course cùng dữ liệu điểm đi qua luồng đồng bộ của Quiz.
+
+## Chốt lại CERT-01 đến CERT-07 sau khi thống nhất khóa chống trùng
+
+Hai agent kiểm thử độc lập trên hai database PostgreSQL riêng, mỗi lượt đạt 10/10 E2E chứng chỉ có đọc QR từ PDF và 4/4 ca mock HTTP của nhóm CERT. Lượt hồi quy toàn Learning đạt 91/91 E2E, 22/22 mock HTTP, 37/37 unit và 9/9 contract. TypeScript và lint đạt.
+
+| Phạm vi | Kết quả |
+| --- | --- |
+| CERT-01/04/06 | Chỉ cấp khi học viên đủ điều kiện của phiên bản ghi danh. Gửi đồng thời hoặc ghi danh lại cùng phiên bản vẫn trả cùng chứng chỉ. Bản cũ giữ `ACTIVE` khi đang học bản mới hoặc khi lưu PDF bản mới thất bại. Cấp bản mới thành công gắn liên kết thay thế cho bản cũ. |
+| CERT-02/03 | Chủ sở hữu tải đúng PDF đã lưu. Tải lại PDF bản cũ khi `SUPERSEDED` trả cùng nội dung. Sau thu hồi, yêu cầu tải trả `409 CERTIFICATE_REVOKED`. |
+| CERT-05/07 | Quét cùng QR bản cũ nhận `SUPERSEDED`, `valid: true` sau khi có bản thay thế, rồi `REVOKED`, `valid: false` sau thu hồi. QR bản mới tiếp tục `ACTIVE`. Chỉ Admin thu hồi được và gửi lặp giữ thông tin lần đầu. |
+
+Lượt thử độc lập bổ sung cho cấp bản 2 đồng thời với Admin thu hồi bản 1 trả đúng bản 2 `ACTIVE`, bản 1 `REVOKED` và giữ liên kết bản 1 sang bản 2. Gửi lại key cấp bản 1 trả `409 CERTIFICATE_REVOKED`.
+
+Đủ điều kiện đóng phần Learning dùng mock. Lúc ghép thật, cần xác nhận phiên bản và mốc bắt đầu lượt học lại từ Course, quyền Admin qua xác thực thật và URL QR từ ngoài máy chạy service. Đối với quiz giữ nguyên phiên bản, Learning hiện lọc điểm theo thời điểm chấm. Course và Quiz cần thống nhất cách xử lý lượt làm bắt đầu trước mốc học lại nhưng chấm sau mốc đó. [Bộ ca kiểm thử](certificates.db.e2e-spec.ts)
+
+## CERT-06 — Đồng bộ contract vòng đời chứng chỉ
+
+**Kết quả.** 91/91 E2E Learning, gồm 10 ca chứng chỉ. 22/22 mock HTTP, 37/37 unit và 9/9 contract. TypeScript và lint đạt. Đã dùng PostgreSQL cùng Course và Identity giả lập, đọc QR trực tiếp từ PDF tải qua HTTP. Các báo cáo bên dưới ghi kết quả của từng lượt trước khi đồng bộ contract này.
+
+| Ca kiểm thử | Kết quả |
+| --- | --- |
+| Cấp lại và chống trùng | Bản 1 giữ `ACTIVE` đến khi lưu bản 2 thành công. Gửi nhiều yêu cầu cấp bản 2 đồng thời hoặc đổi ID ghi danh nhưng giữ cùng phiên bản đều trả cùng chứng chỉ. Khi lưu PDF lỗi, bản 1 vẫn `ACTIVE`. |
+| Danh sách và gửi lại yêu cầu cấp | Bản 2 là `ACTIVE` với liên kết `null`. Bản 1 là `SUPERSEDED` với `supersededByCertificateId` bằng ID bản 2, kể cả sau khởi động lại. Gửi lại key bản 1 giữ ID và mã của bản 1, trả trạng thái vòng đời hiện tại. |
+| QR và thu hồi | QR bản 1 trả `SUPERSEDED` với `valid: true` sau khi có bản thay thế, rồi trả `REVOKED` với `valid: false` sau thu hồi. Bản 2 vẫn `ACTIVE`. Mã lạ trả `status: null` và `valid: false`. |
+| Dữ liệu cũ | Chạy migration trên hai bản ghi theo schema cũ. PostgreSQL điền đúng liên kết từ bản đã thay thế sang bản kế tiếp. |
+
+**Quy tắc đã chốt.** Nhóm thống nhất dùng `(userId, courseId, contentVersion)` cho khóa chống cấp trùng. Contract và OpenAPI trên nhánh Learning đã ghi rõ quy tắc này. Ca chèn trực tiếp một chứng chỉ `REVOKED` cùng học viên, khóa và phiên bản với `enrollmentId` khác bị PostgreSQL từ chối với mã `23505`. Lượt kiểm thử sau khi chốt đạt 10/10 ca API chứng chỉ, 22/22 mock HTTP và 9/9 contract. Ca quét QR dùng kết nối mới cho mỗi lượt gọi xác minh sau khi gặp một lần `ECONNRESET`. Luồng học lại thật cần Course trả phiên bản học viên đã chọn và mốc bắt đầu lượt học lại. [Ca kiểm thử](certificates.db.e2e-spec.ts) · [Quy tắc trên contract](../../../packages/contracts/README.md#learning-completion-resume-certificate)
+
+## Rà soát độc lập và chốt CERT-01 đến CERT-07 với mock
+
+Hai agent chạy độc lập bộ API chứng chỉ trong các database PostgreSQL riêng, có Poppler để đọc QR từ PDF tải qua HTTP. Mỗi lượt xác nhận 9/9 ca CERT. Lượt kiểm thử hồi quy toàn Learning đạt 90/90 E2E, 22/22 mock HTTP, 37/37 unit và 8/8 contract. TypeScript và lint đạt.
+
+| Chức năng | Kết quả rà soát và kiểm thử |
+| --- | --- |
+| CERT-01 — Xét điều kiện | Thiếu bài hoặc quiz, điểm chấm ở tương lai, hoặc tắt cấp chứng chỉ đều không cấp được. Policy rỗng bị Course adapter từ chối với 503. Ghi danh hợp lệ có UUID khác chữ hoa/thường vẫn cấp được sau khi chuẩn hóa. |
+| CERT-02 — Tạo PDF | PDF dùng tên tiếng Việt lấy từ mock Identity, giữ nội dung gốc sau khi đổi tên. Lỗi ghi PDF không đổi hiệu lực bản cũ. |
+| CERT-03 — Danh sách và tải PDF | Chủ sở hữu tải đúng PDF đã lưu. Tài khoản khác nhận 404. PDF cũ đang đợi Identity ngay lúc Admin thu hồi trả `409 CERTIFICATE_REVOKED`, PostgreSQL không lưu thêm PDF. |
+| CERT-04 — Mã duy nhất | 12 POST đồng thời cùng phiên bản chỉ tạo một chứng chỉ. Ràng buộc PostgreSQL từ chối mã xác minh trùng. |
+| CERT-05 — Xác minh | Cùng QR đọc từ PDF trả `200`, `ACTIVE`, `valid: true` trước thu hồi và `200`, `REVOKED`, `valid: false` sau thu hồi. Mã lạ và bản thay thế trả `NOT_FOUND` và `SUPERSEDED`. |
+| CERT-06 — Cấp lại | Bản 1 còn hiệu lực đến khi hoàn thành và lưu thành công bản 2. Ở lượt ghi danh mới, quiz giữ nguyên `assessmentVersion` vẫn bỏ điểm chấm trước `enrolledAt` của lượt mới. Cấp bản 2 đồng thời với Admin thu hồi bản 1 giữ đúng trạng thái `ACTIVE` và `REVOKED`. |
+| CERT-07 — Thu hồi | Chỉ Admin được thu hồi. Gửi lặp giữ nguyên audit. Chuỗi Unicode có ký tự surrogate đơn bị trả `400`. Lý do có tiếng Việt và emoji hợp lệ được lưu và trả nguyên vẹn. |
+
+**Kết luận.** Đóng nhóm CERT ở phạm vi Learning dùng mock. Khi ghép thật, xác nhận Course trả phiên bản học viên chọn và `enrolledAt` của lượt học lại, kể cả trường hợp quiz giữ nguyên phiên bản. Kiểm tra lại quyền Admin với xác thực thật, route qua Gateway và địa chỉ xác minh QR từ thiết bị bên ngoài. [Bộ kiểm thử](certificates.db.e2e-spec.ts) · [Mô tả chức năng](../../../WORK.md#cert-07--admin-thu-hồi-chứng-chỉ)
+
+## CERT-07 — Thu hồi bằng API Admin và quét QR
+
+**Kết quả.** 87/87 E2E Learning, gồm 6 ca chứng chỉ. 22/22 mock HTTP, 37/37 unit và 8/8 contract. TypeScript và lint đạt. Luồng NestJS dùng PostgreSQL thật trong môi trường test, còn tài khoản, Course và Identity dùng fixture giả lập.
+
+| Ca kiểm thử | Kết quả |
+| --- | --- |
+| Chỉ Admin thu hồi được | Không xác thực nhận `401`. `studentB` và `instructorA` nhận `403` kể cả khi tự thêm header khai vai trò Admin. `adminA` nhận `200`. Lý do trắng, quá 500 ký tự hoặc chứa ký tự NUL nhận `400`, ID không có nhận `404`. |
+| Gửi lại và lưu audit | Hai yêu cầu đồng thời trả cùng bản ghi. Gửi lại với lý do khác vẫn trả lý do, Admin và thời điểm ban đầu. PostgreSQL từ chối cập nhật trực tiếp sang `REVOKED` nếu thiếu audit. |
+| Quét cùng QR trước và sau thu hồi | Đọc URL từ ảnh dựng của PDF tải qua HTTP, nhận `200` với `ACTIVE` và `valid: true` trước khi thu hồi. Sau đó cùng URL trả `200` với `REVOKED` và `valid: false`, các trường thông tin là `null`, không có audit và phản hồi dùng `Cache-Control: no-store`. |
+| Cấp hoặc tải sau thu hồi | Chủ sở hữu nhận `409 CERTIFICATE_REVOKED` khi tải hoặc gửi cấp lại cùng phiên bản, kể cả với key cũ. PDF được giữ trong PostgreSQL. Học và hoàn tất phiên bản mới vẫn cấp được chứng chỉ mới. |
+| Phân biệt trạng thái | Mã lạ trả `NOT_FOUND`, mã bản đã thay thế trả `SUPERSEDED`. Admin có thể thu hồi bản đã thay thế và chứng chỉ phiên bản mới tiếp tục `ACTIVE`. |
+
+[Ca kiểm thử](certificates.db.e2e-spec.ts) · [Cách gọi API](../../../WORK.md#cert-07--admin-thu-hồi-chứng-chỉ)
+
+## CERT-02/03/05 — Tạo PDF, tải file và xác minh QR
+
+**Kết quả.** 86/86 E2E Learning, gồm 5 ca chứng chỉ. 21/21 mock HTTP, 37/37 unit và 8/8 contract. TypeScript và lint đạt. Luồng chứng chỉ dùng NestJS và PostgreSQL cùng Course, Identity giả lập.
+
+| Ca kiểm thử | Kết quả |
+| --- | --- |
+| PDF tiếng Việt | Dựng ảnh từ file tải qua API và kiểm tra bố cục một trang. Trích xuất lại đúng `Nguyễn Thị Ánh Dương`, `NestJS căn bản` và `CHỨNG CHỈ HOÀN THÀNH`. |
+| Tải file và quyền sở hữu | Chủ sở hữu nhận `200 application/pdf` và tên file `.pdf`. Người khác và ID không có nhận `404`, thiếu đăng nhập nhận `401`, ID sai dạng nhận `400`. Đổi tên hồ sơ sau khi cấp vẫn nhận đúng byte PDF đã lưu. |
+| Quét QR từ PDF | Poppler dựng PNG ở 150 dpi. Bộ đọc QR giải mã URL từ ảnh, gọi đúng API và nhận `200` với `valid: true`. Địa chỉ trong ca này là NestJS cục bộ đang chạy trong test. |
+| Lỗi nguồn tên và lỗi ghi PDF | Identity trả hồ sơ sai người thì API cấp trả 503 và không tạo chứng chỉ. Khi mô phỏng lỗi lưu PDF bản 2, bản 1 giữ hiệu lực, key cấp lại chưa được lưu, lần thử tiếp theo cấp thành công. |
+| Chứng chỉ cũ chưa có PDF | Hai request tải đồng thời nhận cùng PDF và chỉ lưu một tài liệu cho chứng chỉ cũ. Gửi cấp lại trả cùng ID chứng chỉ. |
+
+[Ca kiểm thử](certificates.db.e2e-spec.ts) · [Cách gọi API và chạy thử](../../../WORK.md#cert-020305--tạo-pdf-tải-pdf-và-xác-minh-qua-qr)
+
+## CERT-01/04/06 — API NestJS và PostgreSQL
+
+**Kết quả.** 83/83 E2E Learning, gồm 2 ca API chứng chỉ. 21/21 mock HTTP, 37/37 unit, TypeScript và lint đạt. Hai ca chứng chỉ chạy PostgreSQL cục bộ và Course giả lập qua HTTP. Điểm quiz lấy từ fixture và được lưu vào PostgreSQL qua repository Learning.
+
+| Ca kiểm thử | Kết quả |
+| --- | --- |
+| CERT-01 cấp lần đầu | Thiếu đăng nhập trả 401, thiếu key trả 400, người chưa ghi danh trả 403. Hoàn thành 100% bài nhưng chưa có điểm quiz cuối hợp lệ, hoặc policy tắt cấp, trả 409. |
+| CERT-04/06 cấp đồng thời | 12 POST cùng phiên bản với key giống và khác đều trả 201 với cùng ID và mã. PostgreSQL chỉ có một dòng. Thử ghi trực tiếp chứng chỉ trùng phiên bản, trùng mã hoặc thêm bản hiện hành thứ hai đều bị ràng buộc database từ chối. |
+| CERT-06 gửi lại | Key còn hạn giữ đúng chứng chỉ của lần cấp trước. Key hết hạn khi vẫn yêu cầu cùng phiên bản trả bản đã lưu. Tài khoản khác dùng cùng key không nhận được kết quả của học viên. |
+| CERT-06 cấp lại bản 2 | Xuất bản bản 2 mà ghi danh còn ở bản 1 vẫn trả bản 1. Sau khi giả lập chọn học bản 2, điểm quiz của bản 1 không đủ để cấp bản 2. Hoàn thành bản 2 rồi gửi ba POST đồng thời nhận cùng một chứng chỉ mới. |
+| CERT-06 lỗi ghi và khởi động lại | Giả lập lỗi khi chèn chứng chỉ bản 2 sau bước đánh dấu bản cũ. API trả 503, bản 1 vẫn hợp lệ và key mới chưa được lưu. Thử lại thành công, bản 1 chuyển `SUPERSEDED` cùng giao dịch cấp bản 2. Khởi động lại NestJS vẫn đọc được cả hai bản từ PostgreSQL. |
+| Danh sách và xác minh | Học viên thấy lịch sử của mình. Mã bản hiện hành xác minh `valid: true`. Mã bản thay thế và mã lạ trả `valid: false`. |
+
+Việc tích hợp API học lại của Course thật cần kiểm tra khi contract được cập nhật. [Ca kiểm thử](certificates.db.e2e-spec.ts) · [Mô tả luồng](../../../WORK.md#cert-010406--cấp-chứng-chỉ-và-chống-cấp-trùng-bằng-postgresql)
+
+## CERT-01/04/06 — Mock cấp chứng chỉ
+
+**21/21 mock HTTP đạt**, gồm ba ca chứng chỉ. Mock dùng trạng thái Progress của bản 1 và fixture Course cho luồng học lại bản 2.
+
+| Ca kiểm thử | Kết quả |
+| --- | --- |
+| CERT-01 học 100% bài nhưng chưa đạt quiz cuối, hoặc khóa hoàn thành nhưng chức năng cấp bị tắt | Trả `409 CERTIFICATE_NOT_ELIGIBLE`. |
+| CERT-04/06 gửi đồng thời cùng key và khác key, rồi thử lại khi key đã hết hạn | Cùng ID và mã xác minh. Danh sách chỉ có một chứng chỉ cho bản 1. |
+| CERT-06 xuất bản bản 2, tự chọn học lại, hoàn thành và yêu cầu cấp đồng thời | Bản 1 còn hợp lệ đến lúc cấp bản 2. Sau cấp, bản 2 hợp lệ, bản 1 hiện trong lịch sử và trả `valid: false` khi xác minh. Gửi lại key cũ còn hạn vẫn trả dữ liệu của lần cấp bản 1. |
+
+Bộ kiểm thử này dùng dữ liệu trong bộ nhớ. Kết quả kiểm thử ràng buộc và giao dịch PostgreSQL nằm trong mục API NestJS ở trên. [Cách thử Postman](../../../WORK.md#cert-010406--cấp-chứng-chỉ-và-chống-cấp-trùng-mock)
+
+## Đối chiếu độc lập ADP với hai agent
+
+**Bản cuối đạt 81/81 E2E**, gồm 13 ca ADP và 6 ca mới so với lượt trước. Lượt kiểm thử cũng đạt 18/18 mock HTTP, 37/37 unit, 8/8 contract. TypeScript và lint đạt.
+
+| Lượt | Kết quả trước khi sửa |
+| --- | --- |
+| Agent rà quyền và phiên bản | 37/37 unit, 18/18 mock HTTP, 18/18 E2E gồm 7 ca ADP và 11 ca Course snapshot. Gọi NestJS để tái hiện trang ghi danh rỗng báo tổng 401 khiến Learning đọc 5 trang. |
+| Agent rà đồ thị và lịch sử | 37/37 unit, 18/18 mock HTTP, 7/7 E2E ADP. Gọi trực tiếp thêm 19 request NestJS với PostgreSQL riêng để kiểm tra chu trình ba cạnh, ghi đồng thời, ngừng dùng kỹ năng và mốc chấm tương lai. |
+
+| Ca hồi quy | Sửa trong Learning |
+| --- | --- |
+| Policy của chương đầu trỏ đến mã chương lạ làm bài chương sau xuất hiện dù chưa đạt quiz | Từ chối snapshot với 503 nếu policy trỏ sai chương, trùng chương, dùng item của chương khác hoặc policy cấp khóa tham chiếu item không tồn tại. |
+| Course báo trang ghi danh rỗng nhưng tổng là 401 | Trả 503 ngay trang đầu nếu số bản ghi không khớp tổng và phân trang. |
+| Một lượt 100% có ngày chấm sau 7 ngày làm thay đổi điểm dùng để gợi ý ngay. Một điểm quiz qua chương trong tương lai cũng có thể mở gợi ý sớm | ADP dùng cùng một mốc thời gian cho điểm, xu hướng và quyền mở bài/quiz. Các bản ghi tương lai vẫn được lưu và chỉ tham gia gợi ý khi đến thời điểm hiệu lực. |
+
+Hai agent hoàn thành lượt độc lập trước khi hết hạn mức. Agent chính phụ trách sửa và kiểm thử lại. Mốc thời gian chặn dữ liệu tương lai áp dụng cho luồng gợi ý ADP. Kiểm tra quy ước đồng hồ với Course và Quiz khi ghép thật.
+
+## Rà soát lại logic ADP-01 đến ADP-07
+
+**Kết quả sau bản sửa.** 75/75 E2E Learning với PostgreSQL và RabbitMQ cục bộ, 18/18 mock HTTP, 37/37 unit và 8/8 contract. TypeScript và lint đạt.
+
+| Ca rà soát | Kết quả |
+| --- | --- |
+| Course trả item sai khóa, sai phiên bản hoặc bài gắn nhầm chương | Trước bản sửa API chấp nhận dữ liệu sai. Sau bản sửa API trả 503 trước khi hỏi Quiz. Chương còn khóa tiếp tục bị lọc khi mã chương trong outline và policy khác chữ hoa/thường. |
+| Hai vị trí trong bài trỏ tới một quiz và phiên bản, mã quiz khác chữ hoa/thường | Trước bản sửa xuất hiện hai gợi ý. Sau bản sửa chỉ có một truy vấn sang Quiz và một gợi ý. |
+| Bốn lượt chấm của bản quiz mới cùng có hiệu lực khi migration được áp dụng | Trước bản sửa xu hướng giảm 42 điểm phần trăm bị đảo thành tăng. Sau bản sửa dùng thời điểm chấm để xếp các lượt có cùng thời điểm hiệu lực. Đã xác nhận qua unit và API NestJS có migration trong PostgreSQL. |
+| Học viên đạt mức `PROFICIENT` ở kỹ năng tiên quyết | API chuyển sang nội dung của kỹ năng phụ thuộc và giữ đồ thị giảng viên đã lưu. 200 đồ thị có nhiều nhánh được đối chiếu bằng phép duyệt độc lập, gồm ca thêm cạnh tạo chu trình. |
+
+Các phần đã rà soát đủ để chốt phía Learning với Course/Quiz giả lập. Khi ghép thật, xác nhận snapshot, quyền bắt đầu và số lượt còn theo phiên bản. Theo contract hiện tại, timeout từ Quiz trả 504 cho request danh sách gợi ý.
+
+## ADP-01 đến ADP-07 — Kiểm thử nhóm gợi ý học tập
+
+HTTP NestJS chạy với PostgreSQL thật. Các suite hồi quy Progress/Mastery dùng RabbitMQ cục bộ. Course và Quiz được giả lập qua HTTP theo contract.
+
+**Kết quả.** Toàn bộ Learning đạt **71/71 E2E, 18/18 mock HTTP và 36/36 unit**. Chạy lại riêng ADP đạt **3/3 E2E** trên bản cuối. Contract **8/8**, TypeScript và lint đạt.
+
+| Phạm vi | Kết quả |
+| --- | --- |
+| ADP-01/02/03/05 | Học viên chỉ nhận bài và quiz đúng phiên bản, được phép mở, có kỹ năng phù hợp. Quiz hết lượt hoặc Quiz cấm tạo lượt được lọc. Giải thích có điểm, số câu và số lượt còn nếu có quiz. |
+| ADP-04 | Bài và quiz được xếp chung, mục trùng chỉ tính một lần. Đọc lại cùng trang cho cùng kết quả. Unit test kiểm tra ưu tiên giữa nhiều khóa và thứ tự khi bằng điểm. |
+| ADP-06 | Chủ khóa và Admin đọc/lưu được đồ thị. Học viên và giảng viên khóa khác bị từ chối. Kiểm tra tự tham chiếu, chu trình, cạnh trùng và kỹ năng ngoài khóa hoặc ngừng dùng. Hai lệnh lưu cùng phiên bản cho một 200 và một 409. Gợi ý chuyển sang kỹ năng tiên quyết chưa đạt, kể cả chuỗi nhiều cấp. |
+| ADP-07 | Hai nhóm điểm 55% và 13% tạo xu hướng giảm 42 điểm phần trăm. Điểm tổng Mastery là 34%. Khi xếp hạng áp dụng mức điều chỉnh tối đa 5. Kết quả sai phiên bản, quá 30 ngày hoặc ở tương lai không góp vào xu hướng. |
+
+Khi ghép hệ thống, xác nhận snapshot Course có `skillIds` của bài và Quiz tính đúng số lượt, quyền làm cùng kỹ năng theo phiên bản. [Vị trí code và ví dụ Postman](../../../WORK.md#adp-04--xếp-hạng-gợi-ý)
+
+## ADP-03 — Gợi ý quiz ôn tập
+
+Kiểm thử API NestJS với PostgreSQL và Course/Quiz giả lập qua HTTP. Bộ đầy đủ đạt **69/69 E2E, 17/17 mock HTTP và 33/33 unit**. Contract **8/8**, TypeScript và lint đạt.
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Kỹ năng 35% từ 8 câu, quiz trong bài đã mở và còn 2 lượt | API trả `learningItemId` của quiz và lý do có điểm, số câu và số lượt còn. Các quiz đã hết lượt, Quiz cấm tạo lượt, không khớp kỹ năng hoặc khác loại được lọc. |
+| Quiz ở chương khóa hoặc đứng sau item bắt buộc | Learning chưa hỏi Quiz về quyền tạo lượt. Sau khi mở chương và hoàn thành item đứng trước, API trả quiz. |
+| Hỏi đúng người học, khóa và phiên bản quiz | Quiz giả lập nhận token và request ID. Trả sai người hoặc sai phiên bản cho kết quả 503. Quiz timeout trả 504. Một quiz trả 404 bị bỏ qua. |
+| Gọi hai lần API nội bộ Quiz | Cùng kết quả `attemptsRemaining`. API mock chỉ đọc. Public API vẫn có thể trả quiz từ dữ liệu Quiz nếu snapshot cũ thiếu liên kết kỹ năng–bài. |
+
+Khi ghép thật, kiểm tra thêm cách Quiz đếm các lượt đang làm, chưa chấm và hết hạn theo phiên bản. [Cách thử Postman](../../../WORK.md#adp-03--gợi-ý-quiz-ôn-tập)
+
+## ADP-02 và ADP-05 — Bài bổ trợ và lý do đề xuất
+
+Kiểm thử HTTP NestJS với PostgreSQL thật và Course giả lập qua HTTP. Ca ADP ghi kết quả chấm mẫu bằng repository đồng bộ. Các suite hồi quy PRG/MST kiểm thử luồng nhận kết quả qua RabbitMQ cục bộ. Bộ Learning đạt **69/69 E2E, 16/16 mock HTTP và 31/31 unit**. Contract **8/8**, TypeScript và lint đạt.
+
+| Kịch bản | Kết quả |
+| --- | --- |
+| Course đã xuất bản bản mới, học viên ghi danh bản cũ | Learning chỉ yêu cầu snapshot của lượt ghi danh với credential nội bộ. Course thiếu snapshot trả 409. Snapshot cũ thiếu `skillIds` vẫn đọc được và trả danh sách gợi ý rỗng. |
+| Chấm 35% từ 3 câu, dữ liệu của học viên khác, rồi thêm 5 câu cho đúng học viên | Có một gợi ý sau khi đủ 8 câu của chính học viên. Hai kỹ năng yếu khớp cùng bài chỉ tạo một mục. Lý do dùng kỹ năng yếu hơn. |
+| Chương còn khóa hoặc bài còn bị chặn bởi thứ tự học | API chỉ trả bài truy cập được. Hoàn thành nội dung trước mở thêm bài cùng chương. Đạt quiz chương mở gợi ý của chương sau. |
+| Phân trang, lỗi xác thực và ghi danh đã hủy | Hai lần gọi cùng trang trả cùng dữ liệu. Thiếu đăng nhập trả 401. Giảng viên trả 403. Học viên không có khóa đang học nhận danh sách rỗng. |
+| Đọc gợi ý | Endpoint đọc kết quả Mastery trong PostgreSQL và không tạo snapshot hoặc ghi bảng mastery hiện tại. |
+
+[Suite E2E](recommendations.db.e2e-spec.ts) · [Ví dụ Postman](../../../WORK.md#adp-01--phát-hiện-kỹ-năng-yếu)
+
+## ADP-01 — Phát hiện kỹ năng yếu
+
+Lượt kiểm thử ban đầu ngày **15/11/2026** đạt **31/31 unit** và **16/16 mock HTTP**, gồm 2 ca mới ở mỗi bộ. Lint và TypeScript đạt. Các lượt chấm và liên kết kỹ năng–bài lấy từ fixture. Luồng NestJS được kiểm thử ở phần ADP-02/05 phía trên.
+
+| Ca kiểm thử | Kết quả mong đợi đã xác nhận |
+| --- | --- |
+| Học viên có 35% từ 3 câu, rồi nhận thêm một lượt góp 5 câu | Danh sách rỗng ở lượt đầu. Sau lượt thứ hai, API trả bài “Giới thiệu module” với lý do có 35% và 8 câu. Event gửi lặp giữ nguyên kết quả. |
+| Đúng ngưỡng 40% và đủ 5 câu, hoặc điểm dưới ngưỡng nhưng số câu không rõ | API trả danh sách rỗng. Unit test kiểm tra thêm điểm sát ngưỡng, mã kỹ năng khi bằng điểm và thứ tự từ yếu nhất. |
+| Bài cùng kỹ năng ở chương khóa, sau đó chương mở. Kỹ năng chuyển sang ngừng dùng | Bài chương khóa chỉ xuất hiện sau khi có đủ điều kiện mở chương. Khi kỹ năng ngừng dùng, danh sách rỗng. Bài thuộc bản cấu trúc mới hơn luôn nằm ngoài kết quả mẫu. |
+| Phân trang, thiếu danh tính, tài khoản giảng viên và học viên khác | Kết quả và tổng số ổn định theo trang. Thiếu danh tính trả 401. Giảng viên trả 403. Học viên ngoài khóa mẫu nhận danh sách rỗng. Query `userId` hoặc `page` lặp trả 400. |
+
+Chạy lại mock bằng `npm.cmd run test:mock -w @lms/learning-service`. [Ví dụ Postman](../../../WORK.md#adp-01--phát-hiện-kỹ-năng-yếu)
+
+## Kiểm thử PRG và MST ngày 14/11/2026
+
 Ngày kiểm thử **14/11/2026**. Phạm vi gồm `ProgressModule` và `ProgressSyncModule` trong bản làm việc Learning hiện tại. Luồng chính bắt đầu trước khi học viên ghi danh và kết thúc khi Learning xác nhận hoàn thành khóa.
 
 Sau rà soát chéo ngày **14/11/2026**, bộ đầy đủ đạt **56/56 E2E**, gồm 11 ca HTTP cho snapshot, các ca PostgreSQL/RabbitMQ và năm ca hồi quy bổ sung. Mock API đạt **10/10**. Agent thứ hai tự chạy **32/32 E2E** trong `course-snapshot`, `progress-audit`, `progress`, cùng **10/10 mock**, rồi kiểm tra diff. 32 ca này thuộc bộ 56 ca. Build Learning, TypeScript và lint đều qua; unit **1/1** đạt. Bộ contract **8/8** đã đạt trước các sửa nghiệp vụ lần này; lần này không đổi schema. Luồng học lại dựa trên contract main **0981c48**.

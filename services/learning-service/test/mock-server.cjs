@@ -15,6 +15,32 @@ const {
 const { expected } = require('./fixtures/learning-scenarios.mock.json');
 const skillFixtures = require('./fixtures/course-skills.mock.json');
 const masteryFixtures = require('./fixtures/mastery.mock.json');
+const recommendationFixtures = require('./fixtures/recommendations.mock.json');
+const {
+  createCertificateMock,
+  fixtureEvents: certificateEvents,
+} = require('./certificates.mock.cjs');
+const {
+  classifyMastery,
+  readMasteryThresholds,
+} = require('../src/modules/mastery/rules/mastery-level.ts');
+const {
+  weakSkills,
+} = require('../src/modules/recommendations/rules/weak-skills.ts');
+const {
+  lessonRecommendations,
+  quizRecommendation,
+} = require('../src/modules/recommendations/rules/content-recommendations.ts');
+const {
+  normalizePrerequisites,
+  recommendationTargets,
+} = require('../src/modules/recommendations/rules/prerequisite-graph.ts');
+const {
+  masteryTrends,
+  rankRecommendations,
+  rankTargets,
+} = require('../src/modules/recommendations/rules/rank-recommendations.ts');
+const { weightedScorePercent } = require('../src/modules/mastery/rules/weighted-score.ts');
 
 const enrollment = parseContract('EnrollmentSnapshotData', course.enrollment);
 const { outline, completionPolicy } = parseContract(
@@ -26,19 +52,64 @@ const chapters = outline.chapters.toSorted((a, b) => a.order - b.order);
 const lessons = chapters.flatMap((chapter) =>
   chapter.lessons.toSorted((a, b) => a.order - b.order),
 );
+const lessonOrders = new Map(lessons.map(({ id }, index) => [id, index]));
 const items = lessons.flatMap((lesson) =>
   lesson.items.toSorted((a, b) => a.order - b.order),
 );
+const practiceItems = recommendationFixtures.quizzes.map(
+  ({ itemId, quizId, lessonId, assessmentVersion, title }, index) => ({
+    id: itemId,
+    courseId,
+    lessonId,
+    quizId,
+    assessmentVersion,
+    title,
+    order: lessons.find(({ id }) => id === lessonId).items.length + index,
+    type: 'QUIZ',
+  }),
+);
+const recommendationItems = lessons.flatMap((lesson) => [
+  ...lesson.items.toSorted((a, b) => a.order - b.order),
+  ...practiceItems.filter(({ lessonId }) => lessonId === lesson.id),
+]);
+
+function fixtureQuizContext(id, query) {
+  if (query.courseId !== courseId || query.userId !== userId) return null;
+  const quiz = recommendationFixtures.quizzes.find(
+    ({ quizId, assessmentVersion }) =>
+      id === quizId && query.assessmentVersion === assessmentVersion,
+  );
+  if (!quiz) return null;
+  const { quizId, quizType, skillIds, attemptsRemaining, canStart } = quiz;
+  return { ...query, quizId, quizType, skillIds, attemptsRemaining, canStart };
+}
+
+function requireQuizToken(request) {
+  const token = process.env.QUIZ_SERVICE_TOKEN ?? 'quiz-mock-service-token';
+  if (request.headers.authorization !== `Bearer ${token}`)
+    throw new MockApiError(
+      'UNAUTHORIZED',
+      'A valid Quiz service credential is required',
+    );
+}
 const events = new Map(
   ['chapterAttempt79', 'chapterAttempt80', 'attemptGraded'].map((name) => [
     name,
     parseContract('AttemptGradedV2Event', quiz[name]),
   ]),
 );
-for (const sample of masteryFixtures.attempts) {
+const masteryAttempts = [
+  ...masteryFixtures.attempts,
+  ...recommendationFixtures.attempts,
+];
+const masteryAttemptIds = new Set(
+  masteryAttempts.map(({ attemptId }) => attemptId),
+);
+for (const sample of masteryAttempts) {
   const { skillId } = masteryFixtures.question;
-  const { eventId, attemptId, gradedAt, score, maxScore, questionCount } =
-    sample;
+  const { eventId, attemptId, score, maxScore, questionCount } = sample;
+  const gradedAt = sample.gradedAt ??
+    new Date(Date.now() - sample.daysAgo * 86400000).toISOString();
   const event = parseContract('AttemptGradedV2Event', {
     ...quiz.attemptGraded,
     eventId,
@@ -52,7 +123,14 @@ for (const sample of masteryFixtures.attempts) {
       passed:
         (score / maxScore) * 100 >=
         quiz.attemptGraded.payload.passingScorePercent,
-      skillScores: [{ skillId, score, maxScore, questionCount }],
+      skillScores: [
+        {
+          skillId,
+          score,
+          maxScore,
+          ...(questionCount === undefined ? {} : { questionCount }),
+        },
+      ],
     },
   });
   events.set(sample.name, event);
@@ -66,7 +144,7 @@ class MockApiError extends Error {
   }
 }
 
-async function readJson(request) {
+async function readJson(request, allowEmpty = false) {
   let body = '';
   let tooLarge = false;
   request.setEncoding('utf8');
@@ -77,6 +155,7 @@ async function readJson(request) {
   }
   if (tooLarge)
     throw new MockApiError('VALIDATION_ERROR', 'JSON body is too large');
+  if (allowEmpty && !body.trim()) return {};
   try {
     return JSON.parse(body);
   } catch {
@@ -124,7 +203,8 @@ function readPageQuery(searchParams) {
   return { page, limit };
 }
 
-function createLearningMockServer() {
+function createLearningMockServer({ now = Date.now } = {}) {
+  const masteryThresholds = readMasteryThresholds(process.env);
   const skillCourses = new Map([
     [courseId, course.publishedCourse.instructorId],
     [
@@ -148,6 +228,7 @@ function createLearningMockServer() {
   const receipts = new Map();
   const syncedAttempts = new Map();
   const masterySnapshots = new Map();
+  let prerequisites = { courseId, version: 0, edges: [] };
   let masteryCurrent;
   const passedAssessments = new Set();
   let checkpoint = null;
@@ -269,14 +350,14 @@ function createLearningMockServer() {
       completedAt = time;
   }
 
-  function canAccessItem(item) {
+  function canAccessItem(item, orderedItems = items) {
     const lesson = lessons.find(({ id }) => id === item.lessonId);
     const access = chapterAccess().chapters.find(
       ({ chapterId }) => chapterId === lesson.chapterId,
     );
-    const previous = items.slice(
+    const previous = orderedItems.slice(
       0,
-      items.findIndex(({ id }) => id === item.id),
+      orderedItems.findIndex(({ id }) => id === item.id),
     );
     return (
       access.status !== 'LOCKED' &&
@@ -396,15 +477,14 @@ function createLearningMockServer() {
     },
   };
 
-  function fixtureMastery() {
-    const { skillId } = masteryFixtures.question;
-    const grades = [...syncedAttempts.values()]
-      .filter(({ attemptId }) =>
-        masteryFixtures.attempts.some(
-          (sample) => sample.attemptId === attemptId,
-        ),
-      )
+  function fixtureGrades() {
+    return [...syncedAttempts.values()]
+      .filter(({ attemptId }) => masteryAttemptIds.has(attemptId))
       .sort((a, b) => Date.parse(a.gradedAt) - Date.parse(b.gradedAt));
+  }
+
+  function fixtureMastery(grades = fixtureGrades()) {
+    const { skillId } = masteryFixtures.question;
     let totalScore = 0;
     let totalMaxScore = 0;
     let questionCount = 0;
@@ -412,8 +492,12 @@ function createLearningMockServer() {
       const [skillScore] = grade.skillScores;
       totalScore += skillScore.score;
       totalMaxScore += skillScore.maxScore;
-      questionCount += skillScore.questionCount;
+      questionCount =
+        questionCount === null || skillScore.questionCount === undefined
+          ? null
+          : questionCount + skillScore.questionCount;
       const scorePercent = (totalScore / totalMaxScore) * 100;
+      const evidenceCount = index + 1;
       return {
         attemptId: grade.attemptId,
         assessmentVersion: grade.assessmentVersion,
@@ -426,13 +510,11 @@ function createLearningMockServer() {
             skillId,
             skillName: skills.get(skillId).name,
             scorePercent,
-            level:
-              scorePercent >= 70
-                ? 'PROFICIENT'
-                : scorePercent >= 40
-                  ? 'DEVELOPING'
-                  : 'BEGINNER',
-            evidenceCount: index + 1,
+            level: classifyMastery(
+              { scorePercent, evidenceCount },
+              masteryThresholds,
+            ),
+            evidenceCount,
             questionCount,
           },
         ],
@@ -463,8 +545,115 @@ function createLearningMockServer() {
     return points;
   }
 
+  const certificates = createCertificateMock({
+    enrollment,
+    policy: completionPolicy,
+    title: course.publishedCourse.title,
+    progress: () => handlers.getCourseProgress(),
+    error: (code, message) => new MockApiError(code, message),
+    now,
+  });
   const handlers = {
     ...skillHandlers,
+    issueCertificate(_id, _body, actor, _skillId, request) {
+      return certificates.issue(
+        actor,
+        request.headers['idempotency-key'],
+        `http://127.0.0.1:${request.socket.localPort}`,
+      );
+    },
+    listCertificates: certificates.list,
+    verifyCertificate: certificates.verify,
+    revokeCertificate: certificates.revoke,
+    getSkillPrerequisites() {
+      return prerequisites;
+    },
+    saveSkillPrerequisites(_id, { expectedVersion, edges }) {
+      if (expectedVersion !== prerequisites.version)
+        throw new MockApiError('VERSION_CONFLICT', 'Reload the latest prerequisite graph');
+      const activeIds = new Set(
+        [...skills.values()]
+          .filter((skill) => skill.courseId === courseId && skill.status === 'ACTIVE')
+          .map(({ id }) => id),
+      );
+      const result = normalizePrerequisites(edges, activeIds);
+      if (result.error)
+        throw new MockApiError(result.error, result.message, result.skillIds ? { skillIds: result.skillIds } : {});
+      prerequisites = { courseId, version: expectedVersion + 1, edges: result.edges };
+      return prerequisites;
+    },
+    listRecommendations({ page, limit }, actor) {
+      if (actor.role !== 'STUDENT' || actor.status !== 'ACTIVE')
+        throw new MockApiError(
+          'FORBIDDEN',
+          'An active student account is required',
+        );
+      if (actor.id !== userId || enrollment.status === 'CANCELLED')
+        return { items: [], page, limit, total: 0 };
+
+      const activeSkills = new Map(
+        [...skills.values()]
+          .filter(
+            (skill) => skill.courseId === courseId && skill.status === 'ACTIVE',
+          )
+          .map(({ id, name }) => [id, name]),
+      );
+      const grades = fixtureGrades();
+      const current = fixtureMastery(grades).at(-1)?.skills ?? [];
+      const weak = weakSkills(current, new Set(activeSkills.keys()));
+      const trends = masteryTrends(
+        grades.map(({ gradedAt, attemptId, assessmentVersion, skillScores }) => ({
+          effectiveAt: Date.parse(gradedAt),
+          gradedAt,
+          attemptId,
+          assessmentVersion,
+          scores: skillScores,
+        })),
+        Date.now(),
+        weightedScorePercent,
+      );
+      const targets = rankTargets(recommendationTargets(weak, current, activeSkills, prerequisites.edges, trends));
+      const mappings = recommendationFixtures.lessonMappings.filter(
+        (mapping) => mapping.contentVersion === contentVersion,
+      );
+      const accessibleLessons = lessons
+        .filter(({ items }) =>
+          items.some((item) => item.type !== 'QUIZ' && canAccessItem(item)),
+        )
+        .map(({ id, title }) => ({
+          id,
+          title,
+          skillIds: mappings
+            .filter(({ lessonId }) => lessonId === id)
+            .map(({ skillId }) => skillId),
+        }));
+      const candidates = lessonRecommendations(
+        courseId,
+        accessibleLessons,
+        targets,
+        lessonOrders,
+      );
+      if (targets.length) {
+        for (const item of practiceItems) {
+          if (!canAccessItem(item, recommendationItems)) continue;
+          const availability = fixtureQuizContext(item.quizId, {
+            courseId,
+            userId: actor.id,
+            assessmentVersion: item.assessmentVersion,
+          });
+          const recommendation = quizRecommendation(item, availability, targets, lessonOrders);
+          if (recommendation) candidates.push(recommendation);
+        }
+      }
+      const suggestions = rankRecommendations(candidates);
+      const start = (page - 1) * limit;
+      return {
+        items: suggestions.slice(start, start + limit),
+        page,
+        limit,
+        total: suggestions.length,
+      };
+    },
     getMastery() {
       refreshFixtureMastery();
       return masteryCurrent;
@@ -877,18 +1066,46 @@ function createLearningMockServer() {
     try {
       const url = new URL(request.url, 'http://localhost');
       const method = request.method.toLowerCase();
+      const quizContext =
+        method === 'get' &&
+        /^\/api\/v1\/internal\/quizzes\/([^/]+)\/recommendation-context$/.exec(
+          url.pathname,
+        );
+      if (quizContext) {
+        requireQuizToken(request);
+        const id = parseContract('Uuid', quizContext[1]).toLowerCase();
+        const raw = Object.fromEntries(url.searchParams);
+        if (
+          url.searchParams.size !== Object.keys(raw).length ||
+          !/^[0-9]+$/.test(raw.assessmentVersion ?? '')
+        )
+          throw new MockApiError(
+            'VALIDATION_ERROR',
+            'Invalid Quiz recommendation query',
+          );
+        const query = parseContract('QuizRecommendationContextQuery', {
+          ...raw,
+          assessmentVersion: Number(raw.assessmentVersion),
+        });
+        const context = requireResource(
+          fixtureQuizContext(id, {
+            ...query,
+            courseId: query.courseId.toLowerCase(),
+            userId: query.userId.toLowerCase(),
+          }),
+        );
+        send(response, 200, {
+          data: parseContract('QuizRecommendationContext', context),
+          meta: { requestId },
+        });
+        return;
+      }
       // Quiz fixture response for the existing internal getAssessmentSummary contract.
       const quizGrade =
         method === 'get' &&
         /^\/api\/v1\/internal\/attempts\/([^/]+)\/graded$/.exec(url.pathname);
       if (quizGrade) {
-        const token =
-          process.env.QUIZ_SERVICE_TOKEN ?? 'quiz-mock-service-token';
-        if (request.headers.authorization !== `Bearer ${token}`)
-          throw new MockApiError(
-            'UNAUTHORIZED',
-            'A valid Quiz service credential is required',
-          );
+        requireQuizToken(request);
         if (url.search)
           throw new MockApiError(
             'VALIDATION_ERROR',
@@ -926,15 +1143,22 @@ function createLearningMockServer() {
           'UNAUTHORIZED',
           'A valid internal service credential is required',
         );
+      const publicRoute = route?.access === 'PUBLIC';
       const name = internal ? 'studentB' : request.headers['x-mock-user'];
-      if (typeof name !== 'string' || !Object.hasOwn(identity, name)) {
+      if (
+        !publicRoute &&
+        (typeof name !== 'string' || !Object.hasOwn(identity, name))
+      ) {
         throw new MockApiError(
           'UNAUTHORIZED',
           'Use a fixture identity in X-Mock-User',
         );
       }
-      const actor = identity[name];
-      if (!skillRoute && route?.access === 'COURSE_OWNER') {
+      const actor = publicRoute ? undefined : identity[name];
+      if (route?.access === 'ADMIN') {
+        if (actor.role !== 'ADMIN' || actor.status !== 'ACTIVE')
+          throw new MockApiError('FORBIDDEN', 'An active admin account is required');
+      } else if (!skillRoute && route?.access === 'COURSE_OWNER') {
         if (actor.role !== 'INSTRUCTOR' && actor.role !== 'ADMIN')
           throw new MockApiError(
             'FORBIDDEN',
@@ -955,6 +1179,7 @@ function createLearningMockServer() {
         throw new MockApiError('FORBIDDEN', 'A student account is required');
       } else if (
         !skillRoute &&
+        !publicRoute &&
         route?.access !== 'AUTHENTICATED' &&
         actor.id !== userId
       ) {
@@ -984,12 +1209,14 @@ function createLearningMockServer() {
             'Expected an event fixture name',
           );
         }
-        data = applyFixtureEvent(body.event);
+        data = certificateEvents.includes(body.event)
+          ? certificates.apply(body.event, actor)
+          : applyFixtureEvent(body.event);
       } else {
         const [, rawId, rawSkillId] = route.pattern.exec(url.pathname);
         const id =
-          rawId === undefined
-            ? undefined
+          rawId === undefined || route.operationId === 'verifyCertificate'
+            ? rawId
             : parseContract('Uuid', rawId).toLowerCase();
         const skillId =
           rawSkillId === undefined
@@ -1021,11 +1248,27 @@ function createLearningMockServer() {
         const body = route.request
           ? parseContract(route.request, await readJson(request))
           : undefined;
+        if (route.operationId === 'issueCertificate') {
+          const input = await readJson(request, true);
+          if (
+            !input ||
+            typeof input !== 'object' ||
+            Array.isArray(input) ||
+            Object.keys(input).length
+          )
+            throw new MockApiError(
+              'VALIDATION_ERROR',
+              'Certificate issuance expects an empty body',
+            );
+        }
         if (route.list) {
-          data = handlers[route.operationId](readPageQuery(url.searchParams));
+          data = handlers[route.operationId](
+            readPageQuery(url.searchParams),
+            actor,
+          );
           for (const item of data.items) parseContract(route.response, item);
         } else {
-          data = handlers[route.operationId](id, body, actor, skillId);
+          data = handlers[route.operationId](id, body, actor, skillId, request);
           if (route.response && (data !== null || !route.nullable))
             parseContract(route.response, data);
         }
