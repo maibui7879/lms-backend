@@ -83,6 +83,19 @@ export interface AttemptAccessData {
   attemptStatus: AttemptStatus;
   gradingStatus: GradingStatus;
 }
+export interface QuizRecommendationContextQuery {
+  courseId: Uuid;
+  userId: Uuid;
+  assessmentVersion: number;
+}
+export interface QuizRecommendationContext extends QuizRecommendationContextQuery {
+  quizId: Uuid;
+  quizType: QuizType;
+  skillIds: Uuid[];
+  attemptsRemaining: number;
+  /** Whether this learner may start a new attempt for the requested version. */
+  canStart: boolean;
+}
 export type CourseProgressSummary = Omit<
   CourseProgressData,
   'userId' | 'enrollmentId'
@@ -90,6 +103,10 @@ export type CourseProgressSummary = Omit<
 export interface LearnerProgressSummary {
   userId: Uuid;
   progress: CourseProgressSummary;
+}
+export interface LearnerProgressDetail extends LearnerProgressSummary {
+  completedLessons: { lessonId: Uuid; title: string; completedAt: string }[];
+  lastActivityAt: string | null;
 }
 export interface LearnerAssessmentSummary {
   userId: Uuid;

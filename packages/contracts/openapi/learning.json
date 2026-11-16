@@ -2596,6 +2596,296 @@
         }
       }
     },
+    "/api/v1/learning/courses/{id}/skill-prerequisites": {
+      "get": {
+        "operationId": "getSkillPrerequisites",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Xem packages/contracts/README.md để biết quyền sở hữu, chuyển trạng thái và các tác động phụ.",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CourseSkillPrerequisites"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveSkillPrerequisites",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Xem packages/contracts/README.md để biết quyền sở hữu, chuyển trạng thái và các tác động phụ.",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CourseSkillPrerequisites"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSkillPrerequisitesRequest"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/learning/me/recommendations": {
       "get": {
         "operationId": "listRecommendations",
@@ -2781,7 +3071,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: ENROLLED. Phát hành certificate khi learner đủ điều kiện hoàn thành course; thao tác idempotent để không tạo trùng certificate.",
+        "description": "Role sử dụng: ENROLLED. Phát hành theo phiên bản đã ghi danh. Mỗi bộ (userId, courseId, contentVersion) có một chứng chỉ, kể cả khi enrollmentId thay đổi. Chỉ cấp bản mới khi contentVersion tăng và học viên hoàn thành yêu cầu bản mới.",
         "x-access-policy": "ENROLLED",
         "security": [
           {
@@ -2932,7 +3222,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: AUTHENTICATED. Liệt kê các certificate đã phát hành cho user hiện tại.",
+        "description": "Role sử dụng: AUTHENTICATED. Liệt kê chứng chỉ của tài khoản hiện tại, gồm các trạng thái ACTIVE, SUPERSEDED và REVOKED cùng liên kết tới chứng chỉ thay thế nếu có.",
         "x-access-policy": "AUTHENTICATED",
         "security": [
           {
@@ -3111,7 +3401,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: PUBLIC. Xác minh certificate công khai bằng code và trả trạng thái hợp lệ cùng thông tin certificate.",
+        "description": "Role sử dụng: PUBLIC. Xác minh công khai theo mã. ACTIVE là bản hiện hành, SUPERSEDED là bằng chứng lịch sử, REVOKED đã thu hồi. Mã không tồn tại trả status null. Chi tiết thu hồi chỉ dành cho Admin.",
         "x-access-policy": "PUBLIC",
         "security": [],
         "parameters": [
@@ -3242,13 +3532,300 @@
         }
       }
     },
+    "/api/v1/learning/me/certificates/{id}/download": {
+      "get": {
+        "operationId": "downloadCertificate",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: AUTHENTICATED. Tải PDF của tài khoản hiện tại. Trả 404 nếu chứng chỉ không thuộc tài khoản, 409 nếu đã thu hồi.",
+        "x-access-policy": "AUTHENTICATED",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/certificates/{id}/revocation": {
+      "put": {
+        "operationId": "revokeCertificate",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: ADMIN. Admin thu hồi theo ID chứng chỉ, bắt buộc có lý do. Gửi lại trả hồ sơ thu hồi lần đầu.",
+        "x-access-policy": "ADMIN",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CertificateRevocationData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeCertificateRequest"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/learning/courses/{id}/statistics": {
       "get": {
         "operationId": "getLearningStatistics",
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Lấy thống kê học tập của learner trong course.",
+        "description": "Role sử dụng: COURSE_OWNER. Tỷ lệ hoàn thành và trung bình tiến độ theo bài của học viên ghi danh trong khoảng [fromAt, toAt).",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -3263,6 +3840,24 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "fromAt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toAt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
             }
           },
           {
@@ -3389,7 +3984,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Liệt kê tiến độ của các learner trong course dành cho owner hoặc admin.",
+        "description": "Role sử dụng: COURSE_OWNER. Liệt kê tiến độ theo bài của học viên cho chủ khóa hoặc Admin. Màn hình dùng lessonProgressPercent.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -3479,6 +4074,483 @@
                           "minimum": 0
                         }
                       }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/learning/courses/{id}/learners/{userId}": {
+      "get": {
+        "operationId": "getLearnerProgressDetail",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Xem các bài đã hoàn thành và lần học gần nhất của một học viên theo phiên bản ghi danh.",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LearnerProgressDetail"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/learning/courses/{id}/weak-skills": {
+      "get": {
+        "operationId": "getLearningWeakSkills",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Tổng hợp kỹ năng yếu của học viên có đủ bằng chứng trong khóa.",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LearningWeakSkillsData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/learning/courses/{id}/analytics": {
+      "get": {
+        "operationId": "getLearningAnalytics",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Phân bố tiến độ hiện tại và kết quả quiz đã chấm, với xu hướng theo ngày UTC trong khoảng [fromAt, toAt).",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "quizId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assessmentVersion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "classId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fromAt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toAt",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LearningAnalyticsData"
                     },
                     "meta": {
                       "$ref": "#/components/schemas/ApiMeta"
@@ -4215,6 +5287,10 @@
               },
               {
                 "type": "string",
+                "const": "CERTIFICATE_REVOKED"
+              },
+              {
+                "type": "string",
                 "const": "VERSION_CONFLICT"
               },
               {
@@ -4637,6 +5713,33 @@
             "type": "integer",
             "minimum": 1
           },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "SUPERSEDED"
+              },
+              {
+                "type": "string",
+                "const": "REVOKED"
+              }
+            ]
+          },
+          "supersededByCertificateId": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
           "issuedAt": {
             "type": "string",
             "format": "date-time"
@@ -4655,6 +5758,8 @@
           "userId",
           "enrollmentId",
           "contentVersion",
+          "status",
+          "supersededByCertificateId",
           "issuedAt",
           "verificationCode",
           "downloadUrl"
@@ -4730,11 +5835,79 @@
         ],
         "additionalProperties": false
       },
+      "CertificateRevocationData": {
+        "type": "object",
+        "properties": {
+          "certificateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "const": "REVOKED"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revokedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "certificateId",
+          "status",
+          "revokedAt",
+          "revokedBy",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "CertificateStatus": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "ACTIVE"
+          },
+          {
+            "type": "string",
+            "const": "SUPERSEDED"
+          },
+          {
+            "type": "string",
+            "const": "REVOKED"
+          }
+        ]
+      },
       "CertificateVerificationData": {
         "type": "object",
         "properties": {
           "valid": {
             "type": "boolean"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "SUPERSEDED"
+              },
+              {
+                "type": "string",
+                "const": "REVOKED"
+              }
+            ]
           },
           "courseTitle": {
             "anyOf": [
@@ -4770,6 +5943,7 @@
         },
         "required": [
           "valid",
+          "status",
           "courseTitle",
           "recipientName",
           "issuedAt"
@@ -5988,6 +7162,17 @@
           },
           "enrollment": {
             "$ref": "#/components/schemas/EnrollmentSnapshotData"
+          },
+          "classId": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
           }
         },
         "required": [
@@ -6837,6 +8022,31 @@
         ],
         "additionalProperties": false
       },
+      "CourseSkillPrerequisites": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillPrerequisiteEdge"
+            }
+          }
+        },
+        "required": [
+          "courseId",
+          "version",
+          "edges"
+        ],
+        "additionalProperties": false
+      },
       "CourseSkillsData": {
         "type": "object",
         "properties": {
@@ -7541,6 +8751,10 @@
           },
           {
             "type": "string",
+            "const": "CERTIFICATE_REVOKED"
+          },
+          {
+            "type": "string",
             "const": "VERSION_CONFLICT"
           },
           {
@@ -7674,6 +8888,10 @@
           },
           "response": {
             "type": "string"
+          },
+          "binaryResponse": {
+            "type": "string",
+            "const": "application/pdf"
           },
           "list": {
             "anyOf": [
@@ -8503,6 +9721,63 @@
         ],
         "additionalProperties": false
       },
+      "LearnerProgressDetail": {
+        "type": "object",
+        "properties": {
+          "completedLessons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lessonId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "completedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "lessonId",
+                "title",
+                "completedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "lastActivityAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/CourseProgressSummary"
+          }
+        },
+        "required": [
+          "completedLessons",
+          "lastActivityAt",
+          "userId",
+          "progress"
+        ],
+        "additionalProperties": false
+      },
       "LearnerProgressSummary": {
         "type": "object",
         "properties": {
@@ -8518,6 +9793,144 @@
           "userId",
           "progress"
         ],
+        "additionalProperties": false
+      },
+      "LearningAnalyticsData": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lessonProgressDistribution": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningPercentBand"
+            }
+          },
+          "lessonProgressTrend": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string"
+                },
+                "completedLessons": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "day",
+                "completedLessons"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "quizScores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "quizId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "assessmentVersion": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "gradedAttempts": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "scoreDistribution": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LearningPercentBand"
+                  }
+                },
+                "trend": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "day": {
+                        "type": "string"
+                      },
+                      "gradedAttempts": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "averageScorePercent": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      }
+                    },
+                    "required": [
+                      "day",
+                      "gradedAttempts",
+                      "averageScorePercent"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "quizId",
+                "assessmentVersion",
+                "gradedAttempts",
+                "scoreDistribution",
+                "trend"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "courseId",
+          "enrolledCount",
+          "lessonProgressDistribution",
+          "lessonProgressTrend",
+          "quizScores",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "LearningAnalyticsQuery": {
+        "type": "object",
+        "properties": {
+          "quizId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
         "additionalProperties": false
       },
       "LearningDashboardCourse": {
@@ -9102,6 +10515,31 @@
           }
         ]
       },
+      "LearningPercentBand": {
+        "type": "object",
+        "properties": {
+          "fromPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "toPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "fromPercent",
+          "toPercent",
+          "count"
+        ],
+        "additionalProperties": false
+      },
       "LearningRecentQuiz": {
         "type": "object",
         "properties": {
@@ -9143,6 +10581,20 @@
           "passed",
           "gradedAt"
         ],
+        "additionalProperties": false
+      },
+      "LearningReportDateQuery": {
+        "type": "object",
+        "properties": {
+          "fromAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
         "additionalProperties": false
       },
       "LearningResumeData": {
@@ -9215,6 +10667,18 @@
             "type": "integer",
             "minimum": 0
           },
+          "completionRatePercent": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            ]
+          },
           "averageProgressPercent": {
             "anyOf": [
               {
@@ -9236,6 +10700,7 @@
           "courseId",
           "enrolledCount",
           "completedCount",
+          "completionRatePercent",
           "averageProgressPercent",
           "updatedAt"
         ],
@@ -9264,6 +10729,66 @@
             "const": "RESET"
           }
         ]
+      },
+      "LearningWeakSkillsData": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skillId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "skillName": {
+                  "type": "string"
+                },
+                "assessedLearnerCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "weakLearnerCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "weakRatePercent": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "skillId",
+                "skillName",
+                "assessedLearnerCount",
+                "weakLearnerCount",
+                "weakRatePercent"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "courseId",
+          "enrolledCount",
+          "skills",
+          "updatedAt"
+        ],
+        "additionalProperties": false
       },
       "LessonCompletedEvent": {
         "type": "object",
@@ -9588,6 +11113,14 @@
                 }
               ]
             }
+          },
+          "skillIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
           },
           "id": {
             "type": "string",
@@ -10690,6 +12223,88 @@
         ],
         "additionalProperties": false
       },
+      "QuizRecommendationContext": {
+        "type": "object",
+        "properties": {
+          "quizId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quizType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PRACTICE"
+              },
+              {
+                "type": "string",
+                "const": "GRADED"
+              }
+            ]
+          },
+          "skillIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "attemptsRemaining": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "canStart": {
+            "type": "boolean"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "quizId",
+          "quizType",
+          "skillIds",
+          "attemptsRemaining",
+          "canStart",
+          "courseId",
+          "userId",
+          "assessmentVersion"
+        ],
+        "additionalProperties": false
+      },
+      "QuizRecommendationContextQuery": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "courseId",
+          "userId",
+          "assessmentVersion"
+        ],
+        "additionalProperties": false
+      },
       "QuizResultData": {
         "type": "object",
         "properties": {
@@ -11246,6 +12861,11 @@
                 "type": "string",
                 "const": "RETRY_ASSESSMENT",
                 "minLength": 1
+              },
+              {
+                "type": "string",
+                "const": "SKILL_PREREQUISITE",
+                "minLength": 1
               }
             ]
           },
@@ -11528,6 +13148,21 @@
         ],
         "additionalProperties": false
       },
+      "RevokeCertificateRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "^(?=[^\\u0000\\uD800-\\uDFFF]*\\S)[^\\u0000\\uD800-\\uDFFF]+$"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
       "SaveAnswersRequest": {
         "type": "object",
         "properties": {
@@ -11585,6 +13220,28 @@
           "contentVersion",
           "positionSeconds",
           "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "SaveSkillPrerequisitesRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483646
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillPrerequisiteEdge"
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "edges"
         ],
         "additionalProperties": false
       },
@@ -11716,6 +13373,24 @@
           "scorePercent",
           "level",
           "evidenceCount"
+        ],
+        "additionalProperties": false
+      },
+      "SkillPrerequisiteEdge": {
+        "type": "object",
+        "properties": {
+          "skillId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "prerequisiteSkillId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "skillId",
+          "prerequisiteSkillId"
         ],
         "additionalProperties": false
       },

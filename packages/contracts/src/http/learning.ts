@@ -190,22 +190,49 @@ export interface RecommendationData {
   courseId: Uuid;
   lessonId: Uuid;
   learningItemId: Uuid | null;
-  reason: 'NEXT_REQUIRED_ITEM' | 'LOW_MASTERY' | 'RETRY_ASSESSMENT';
+  reason: 'NEXT_REQUIRED_ITEM' | 'LOW_MASTERY' | 'RETRY_ASSESSMENT' | 'SKILL_PREREQUISITE';
   explanation: string;
 }
+export interface SkillPrerequisiteEdge {
+  skillId: Uuid;
+  prerequisiteSkillId: Uuid;
+}
+export interface CourseSkillPrerequisites {
+  courseId: Uuid;
+  version: number;
+  edges: SkillPrerequisiteEdge[];
+}
+export interface SaveSkillPrerequisitesRequest {
+  expectedVersion: number;
+  edges: SkillPrerequisiteEdge[];
+}
+export type CertificateStatus = 'ACTIVE' | 'SUPERSEDED' | 'REVOKED';
 export interface CertificateData {
   id: Uuid;
   courseId: Uuid;
   userId: Uuid;
   enrollmentId: Uuid;
   contentVersion: number;
+  status: CertificateStatus;
+  supersededByCertificateId: Uuid | null;
   issuedAt: string;
   verificationCode: string;
   downloadUrl: string;
 }
-/** Public verification intentionally excludes email, userId and enrollmentId. */
+export interface RevokeCertificateRequest {
+  reason: string;
+}
+export interface CertificateRevocationData {
+  certificateId: Uuid;
+  status: 'REVOKED';
+  revokedAt: string;
+  revokedBy: Uuid;
+  reason: string;
+}
+/** Public verification excludes private identifiers and revocation audit details. */
 export interface CertificateVerificationData {
   valid: boolean;
+  status: CertificateStatus | null;
   courseTitle: string | null;
   recipientName: string | null;
   issuedAt: string | null;
@@ -214,7 +241,48 @@ export interface LearningStatisticsData {
   courseId: Uuid;
   enrolledCount: number;
   completedCount: number;
+  completionRatePercent: number | null;
   averageProgressPercent: number | null;
+  updatedAt: string;
+}
+export interface LearningReportDateQuery {
+  fromAt?: string;
+  toAt?: string;
+}
+export interface LearningAnalyticsQuery extends LearningReportDateQuery {
+  quizId?: Uuid;
+  assessmentVersion?: number;
+  classId?: Uuid;
+}
+export interface LearningWeakSkillsData {
+  courseId: Uuid;
+  enrolledCount: number;
+  skills: {
+    skillId: Uuid;
+    skillName: string;
+    assessedLearnerCount: number;
+    weakLearnerCount: number;
+    weakRatePercent: number;
+  }[];
+  updatedAt: string;
+}
+export interface LearningPercentBand {
+  fromPercent: number;
+  toPercent: number;
+  count: number;
+}
+export interface LearningAnalyticsData {
+  courseId: Uuid;
+  enrolledCount: number;
+  lessonProgressDistribution: LearningPercentBand[];
+  lessonProgressTrend: { day: string; completedLessons: number }[];
+  quizScores: {
+    quizId: Uuid;
+    assessmentVersion: number;
+    gradedAttempts: number;
+    scoreDistribution: LearningPercentBand[];
+    trend: { day: string; gradedAttempts: number; averageScorePercent: number }[];
+  }[];
   updatedAt: string;
 }
 export interface ProgressSyncData {

@@ -92,9 +92,13 @@ function propertyRules(name, schema) {
         'responses',
         'correctResponses',
         'gradedAttempts',
+        'attemptsRemaining',
         'evidenceCount',
         'questionCount',
         'enrolledCount',
+        'assessedLearnerCount',
+        'weakLearnerCount',
+        'count',
         'completedCount',
         'completedLessons',
         'totalLessons',
@@ -210,6 +214,17 @@ Object.assign(definitions.ValidateCourseSkillsRequest.properties.skillIds, {
   minItems: 1,
   maxItems: 100,
 });
+definitions.CourseSkillPrerequisites.properties.version.minimum = 0;
+Object.assign(definitions.SaveSkillPrerequisitesRequest.properties.expectedVersion, {
+  minimum: 0,
+  maximum: 2147483646,
+});
+definitions.SaveSkillPrerequisitesRequest.properties.edges.maxItems = 500;
+Object.assign(definitions.RevokeCertificateRequest.properties.reason, {
+  maxLength: 500,
+  pattern: '^(?=[^\\u0000\\uD800-\\uDFFF]*\\S)[^\\u0000\\uD800-\\uDFFF]+$',
+});
+definitions.CertificateRevocationData.properties.revokedBy.format = 'uuid';
 // Contract-specific shape constraints. Cross-record/domain rules live in validation.ts and README.
 for (const name of [
   'CreateQuestionRequest',
@@ -313,6 +328,14 @@ for (const e of ENDPOINTS) {
       description: `Xem quy tắc lỗi dùng chung (${status})`,
       content: { 'application/json': { schema: ref('ApiErrorResponse') } },
     };
+  if (e.binaryResponse) {
+    responses[e.success].content = {
+      [e.binaryResponse]: { schema: { type: 'string', format: 'binary' } },
+    };
+    responses[e.success].headers = {
+      'Content-Disposition': { schema: { type: 'string' } },
+    };
+  }
   paths[e.path] ??= {};
   if (paths[e.path][e.method]) throw new Error(`Duplicate route ${e.path}`);
   paths[e.path][e.method] = {

@@ -3181,6 +3181,174 @@
         }
       }
     },
+    "/api/v1/internal/quizzes/{id}/recommendation-context": {
+      "get": {
+        "operationId": "getQuizRecommendationContext",
+        "tags": [
+          "quiz"
+        ],
+        "description": "Role sử dụng: INTERNAL. Trả kỹ năng theo phiên bản quiz và quyền tạo lượt mới của học viên.",
+        "x-access-policy": "INTERNAL",
+        "security": [
+          {
+            "serviceAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "courseId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assessmentVersion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/QuizRecommendationContext"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/internal/courses/{id}/assessments": {
       "get": {
         "operationId": "getLearnerAssessments",
@@ -3550,6 +3718,10 @@
               {
                 "type": "string",
                 "const": "CERTIFICATE_NOT_ELIGIBLE"
+              },
+              {
+                "type": "string",
+                "const": "CERTIFICATE_REVOKED"
               },
               {
                 "type": "string",
@@ -3975,6 +4147,33 @@
             "type": "integer",
             "minimum": 1
           },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "SUPERSEDED"
+              },
+              {
+                "type": "string",
+                "const": "REVOKED"
+              }
+            ]
+          },
+          "supersededByCertificateId": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
           "issuedAt": {
             "type": "string",
             "format": "date-time"
@@ -3993,6 +4192,8 @@
           "userId",
           "enrollmentId",
           "contentVersion",
+          "status",
+          "supersededByCertificateId",
           "issuedAt",
           "verificationCode",
           "downloadUrl"
@@ -4068,11 +4269,79 @@
         ],
         "additionalProperties": false
       },
+      "CertificateRevocationData": {
+        "type": "object",
+        "properties": {
+          "certificateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "const": "REVOKED"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revokedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "certificateId",
+          "status",
+          "revokedAt",
+          "revokedBy",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "CertificateStatus": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "ACTIVE"
+          },
+          {
+            "type": "string",
+            "const": "SUPERSEDED"
+          },
+          {
+            "type": "string",
+            "const": "REVOKED"
+          }
+        ]
+      },
       "CertificateVerificationData": {
         "type": "object",
         "properties": {
           "valid": {
             "type": "boolean"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "SUPERSEDED"
+              },
+              {
+                "type": "string",
+                "const": "REVOKED"
+              }
+            ]
           },
           "courseTitle": {
             "anyOf": [
@@ -4108,6 +4377,7 @@
         },
         "required": [
           "valid",
+          "status",
           "courseTitle",
           "recipientName",
           "issuedAt"
@@ -5326,6 +5596,17 @@
           },
           "enrollment": {
             "$ref": "#/components/schemas/EnrollmentSnapshotData"
+          },
+          "classId": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
           }
         },
         "required": [
@@ -6175,6 +6456,31 @@
         ],
         "additionalProperties": false
       },
+      "CourseSkillPrerequisites": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillPrerequisiteEdge"
+            }
+          }
+        },
+        "required": [
+          "courseId",
+          "version",
+          "edges"
+        ],
+        "additionalProperties": false
+      },
       "CourseSkillsData": {
         "type": "object",
         "properties": {
@@ -6879,6 +7185,10 @@
           },
           {
             "type": "string",
+            "const": "CERTIFICATE_REVOKED"
+          },
+          {
+            "type": "string",
             "const": "VERSION_CONFLICT"
           },
           {
@@ -7012,6 +7322,10 @@
           },
           "response": {
             "type": "string"
+          },
+          "binaryResponse": {
+            "type": "string",
+            "const": "application/pdf"
           },
           "list": {
             "anyOf": [
@@ -7841,6 +8155,63 @@
         ],
         "additionalProperties": false
       },
+      "LearnerProgressDetail": {
+        "type": "object",
+        "properties": {
+          "completedLessons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lessonId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "completedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "lessonId",
+                "title",
+                "completedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "lastActivityAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/CourseProgressSummary"
+          }
+        },
+        "required": [
+          "completedLessons",
+          "lastActivityAt",
+          "userId",
+          "progress"
+        ],
+        "additionalProperties": false
+      },
       "LearnerProgressSummary": {
         "type": "object",
         "properties": {
@@ -7856,6 +8227,144 @@
           "userId",
           "progress"
         ],
+        "additionalProperties": false
+      },
+      "LearningAnalyticsData": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lessonProgressDistribution": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningPercentBand"
+            }
+          },
+          "lessonProgressTrend": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string"
+                },
+                "completedLessons": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "day",
+                "completedLessons"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "quizScores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "quizId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "assessmentVersion": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "gradedAttempts": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "scoreDistribution": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LearningPercentBand"
+                  }
+                },
+                "trend": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "day": {
+                        "type": "string"
+                      },
+                      "gradedAttempts": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "averageScorePercent": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      }
+                    },
+                    "required": [
+                      "day",
+                      "gradedAttempts",
+                      "averageScorePercent"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "quizId",
+                "assessmentVersion",
+                "gradedAttempts",
+                "scoreDistribution",
+                "trend"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "courseId",
+          "enrolledCount",
+          "lessonProgressDistribution",
+          "lessonProgressTrend",
+          "quizScores",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "LearningAnalyticsQuery": {
+        "type": "object",
+        "properties": {
+          "quizId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
         "additionalProperties": false
       },
       "LearningDashboardCourse": {
@@ -8440,6 +8949,31 @@
           }
         ]
       },
+      "LearningPercentBand": {
+        "type": "object",
+        "properties": {
+          "fromPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "toPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "fromPercent",
+          "toPercent",
+          "count"
+        ],
+        "additionalProperties": false
+      },
       "LearningRecentQuiz": {
         "type": "object",
         "properties": {
@@ -8481,6 +9015,20 @@
           "passed",
           "gradedAt"
         ],
+        "additionalProperties": false
+      },
+      "LearningReportDateQuery": {
+        "type": "object",
+        "properties": {
+          "fromAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
         "additionalProperties": false
       },
       "LearningResumeData": {
@@ -8553,6 +9101,18 @@
             "type": "integer",
             "minimum": 0
           },
+          "completionRatePercent": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            ]
+          },
           "averageProgressPercent": {
             "anyOf": [
               {
@@ -8574,6 +9134,7 @@
           "courseId",
           "enrolledCount",
           "completedCount",
+          "completionRatePercent",
           "averageProgressPercent",
           "updatedAt"
         ],
@@ -8602,6 +9163,66 @@
             "const": "RESET"
           }
         ]
+      },
+      "LearningWeakSkillsData": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skillId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "skillName": {
+                  "type": "string"
+                },
+                "assessedLearnerCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "weakLearnerCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "weakRatePercent": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "skillId",
+                "skillName",
+                "assessedLearnerCount",
+                "weakLearnerCount",
+                "weakRatePercent"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "courseId",
+          "enrolledCount",
+          "skills",
+          "updatedAt"
+        ],
+        "additionalProperties": false
       },
       "LessonCompletedEvent": {
         "type": "object",
@@ -8926,6 +9547,14 @@
                 }
               ]
             }
+          },
+          "skillIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
           },
           "id": {
             "type": "string",
@@ -10028,6 +10657,88 @@
         ],
         "additionalProperties": false
       },
+      "QuizRecommendationContext": {
+        "type": "object",
+        "properties": {
+          "quizId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quizType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PRACTICE"
+              },
+              {
+                "type": "string",
+                "const": "GRADED"
+              }
+            ]
+          },
+          "skillIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "attemptsRemaining": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "canStart": {
+            "type": "boolean"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "quizId",
+          "quizType",
+          "skillIds",
+          "attemptsRemaining",
+          "canStart",
+          "courseId",
+          "userId",
+          "assessmentVersion"
+        ],
+        "additionalProperties": false
+      },
+      "QuizRecommendationContextQuery": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "courseId",
+          "userId",
+          "assessmentVersion"
+        ],
+        "additionalProperties": false
+      },
       "QuizResultData": {
         "type": "object",
         "properties": {
@@ -10584,6 +11295,11 @@
                 "type": "string",
                 "const": "RETRY_ASSESSMENT",
                 "minLength": 1
+              },
+              {
+                "type": "string",
+                "const": "SKILL_PREREQUISITE",
+                "minLength": 1
               }
             ]
           },
@@ -10866,6 +11582,21 @@
         ],
         "additionalProperties": false
       },
+      "RevokeCertificateRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "^(?=[^\\u0000\\uD800-\\uDFFF]*\\S)[^\\u0000\\uD800-\\uDFFF]+$"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
       "SaveAnswersRequest": {
         "type": "object",
         "properties": {
@@ -10923,6 +11654,28 @@
           "contentVersion",
           "positionSeconds",
           "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "SaveSkillPrerequisitesRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483646
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillPrerequisiteEdge"
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "edges"
         ],
         "additionalProperties": false
       },
@@ -11054,6 +11807,24 @@
           "scorePercent",
           "level",
           "evidenceCount"
+        ],
+        "additionalProperties": false
+      },
+      "SkillPrerequisiteEdge": {
+        "type": "object",
+        "properties": {
+          "skillId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "prerequisiteSkillId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "skillId",
+          "prerequisiteSkillId"
         ],
         "additionalProperties": false
       },

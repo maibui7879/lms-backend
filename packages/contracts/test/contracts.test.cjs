@@ -313,3 +313,45 @@ test('new enrollments require pinned snapshots and the correct event producer', 
     certificateEnabled: true,
   });
 });
+
+test('certificates are versioned and preserve superseded history', () => {
+  const certificate = {
+    id,
+    courseId: id,
+    userId: id2,
+    enrollmentId: id,
+    contentVersion: 1,
+    status: 'ACTIVE',
+    supersededByCertificateId: null,
+    issuedAt: time,
+    verificationCode: 'certificate-code',
+    downloadUrl: 'https://example.test/certificates/certificate-code.pdf',
+  };
+  parseContract('CertificateData', certificate);
+  parseContract('CertificateData', {
+    ...certificate,
+    status: 'SUPERSEDED',
+    supersededByCertificateId: id2,
+  });
+  invalid('CertificateData', { ...certificate, status: 'INVALID' });
+  parseContract('CertificateVerificationData', {
+    valid: true,
+    status: 'SUPERSEDED',
+    courseTitle: 'Course',
+    recipientName: null,
+    issuedAt: time,
+  });
+  const unknown = {
+    valid: false,
+    status: null,
+    courseTitle: null,
+    recipientName: null,
+    issuedAt: null,
+  };
+  parseContract('CertificateVerificationData', unknown);
+  parseContract('CertificateVerificationData', {
+    ...unknown,
+    status: 'REVOKED',
+  });
+  invalid('CertificateVerificationData', { ...unknown, status: 'NOT_FOUND' });
+});
