@@ -4,9 +4,15 @@ import { AppService } from './app.service';
 import { ProgressSyncModule } from './modules/progress-sync/progress-sync.module';
 import { ProgressModule } from './modules/progress/progress.module';
 import { MasteryModule } from './modules/mastery/mastery.module';
+import { RecommendationsModule } from './modules/recommendations/recommendations.module';
 
 @Module({
-  imports: [ProgressModule, ProgressSyncModule, MasteryModule],
+  imports: [
+    ProgressModule,
+    ProgressSyncModule,
+    MasteryModule,
+    RecommendationsModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

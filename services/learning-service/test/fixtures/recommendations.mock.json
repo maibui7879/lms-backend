@@ -1,0 +1,143 @@
+{
+  "attempts": [
+    {
+      "name": "recommendationFewQuestions",
+      "attemptId": "00000000-0000-4000-8000-000000000b11",
+      "eventId": "00000000-0000-4000-8000-000000000b21",
+      "gradedAt": "2026-01-15T10:00:00Z",
+      "score": 7,
+      "maxScore": 20,
+      "questionCount": 3
+    },
+    {
+      "name": "recommendationMoreQuestions",
+      "attemptId": "00000000-0000-4000-8000-000000000b12",
+      "eventId": "00000000-0000-4000-8000-000000000b22",
+      "gradedAt": "2026-01-15T10:10:00Z",
+      "score": 7,
+      "maxScore": 20,
+      "questionCount": 5
+    },
+    {
+      "name": "recommendationAtThreshold",
+      "attemptId": "00000000-0000-4000-8000-000000000b13",
+      "eventId": "00000000-0000-4000-8000-000000000b23",
+      "gradedAt": "2026-01-15T10:10:00Z",
+      "score": 8,
+      "maxScore": 20,
+      "questionCount": 5
+    },
+    {
+      "name": "recommendationLegacyResult",
+      "attemptId": "00000000-0000-4000-8000-000000000b14",
+      "eventId": "00000000-0000-4000-8000-000000000b24",
+      "gradedAt": "2026-01-15T10:20:00Z",
+      "score": 7,
+      "maxScore": 20
+    },
+    {
+      "name": "recommendationTrendFirst",
+      "attemptId": "00000000-0000-4000-8000-000000000b15",
+      "eventId": "00000000-0000-4000-8000-000000000b25",
+      "daysAgo": 4,
+      "score": 11,
+      "maxScore": 20,
+      "questionCount": 2
+    },
+    {
+      "name": "recommendationTrendSecond",
+      "attemptId": "00000000-0000-4000-8000-000000000b16",
+      "eventId": "00000000-0000-4000-8000-000000000b26",
+      "daysAgo": 3,
+      "score": 11,
+      "maxScore": 20,
+      "questionCount": 2
+    },
+    {
+      "name": "recommendationTrendThird",
+      "attemptId": "00000000-0000-4000-8000-000000000b17",
+      "eventId": "00000000-0000-4000-8000-000000000b27",
+      "daysAgo": 2,
+      "score": 2.6,
+      "maxScore": 20,
+      "questionCount": 2
+    },
+    {
+      "name": "recommendationTrendFourth",
+      "attemptId": "00000000-0000-4000-8000-000000000b18",
+      "eventId": "00000000-0000-4000-8000-000000000b28",
+      "daysAgo": 1,
+      "score": 2.6,
+      "maxScore": 20,
+      "questionCount": 2
+    }
+  ],
+  "lessonMappings": [
+    {
+      "contentVersion": 1,
+      "lessonId": "00000000-0000-4000-8000-000000000211",
+      "skillId": "00000000-0000-4000-8000-000000000a02"
+    },
+    {
+      "contentVersion": 1,
+      "lessonId": "00000000-0000-4000-8000-000000000211",
+      "skillId": "00000000-0000-4000-8000-000000000a01"
+    },
+    {
+      "contentVersion": 1,
+      "lessonId": "00000000-0000-4000-8000-000000000212",
+      "skillId": "00000000-0000-4000-8000-000000000a01"
+    },
+    {
+      "contentVersion": 2,
+      "lessonId": "00000000-0000-4000-8000-000000000213",
+      "skillId": "00000000-0000-4000-8000-000000000a01"
+    }
+  ],
+  "quizzes": [
+    {
+      "itemId": "00000000-0000-4000-8000-000000000b31",
+      "quizId": "00000000-0000-4000-8000-000000000b41",
+      "lessonId": "00000000-0000-4000-8000-000000000211",
+      "assessmentVersion": 2,
+      "title": "Quiz ôn tập module",
+      "quizType": "PRACTICE",
+      "skillIds": ["00000000-0000-4000-8000-000000000a01"],
+      "attemptsRemaining": 2,
+      "canStart": true
+    },
+    {
+      "itemId": "00000000-0000-4000-8000-000000000b32",
+      "quizId": "00000000-0000-4000-8000-000000000b42",
+      "lessonId": "00000000-0000-4000-8000-000000000211",
+      "assessmentVersion": 2,
+      "title": "Quiz đã hết lượt",
+      "quizType": "PRACTICE",
+      "skillIds": ["00000000-0000-4000-8000-000000000a01"],
+      "attemptsRemaining": 0,
+      "canStart": false
+    },
+    {
+      "itemId": "00000000-0000-4000-8000-000000000b33",
+      "quizId": "00000000-0000-4000-8000-000000000b43",
+      "lessonId": "00000000-0000-4000-8000-000000000211",
+      "assessmentVersion": 2,
+      "title": "Quiz chưa đủ điều kiện",
+      "quizType": "PRACTICE",
+      "skillIds": ["00000000-0000-4000-8000-000000000a01"],
+      "attemptsRemaining": 2,
+      "canStart": false
+    },
+    {
+      "itemId": "00000000-0000-4000-8000-000000000b34",
+      "quizId": "00000000-0000-4000-8000-000000000b44",
+      "lessonId": "00000000-0000-4000-8000-000000000212",
+      "assessmentVersion": 2,
+      "title": "Quiz ôn tập controller",
+      "quizType": "PRACTICE",
+      "skillIds": ["00000000-0000-4000-8000-000000000a01"],
+      "attemptsRemaining": 1,
+      "canStart": true
+    }
+  ]
+}

@@ -21,6 +21,8 @@ import { CreateCourseSkills1794528000007 } from './migrations/1794528000007-crea
 import { MasteryCurrent } from '../modules/mastery/entities/mastery-current.entity';
 import { MasterySnapshot } from '../modules/mastery/entities/mastery-snapshot.entity';
 import { SaveMastery1794528000008 } from './migrations/1794528000008-save-mastery';
+import { SkillPrerequisites } from '../modules/recommendations/entities/skill-prerequisites.entity';
+import { CreateSkillPrerequisites1794528000009 } from './migrations/1794528000009-create-skill-prerequisites';
 import { ScopeProgressToEnrollmentStart1794528000014 } from './migrations/1794528000014-scope-progress-to-enrollment-start';
 
 export function createLearningDataSource(url: string | undefined): DataSource {
@@ -38,6 +40,7 @@ export function createLearningDataSource(url: string | undefined): DataSource {
       CourseSkill,
       MasteryCurrent,
       MasterySnapshot,
+      SkillPrerequisites,
     ],
     migrations: [
       CreateItemCompletions1794528000000,
@@ -49,6 +52,7 @@ export function createLearningDataSource(url: string | undefined): DataSource {
       AddItemInvalidations1794528000006,
       CreateCourseSkills1794528000007,
       SaveMastery1794528000008,
+      CreateSkillPrerequisites1794528000009,
       ScopeProgressToEnrollmentStart1794528000014,
     ],
     synchronize: false,
