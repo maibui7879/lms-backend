@@ -3,7 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import ids from '@lms/contracts/fixtures/ids.json';
 import { databaseOptions, envFiles, validateEnvironment } from '../../config';
-import { Course } from '../../courses/entities/course.entity';
+import { Course } from '../../modules/courses/entities/course.entity';
 import { seedFailureMessage } from './seed-error';
 
 export async function seedCourse(source: DataSource): Promise<void> {

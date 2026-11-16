@@ -1,12 +1,35 @@
 import type { Uuid } from './common';
 import type { ProgressSyncStatus } from './quiz';
 
-export type LearningStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type LearningStatus =
+  'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OUTDATED' | 'RESET';
+export type ChapterAccessStatus = 'LOCKED' | 'UNLOCKED' | 'COMPLETED';
+export type ChapterAccessReason =
+  | 'ENROLLMENT_REQUIRED'
+  | 'COURSE_NOT_PUBLISHED'
+  | 'PREVIOUS_CHAPTER_NOT_COMPLETED'
+  | 'PREREQUISITE_NOT_COMPLETED';
+
+export interface ChapterAccessData {
+  chapterId: Uuid;
+  order: number;
+  contentVersion: number;
+  status: ChapterAccessStatus;
+  reason: ChapterAccessReason | null;
+}
+export interface CourseChapterAccessData {
+  courseId: Uuid;
+  contentVersion: number;
+  chapters: ChapterAccessData[];
+}
+
 export interface ItemProgressData {
   learningItemId: Uuid;
   contentVersion: number;
   status: LearningStatus;
   completedAt: string | null;
+  invalidatedAt: string | null;
+  invalidationReason: string | null;
 }
 export interface LessonProgressData {
   userId: Uuid;
@@ -80,12 +103,15 @@ export interface RecommendationData {
   reason: 'NEXT_REQUIRED_ITEM' | 'LOW_MASTERY' | 'RETRY_ASSESSMENT';
   explanation: string;
 }
+export type CertificateStatus = 'ACTIVE' | 'SUPERSEDED' | 'REVOKED';
 export interface CertificateData {
   id: Uuid;
   courseId: Uuid;
   userId: Uuid;
   enrollmentId: Uuid;
   contentVersion: number;
+  status: CertificateStatus;
+  supersededByCertificateId: Uuid | null;
   issuedAt: string;
   verificationCode: string;
   downloadUrl: string;
@@ -93,6 +119,7 @@ export interface CertificateData {
 /** Public verification intentionally excludes email, userId and enrollmentId. */
 export interface CertificateVerificationData {
   valid: boolean;
+  status: CertificateStatus | null;
   courseTitle: string | null;
   recipientName: string | null;
   issuedAt: string | null;

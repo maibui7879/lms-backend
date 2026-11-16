@@ -590,6 +590,147 @@
         }
       }
     },
+    "/api/v1/learning/courses/{id}/chapters/access": {
+      "get": {
+        "operationId": "getCourseChapterAccess",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: ENROLLED. Xem packages/contracts/README.md để biết quyền sở hữu, chuyển trạng thái và các tác động phụ.",
+        "x-access-policy": "ENROLLED",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CourseChapterAccessData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/learning/courses/{id}/resume": {
       "get": {
         "operationId": "getResume",
@@ -1345,7 +1486,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: ENROLLED. Phát hành certificate khi learner đủ điều kiện hoàn thành course; thao tác idempotent để không tạo trùng certificate.",
+        "description": "Role sử dụng: ENROLLED. Phát hành certificate khi learner đủ điều kiện của contentVersion hiện tại. Khóa chống trùng là userId, courseId và contentVersion, không phụ thuộc enrollmentId. Nếu certificate đã tồn tại thì trả bản ghi hiện có; nếu certificate cùng phiên bản đã REVOKED thì trả CERTIFICATE_REVOKED; chỉ cấp certificate mới khi contentVersion tăng và learner hoàn thành lại requirement.",
         "x-access-policy": "ENROLLED",
         "security": [
           {
@@ -1496,7 +1637,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: AUTHENTICATED. Liệt kê các certificate đã phát hành cho user hiện tại.",
+        "description": "Role sử dụng: AUTHENTICATED. Liệt kê certificate của user hiện tại, bao gồm trạng thái ACTIVE, SUPERSEDED hoặc REVOKED; không xóa certificate cũ khi có contentVersion mới.",
         "x-access-policy": "AUTHENTICATED",
         "security": [
           {
@@ -1675,7 +1816,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: PUBLIC. Xác minh certificate công khai bằng code và trả trạng thái hợp lệ cùng thông tin certificate.",
+        "description": "Role sử dụng: PUBLIC. Xác minh certificate công khai bằng code và trả trạng thái ACTIVE, SUPERSEDED hoặc REVOKED. Certificate SUPERSEDED vẫn là bằng chứng lịch sử; certificate REVOKED không còn hợp lệ.",
         "x-access-policy": "PUBLIC",
         "security": [],
         "parameters": [
@@ -2463,6 +2604,137 @@
           }
         }
       }
+    },
+    "/api/v1/internal/courses/{id}/migrations": {
+      "post": {
+        "operationId": "migrateCourseItems",
+        "tags": [
+          "learning"
+        ],
+        "description": "Role sử dụng: INTERNAL. Đánh dấu các learning item bị ảnh hưởng bởi critical revision để learner phải hoàn thành lại hoặc chỉ nhận thông báo theo migration policy.",
+        "x-access-policy": "INTERNAL",
+        "security": [
+          {
+            "serviceAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Thành công"
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MigrateCourseItemsRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2641,6 +2913,10 @@
               {
                 "type": "string",
                 "const": "CERTIFICATE_NOT_ELIGIBLE"
+              },
+              {
+                "type": "string",
+                "const": "CERTIFICATE_REVOKED"
               },
               {
                 "type": "string",
@@ -3066,6 +3342,33 @@
             "type": "integer",
             "minimum": 1
           },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "SUPERSEDED"
+              },
+              {
+                "type": "string",
+                "const": "REVOKED"
+              }
+            ]
+          },
+          "supersededByCertificateId": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
           "issuedAt": {
             "type": "string",
             "format": "date-time"
@@ -3084,6 +3387,8 @@
           "userId",
           "enrollmentId",
           "contentVersion",
+          "status",
+          "supersededByCertificateId",
           "issuedAt",
           "verificationCode",
           "downloadUrl"
@@ -3159,11 +3464,46 @@
         ],
         "additionalProperties": false
       },
+      "CertificateStatus": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "ACTIVE"
+          },
+          {
+            "type": "string",
+            "const": "SUPERSEDED"
+          },
+          {
+            "type": "string",
+            "const": "REVOKED"
+          }
+        ]
+      },
       "CertificateVerificationData": {
         "type": "object",
         "properties": {
           "valid": {
             "type": "boolean"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "SUPERSEDED"
+              },
+              {
+                "type": "string",
+                "const": "REVOKED"
+              }
+            ]
           },
           "courseTitle": {
             "anyOf": [
@@ -3199,9 +3539,143 @@
         },
         "required": [
           "valid",
+          "status",
           "courseTitle",
           "recipientName",
           "issuedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ChapterAccessData": {
+        "type": "object",
+        "properties": {
+          "chapterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "order": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "contentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "COMPLETED"
+              },
+              {
+                "type": "string",
+                "const": "LOCKED"
+              },
+              {
+                "type": "string",
+                "const": "UNLOCKED"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "COURSE_NOT_PUBLISHED",
+                "minLength": 1
+              },
+              {
+                "type": "string",
+                "const": "ENROLLMENT_REQUIRED",
+                "minLength": 1
+              },
+              {
+                "type": "string",
+                "const": "PREREQUISITE_NOT_COMPLETED",
+                "minLength": 1
+              },
+              {
+                "type": "string",
+                "const": "PREVIOUS_CHAPTER_NOT_COMPLETED",
+                "minLength": 1
+              }
+            ]
+          }
+        },
+        "required": [
+          "chapterId",
+          "order",
+          "contentVersion",
+          "status",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ChapterAccessReason": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "COURSE_NOT_PUBLISHED"
+          },
+          {
+            "type": "string",
+            "const": "ENROLLMENT_REQUIRED"
+          },
+          {
+            "type": "string",
+            "const": "PREREQUISITE_NOT_COMPLETED"
+          },
+          {
+            "type": "string",
+            "const": "PREVIOUS_CHAPTER_NOT_COMPLETED"
+          }
+        ]
+      },
+      "ChapterAccessStatus": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "COMPLETED"
+          },
+          {
+            "type": "string",
+            "const": "LOCKED"
+          },
+          {
+            "type": "string",
+            "const": "UNLOCKED"
+          }
+        ]
+      },
+      "ChapterCompletionPolicy": {
+        "type": "object",
+        "properties": {
+          "chapterId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "requiredItemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "requiredAssessments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequiredAssessment"
+            }
+          }
+        },
+        "required": [
+          "chapterId",
+          "requiredItemIds",
+          "requiredAssessments"
         ],
         "additionalProperties": false
       },
@@ -3461,6 +3935,31 @@
         ],
         "additionalProperties": false
       },
+      "CourseChapterAccessData": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "chapters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChapterAccessData"
+            }
+          }
+        },
+        "required": [
+          "courseId",
+          "contentVersion",
+          "chapters"
+        ],
+        "additionalProperties": false
+      },
       "CourseCompletedEvent": {
         "type": "object",
         "properties": {
@@ -3560,6 +4059,12 @@
               "$ref": "#/components/schemas/RequiredAssessment"
             }
           },
+          "chapterPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChapterCompletionPolicy"
+            }
+          },
           "sequence": {
             "anyOf": [
               {
@@ -3585,6 +4090,7 @@
           "contentVersion",
           "requiredItemIds",
           "requiredAssessments",
+          "chapterPolicies",
           "sequence",
           "assessmentRule",
           "certificateEnabled"
@@ -3850,6 +4356,65 @@
         ],
         "additionalProperties": false
       },
+      "CoursePatchNoticeData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              },
+              {
+                "type": "string",
+                "const": "INFO"
+              },
+              {
+                "type": "string",
+                "const": "WARNING"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "message": {
+            "type": "string"
+          },
+          "requiresAction": {
+            "type": "boolean"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "revisionId",
+          "severity",
+          "title",
+          "message",
+          "requiresAction",
+          "publishedAt"
+        ],
+        "additionalProperties": false
+      },
       "CourseProgressData": {
         "type": "object",
         "properties": {
@@ -3882,6 +4447,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -3962,6 +4535,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -4241,6 +4822,104 @@
         ],
         "additionalProperties": false
       },
+      "CourseRevisionChangeData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "entityType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "CHAPTER"
+              },
+              {
+                "type": "string",
+                "const": "LESSON"
+              },
+              {
+                "type": "string",
+                "const": "LEARNING_ITEM"
+              },
+              {
+                "type": "string",
+                "const": "QUIZ"
+              }
+            ]
+          },
+          "entityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changeType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ADDED"
+              },
+              {
+                "type": "string",
+                "const": "UPDATED"
+              },
+              {
+                "type": "string",
+                "const": "DELETED"
+              }
+            ]
+          },
+          "oldVersion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ]
+          },
+          "newVersion": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0
+              }
+            ]
+          },
+          "isCritical": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "revisionId",
+          "entityType",
+          "entityId",
+          "changeType",
+          "oldVersion",
+          "newVersion",
+          "isCritical",
+          "summary",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
       "CourseRevisionData": {
         "type": "object",
         "properties": {
@@ -4319,6 +4998,30 @@
           "version": {
             "type": "integer",
             "minimum": 1
+          },
+          "updateType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "NORMAL"
+              },
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              }
+            ]
+          },
+          "migrationPolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "KEEP_ENROLLED_VERSION"
+              },
+              {
+                "type": "string",
+                "const": "MIGRATE_AFFECTED_ITEMS"
+              }
+            ]
           }
         },
         "required": [
@@ -4331,7 +5034,9 @@
           "createdAt",
           "submittedAt",
           "publishedAt",
-          "version"
+          "version",
+          "updateType",
+          "migrationPolicy"
         ],
         "additionalProperties": false
       },
@@ -4399,7 +5104,6 @@
           }
         },
         "required": [
-          "revisionId",
           "title"
         ],
         "additionalProperties": false
@@ -4439,10 +5143,36 @@
           "baseContentVersion": {
             "type": "integer",
             "minimum": 1
+          },
+          "updateType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "NORMAL"
+              },
+              {
+                "type": "string",
+                "const": "CRITICAL"
+              }
+            ]
+          },
+          "migrationPolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "KEEP_ENROLLED_VERSION"
+              },
+              {
+                "type": "string",
+                "const": "MIGRATE_AFFECTED_ITEMS"
+              }
+            ]
           }
         },
         "required": [
-          "baseContentVersion"
+          "baseContentVersion",
+          "updateType",
+          "migrationPolicy"
         ],
         "additionalProperties": false
       },
@@ -4524,7 +5254,6 @@
               "type",
               "videoUrl",
               "durationSeconds",
-              "revisionId",
               "title",
               "required"
             ],
@@ -4557,7 +5286,6 @@
             "required": [
               "type",
               "body",
-              "revisionId",
               "title",
               "required"
             ],
@@ -4595,7 +5323,6 @@
               "type",
               "quizId",
               "assessmentVersion",
-              "revisionId",
               "title",
               "required"
             ],
@@ -4617,7 +5344,6 @@
           }
         },
         "required": [
-          "revisionId",
           "title"
         ],
         "additionalProperties": false
@@ -4983,6 +5709,10 @@
           {
             "type": "string",
             "const": "CERTIFICATE_NOT_ELIGIBLE"
+          },
+          {
+            "type": "string",
+            "const": "CERTIFICATE_REVOKED"
           },
           {
             "type": "string",
@@ -5790,6 +6520,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -5803,13 +6541,36 @@
                 "format": "date-time"
               }
             ]
+          },
+          "invalidatedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "invalidationReason": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
           }
         },
         "required": [
           "learningItemId",
           "contentVersion",
           "status",
-          "completedAt"
+          "completedAt",
+          "invalidatedAt",
+          "invalidationReason"
         ],
         "additionalProperties": false
       },
@@ -6076,7 +6837,6 @@
               "type",
               "videoUrl",
               "durationSeconds",
-              "revisionId",
               "title",
               "required",
               "id",
@@ -6139,7 +6899,6 @@
             "required": [
               "type",
               "body",
-              "revisionId",
               "title",
               "required",
               "id",
@@ -6207,7 +6966,6 @@
               "type",
               "quizId",
               "assessmentVersion",
-              "revisionId",
               "title",
               "required",
               "id",
@@ -6330,6 +7088,14 @@
           {
             "type": "string",
             "const": "NOT_STARTED"
+          },
+          {
+            "type": "string",
+            "const": "OUTDATED"
+          },
+          {
+            "type": "string",
+            "const": "RESET"
           }
         ]
       },
@@ -6514,7 +7280,6 @@
                     "type",
                     "videoUrl",
                     "durationSeconds",
-                    "revisionId",
                     "title",
                     "required",
                     "id",
@@ -6577,7 +7342,6 @@
                   "required": [
                     "type",
                     "body",
-                    "revisionId",
                     "title",
                     "required",
                     "id",
@@ -6645,7 +7409,6 @@
                     "type",
                     "quizId",
                     "assessmentVersion",
-                    "revisionId",
                     "title",
                     "required",
                     "id",
@@ -6734,6 +7497,14 @@
               {
                 "type": "string",
                 "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
               }
             ]
           },
@@ -6912,6 +7683,58 @@
           "updatedAt"
         ],
         "additionalProperties": false
+      },
+      "MigrateCourseItemsRequest": {
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "itemIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "policy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "REQUIRE_RECOMPLETION"
+              },
+              {
+                "type": "string",
+                "const": "NOTIFY_ONLY"
+              }
+            ]
+          }
+        },
+        "required": [
+          "revisionId",
+          "itemIds",
+          "reason",
+          "policy"
+        ],
+        "additionalProperties": false
+      },
+      "MigrationPolicy": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "KEEP_ENROLLED_VERSION"
+          },
+          {
+            "type": "string",
+            "const": "MIGRATE_AFFECTED_ITEMS"
+          }
+        ]
       },
       "MutationHeaders": {
         "type": "object",
@@ -8438,6 +9261,42 @@
         ],
         "additionalProperties": false
       },
+      "RevisionChangeType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "ADDED"
+          },
+          {
+            "type": "string",
+            "const": "UPDATED"
+          },
+          {
+            "type": "string",
+            "const": "DELETED"
+          }
+        ]
+      },
+      "RevisionEntityType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "CHAPTER"
+          },
+          {
+            "type": "string",
+            "const": "LESSON"
+          },
+          {
+            "type": "string",
+            "const": "LEARNING_ITEM"
+          },
+          {
+            "type": "string",
+            "const": "QUIZ"
+          }
+        ]
+      },
       "RevisionReorderRequest": {
         "type": "object",
         "properties": {
@@ -8459,11 +9318,22 @@
           }
         },
         "required": [
-          "revisionId",
           "orderedIds",
           "expectedVersion"
         ],
         "additionalProperties": false
+      },
+      "RevisionUpdateType": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "NORMAL"
+          },
+          {
+            "type": "string",
+            "const": "CRITICAL"
+          }
+        ]
       },
       "RevisionVersionRequest": {
         "type": "object",
@@ -8478,7 +9348,6 @@
           }
         },
         "required": [
-          "revisionId",
           "expectedVersion"
         ],
         "additionalProperties": false
@@ -8816,7 +9685,6 @@
         },
         "required": [
           "title",
-          "revisionId",
           "expectedVersion"
         ],
         "additionalProperties": false
@@ -8845,6 +9713,12 @@
               "$ref": "#/components/schemas/RequiredAssessment"
             }
           },
+          "chapterPolicies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChapterCompletionPolicy"
+            }
+          },
           "expectedVersion": {
             "type": "integer",
             "minimum": 1
@@ -8854,6 +9728,7 @@
           "sequence",
           "certificateEnabled",
           "requiredAssessments",
+          "chapterPolicies",
           "expectedVersion"
         ],
         "additionalProperties": false
@@ -8946,7 +9821,6 @@
               "type",
               "videoUrl",
               "durationSeconds",
-              "revisionId",
               "title",
               "required",
               "expectedVersion"
@@ -8984,7 +9858,6 @@
             "required": [
               "type",
               "body",
-              "revisionId",
               "title",
               "required",
               "expectedVersion"
@@ -9027,7 +9900,6 @@
               "type",
               "quizId",
               "assessmentVersion",
-              "revisionId",
               "title",
               "required",
               "expectedVersion"
@@ -9055,7 +9927,6 @@
         },
         "required": [
           "title",
-          "revisionId",
           "expectedVersion"
         ],
         "additionalProperties": false

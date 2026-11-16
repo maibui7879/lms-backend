@@ -6,9 +6,17 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { APP_FILTER } from '@nestjs/core';
 import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { requestContext } from './common/request-context';
-import { CoursesModule } from './courses/courses.module';
+import { CoursesModule } from './modules/courses/courses.module';
 import { databaseOptions, envFiles, validateEnvironment } from './config';
 import { HttpExceptionFilter } from './common/http-exception.filter';
+import { CourseRevisionsModule } from './modules/course-revisions/course-revisions.module';
+import { ChaptersModule } from './modules/chapters/chapters.module';
+import { LessonsModule } from './modules/lessons/lessons.module';
+import { LearningItemsModule } from './modules/learning-items/learning-items.module';
+import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
+import { CompletionPolicyModule } from './modules/completion-policy/completion-policy.module';
+import { DiscussionsModule } from './modules/discussions/discussions.module';
+import { InternalModule } from './modules/internal/internal.module';
 
 @Module({
   imports: [
@@ -29,6 +37,14 @@ import { HttpExceptionFilter } from './common/http-exception.filter';
         }),
     }),
     CoursesModule,
+    CourseRevisionsModule,
+    ChaptersModule,
+    LessonsModule,
+    LearningItemsModule,
+    EnrollmentsModule,
+    CompletionPolicyModule,
+    DiscussionsModule,
+    InternalModule,
   ],
   controllers: [AppController],
   providers: [
