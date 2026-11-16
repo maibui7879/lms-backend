@@ -23,6 +23,13 @@ import { MasterySnapshot } from '../modules/mastery/entities/mastery-snapshot.en
 import { SaveMastery1794528000008 } from './migrations/1794528000008-save-mastery';
 import { SkillPrerequisites } from '../modules/recommendations/entities/skill-prerequisites.entity';
 import { CreateSkillPrerequisites1794528000009 } from './migrations/1794528000009-create-skill-prerequisites';
+import { Certificate } from '../modules/certificates/entities/certificate.entity';
+import { CertificateIssuanceReceipt } from '../modules/certificates/entities/certificate-issuance-receipt.entity';
+import { CreateCertificates1794528000010 } from './migrations/1794528000010-create-certificates';
+import { CertificateDocument } from '../modules/certificates/entities/certificate-document.entity';
+import { CreateCertificateDocuments1794528000011 } from './migrations/1794528000011-create-certificate-documents';
+import { AddCertificateRevocation1794528000012 } from './migrations/1794528000012-add-certificate-revocation';
+import { LinkCertificateReplacements1794528000013 } from './migrations/1794528000013-link-certificate-replacements';
 import { ScopeProgressToEnrollmentStart1794528000014 } from './migrations/1794528000014-scope-progress-to-enrollment-start';
 
 export function createLearningDataSource(url: string | undefined): DataSource {
@@ -41,6 +48,9 @@ export function createLearningDataSource(url: string | undefined): DataSource {
       MasteryCurrent,
       MasterySnapshot,
       SkillPrerequisites,
+      Certificate,
+      CertificateIssuanceReceipt,
+      CertificateDocument,
     ],
     migrations: [
       CreateItemCompletions1794528000000,
@@ -53,6 +63,10 @@ export function createLearningDataSource(url: string | undefined): DataSource {
       CreateCourseSkills1794528000007,
       SaveMastery1794528000008,
       CreateSkillPrerequisites1794528000009,
+      CreateCertificates1794528000010,
+      CreateCertificateDocuments1794528000011,
+      AddCertificateRevocation1794528000012,
+      LinkCertificateReplacements1794528000013,
       ScopeProgressToEnrollmentStart1794528000014,
     ],
     synchronize: false,

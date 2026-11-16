@@ -5,6 +5,7 @@ import { ProgressSyncModule } from './modules/progress-sync/progress-sync.module
 import { ProgressModule } from './modules/progress/progress.module';
 import { MasteryModule } from './modules/mastery/mastery.module';
 import { RecommendationsModule } from './modules/recommendations/recommendations.module';
+import { CertificatesModule } from './modules/certificates/certificates.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { RecommendationsModule } from './modules/recommendations/recommendations
     ProgressSyncModule,
     MasteryModule,
     RecommendationsModule,
+    CertificatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

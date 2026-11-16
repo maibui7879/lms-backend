@@ -1,0 +1,9 @@
+{
+  "recipientDisplayName": "Nguyễn Thị Ánh Dương",
+  "revocationReason": "Phát hiện sai sót trong hồ sơ cấp chứng chỉ",
+  "nextEnrollment": {
+    "enrollmentId": "00000000-0000-4000-8000-000000000402",
+    "contentVersion": 2,
+    "certificateEnabled": true
+  }
+}
