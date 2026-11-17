@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { learningEnvironmentFile } from './load-environment';
 import { ProgressSyncModule } from './modules/progress-sync/progress-sync.module';
 import { ProgressModule } from './modules/progress/progress.module';
 import { MasteryModule } from './modules/mastery/mastery.module';
@@ -10,6 +12,11 @@ import { InstructorReportsModule } from './modules/instructor-reports/instructor
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: learningEnvironmentFile,
+      ignoreEnvFile: process.env.NODE_ENV === 'test',
+    }),
     ProgressModule,
     ProgressSyncModule,
     MasteryModule,

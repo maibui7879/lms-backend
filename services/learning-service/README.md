@@ -285,7 +285,34 @@ npm.cmd run start:dev -w @lms/learning-service
 
 Terminal khác: `Invoke-RestMethod http://127.0.0.1:3004/` chỉ smoke check scaffold.
 
-[Env example](.env.example) liệt kê các biến môi trường. Export biến trong terminal vì app chưa tự nạp `.env`.
+### Kết nối Supabase cho Learning
+
+Trong Dashboard của project Supabase, mở **Connect**, chọn kiểu **URI** và lấy chuỗi PostgreSQL. Dùng **Session pooler** (cổng `5432`) nếu mạng chỉ có IPv4. Dùng **Direct connection** nếu máy kết nối được endpoint direct. Giữ nguyên host, user và tên database trong URI. Thay `[YOUR-PASSWORD]` bằng mật khẩu database của project và mã hóa ký tự đặc biệt trong mật khẩu theo URL. Bật TLS với `sslmode=require` nếu URI chưa có tham số `sslmode`. [Hướng dẫn kết nối Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres)
+
+Tạo `.env` từ mẫu trong Learning rồi thay giá trị `DATABASE_URL` bằng URI đã điền. NestJS đọc file này qua `ConfigModule` trong `src/app.module.ts`. Lệnh migration đọc cùng file. Các biến đã đặt trong terminal được ưu tiên.
+
+```powershell
+if (-not (Test-Path services/learning-service/.env)) {
+  Copy-Item services/learning-service/.env.example services/learning-service/.env
+}
+notepad services/learning-service/.env
+```
+
+Sau khi lưu, chạy từ thư mục gốc của repo.
+
+```powershell
+npm.cmd run build -w @lms/contracts -w @lms/auth -w @lms/learning-service
+npm.cmd run migration:run -w @lms/learning-service
+npm.cmd run start:dev -w @lms/learning-service
+```
+
+Kiểm tra các bảng như `learning_item_completions` và `learning_certificates` trong **Table Editor** của Supabase. Gọi API xác minh với một mã chứng chỉ hợp lệ về định dạng nhưng chưa được cấp để kiểm tra NestJS truy vấn được database. API trả HTTP `200` với `data.valid: false`.
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:3004/api/v1/certificates/verify/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+```
+
+`test:mock` dùng dữ liệu giả trên máy và chạy riêng với cấu hình Supabase.
 
 ### Chạy API tiến độ
 
