@@ -1,0 +1,27 @@
+{
+  "algorithmVersion": "weighted-score-v1",
+  "question": {
+    "id": "00000000-0000-4000-8000-000000000311",
+    "skillId": "00000000-0000-4000-8000-000000000a01"
+  },
+  "attempts": [
+    {
+      "name": "masteryAttemptFirst",
+      "attemptId": "00000000-0000-4000-8000-000000000a11",
+      "eventId": "00000000-0000-4000-8000-000000000a21",
+      "gradedAt": "2026-01-15T10:00:00Z",
+      "score": 4,
+      "maxScore": 10,
+      "questionCount": 3
+    },
+    {
+      "name": "masteryAttemptSecond",
+      "attemptId": "00000000-0000-4000-8000-000000000a12",
+      "eventId": "00000000-0000-4000-8000-000000000a22",
+      "gradedAt": "2026-01-15T10:10:00Z",
+      "score": 18,
+      "maxScore": 20,
+      "questionCount": 5
+    }
+  ]
+}

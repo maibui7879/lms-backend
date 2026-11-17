@@ -1,6 +1,12 @@
 import type { Uuid } from '../http/common';
 import type { AccountStatus, UserRole } from '../http/auth';
-import type { CourseCompletionPolicy, CourseOutlineData } from '../http/course';
+import type {
+  CourseCompletionPolicy,
+  CourseOutlineData,
+  CourseRevisionData,
+  LearningItemData,
+  RequiredAssessment,
+} from '../http/course';
 import type { CourseProgressData } from '../http/learning';
 import type { AttemptStatus, GradingStatus, QuizType } from '../http/quiz';
 
@@ -27,6 +33,15 @@ export interface CourseContentReference {
 export interface CourseLearningStructure {
   outline: CourseOutlineData;
   completionPolicy: CourseCompletionPolicy;
+}
+/** Course supplies immutable, published revision metadata and item lineage. */
+export interface CourseItemMigrationContext {
+  revision: CourseRevisionData;
+  items: {
+    item: LearningItemData;
+    previousItems: LearningItemData[];
+    requiredAssessment: RequiredAssessment | null;
+  }[];
 }
 export interface CourseAccessQuery {
   userId: Uuid;
@@ -55,7 +70,13 @@ export interface GradedAssessmentSummary {
   passed: boolean;
   gradedAt: string;
   /** Aggregated question scores per author-assigned skill; no answer keys. */
-  skillScores: { skillId: Uuid; score: number; maxScore: number }[];
+  skillScores: {
+    skillId: Uuid;
+    score: number;
+    maxScore: number;
+    /** Questions graded for this skill in this attempt. Absent in legacy results. */
+    questionCount?: number;
+  }[];
 }
 export interface AttemptAccessData {
   attemptId: Uuid;
@@ -65,6 +86,19 @@ export interface AttemptAccessData {
   attemptStatus: AttemptStatus;
   gradingStatus: GradingStatus;
 }
+export interface QuizRecommendationContextQuery {
+  courseId: Uuid;
+  userId: Uuid;
+  assessmentVersion: number;
+}
+export interface QuizRecommendationContext extends QuizRecommendationContextQuery {
+  quizId: Uuid;
+  quizType: QuizType;
+  skillIds: Uuid[];
+  attemptsRemaining: number;
+  /** Whether this learner may start a new attempt for the requested version. */
+  canStart: boolean;
+}
 export type CourseProgressSummary = Omit<
   CourseProgressData,
   'userId' | 'enrollmentId'
@@ -72,6 +106,10 @@ export type CourseProgressSummary = Omit<
 export interface LearnerProgressSummary {
   userId: Uuid;
   progress: CourseProgressSummary;
+}
+export interface LearnerProgressDetail extends LearnerProgressSummary {
+  completedLessons: { lessonId: Uuid; title: string; completedAt: string }[];
+  lastActivityAt: string | null;
 }
 export interface LearnerAssessmentSummary {
   userId: Uuid;
