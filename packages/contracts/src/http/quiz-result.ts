@@ -36,6 +36,7 @@ export type QuizResultV2Data = {
       gradedAt: string;
     }
   | {
+    //khi chua chấm thì phải trả về null 
       gradingStatus: Exclude<GradingStatus, 'GRADED'>;
       score: null;
       maxScore: null;
