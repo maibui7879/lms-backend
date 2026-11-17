@@ -17,6 +17,7 @@ export interface SchemaTypes {
   CertificateData: Contracts.CertificateData;
   CertificateIssuedEvent: Contracts.CertificateIssuedEvent;
   CertificateIssuedPayload: Contracts.CertificateIssuedPayload;
+  CertificateRevocationData: Contracts.CertificateRevocationData;
   CertificateStatus: Contracts.CertificateStatus;
   CertificateVerificationData: Contracts.CertificateVerificationData;
   ChapterAccessData: Contracts.ChapterAccessData;
@@ -39,6 +40,7 @@ export interface SchemaTypes {
   CourseContentUpdatedEvent: Contracts.CourseContentUpdatedEvent;
   CourseContentUpdatedPayload: Contracts.CourseContentUpdatedPayload;
   CourseData: Contracts.CourseData;
+  CourseItemMigrationContext: Contracts.CourseItemMigrationContext;
   CourseLearnerData: Contracts.CourseLearnerData;
   CourseLearningStructure: Contracts.CourseLearningStructure;
   CourseOutlineData: Contracts.CourseOutlineData;
@@ -53,10 +55,15 @@ export interface SchemaTypes {
   CourseRevisionChangeData: Contracts.CourseRevisionChangeData;
   CourseRevisionData: Contracts.CourseRevisionData;
   CourseRevisionStatus: Contracts.CourseRevisionStatus;
+  CourseSkillData: Contracts.CourseSkillData;
+  CourseSkillPrerequisites: Contracts.CourseSkillPrerequisites;
+  CourseSkillStatus: Contracts.CourseSkillStatus;
+  CourseSkillsData: Contracts.CourseSkillsData;
   CourseStatus: Contracts.CourseStatus;
   CreateChapterRequest: Contracts.CreateChapterRequest;
   CreateCourseRequest: Contracts.CreateCourseRequest;
   CreateCourseRevisionRequest: Contracts.CreateCourseRevisionRequest;
+  CreateCourseSkillRequest: Contracts.CreateCourseSkillRequest;
   CreateDiscussionRequest: Contracts.CreateDiscussionRequest;
   CreateEnrollmentRequest: Contracts.CreateEnrollmentRequest;
   CreateEnrollmentResponse: Contracts.CreateEnrollmentResponse;
@@ -87,13 +94,22 @@ export interface SchemaTypes {
   ItemProgressData: Contracts.ItemProgressData;
   JwtClaims: Contracts.JwtClaims;
   LearnerAssessmentSummary: Contracts.LearnerAssessmentSummary;
+  LearnerProgressDetail: Contracts.LearnerProgressDetail;
   LearnerProgressSummary: Contracts.LearnerProgressSummary;
+  LearningAnalyticsData: Contracts.LearningAnalyticsData;
+  LearningAnalyticsQuery: Contracts.LearningAnalyticsQuery;
+  LearningDashboardCourse: Contracts.LearningDashboardCourse;
   LearningDashboardData: Contracts.LearningDashboardData;
   LearningItemContent: Contracts.LearningItemContent;
   LearningItemData: Contracts.LearningItemData;
+  LearningNextStep: Contracts.LearningNextStep;
+  LearningPercentBand: Contracts.LearningPercentBand;
+  LearningRecentQuiz: Contracts.LearningRecentQuiz;
+  LearningReportDateQuery: Contracts.LearningReportDateQuery;
   LearningResumeData: Contracts.LearningResumeData;
   LearningStatisticsData: Contracts.LearningStatisticsData;
   LearningStatus: Contracts.LearningStatus;
+  LearningWeakSkillsData: Contracts.LearningWeakSkillsData;
   LessonCompletedEvent: Contracts.LessonCompletedEvent;
   LessonCompletedPayload: Contracts.LessonCompletedPayload;
   LessonData: Contracts.LessonData;
@@ -104,6 +120,7 @@ export interface SchemaTypes {
   LoginResponse: Contracts.LoginResponse;
   LogoutRequest: Contracts.LogoutRequest;
   MasteryData: Contracts.MasteryData;
+  MasteryHistoryPoint: Contracts.MasteryHistoryPoint;
   MigrateCourseItemsRequest: Contracts.MigrateCourseItemsRequest;
   MigrationPolicy: Contracts.MigrationPolicy;
   MutationHeaders: Contracts.MutationHeaders;
@@ -122,6 +139,8 @@ export interface SchemaTypes {
   QuizData: Contracts.QuizData;
   QuizPlacement: Contracts.QuizPlacement;
   QuizPolicy: Contracts.QuizPolicy;
+  QuizRecommendationContext: Contracts.QuizRecommendationContext;
+  QuizRecommendationContextQuery: Contracts.QuizRecommendationContextQuery;
   QuizResultData: Contracts.QuizResultData;
   QuizResultResponse: Contracts.QuizResultResponse;
   QuizResultV2Data: Contracts.QuizResultV2Data;
@@ -143,11 +162,15 @@ export interface SchemaTypes {
   RevisionReorderRequest: Contracts.RevisionReorderRequest;
   RevisionUpdateType: Contracts.RevisionUpdateType;
   RevisionVersionRequest: Contracts.RevisionVersionRequest;
+  RevokeCertificateRequest: Contracts.RevokeCertificateRequest;
   SaveAnswersRequest: Contracts.SaveAnswersRequest;
   SaveResumeRequest: Contracts.SaveResumeRequest;
+  SaveSkillPrerequisitesRequest: Contracts.SaveSkillPrerequisitesRequest;
   SectionEndQuizRef: Contracts.SectionEndQuizRef;
   SessionData: Contracts.SessionData;
   SessionResponse: Contracts.SessionResponse;
+  SkillMasteryData: Contracts.SkillMasteryData;
+  SkillPrerequisiteEdge: Contracts.SkillPrerequisiteEdge;
   StartAttemptData: Contracts.StartAttemptData;
   StartAttemptRequest: Contracts.StartAttemptRequest;
   SubmitAttemptRequest: Contracts.SubmitAttemptRequest;
@@ -155,6 +178,7 @@ export interface SchemaTypes {
   UpdateChapterRequest: Contracts.UpdateChapterRequest;
   UpdateCompletionPolicyRequest: Contracts.UpdateCompletionPolicyRequest;
   UpdateCourseRequest: Contracts.UpdateCourseRequest;
+  UpdateCourseSkillRequest: Contracts.UpdateCourseSkillRequest;
   UpdateDiscussionRequest: Contracts.UpdateDiscussionRequest;
   UpdateLearningItemRequest: Contracts.UpdateLearningItemRequest;
   UpdateLessonRequest: Contracts.UpdateLessonRequest;
@@ -168,5 +192,6 @@ export interface SchemaTypes {
   UserRole: Contracts.UserRole;
   UserSummary: Contracts.UserSummary;
   Uuid: Contracts.Uuid;
+  ValidateCourseSkillsRequest: Contracts.ValidateCourseSkillsRequest;
   VersionRequest: Contracts.VersionRequest;
 }

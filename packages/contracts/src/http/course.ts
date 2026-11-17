@@ -180,6 +180,8 @@ export type LearningItemData = CreateLearningItemRequest & {
 };
 export interface LessonOutline extends LessonData {
   items: LearningItemData[];
+  /** Skills reinforced by this lesson in the published content snapshot. */
+  skillIds?: Uuid[];
 }
 export interface ChapterOutline extends ChapterData {
   lessons: LessonOutline[];
@@ -224,6 +226,8 @@ export interface EnrolledCourseData {
 export interface CourseLearnerData {
   userId: Uuid;
   enrollment: EnrollmentSnapshotData;
+  /** Course can provide the class of this enrollment. Null means unassigned. */
+  classId?: Uuid | null;
 }
 export interface DiscussionData {
   id: Uuid;

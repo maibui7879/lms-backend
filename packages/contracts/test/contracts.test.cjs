@@ -246,6 +246,22 @@ test('v1 events remain readable; v2 requires versioned grading evidence', () => 
     },
   };
   parseContract('AttemptGradedV2Event', v2);
+  const skillScore = { skillId: id, score: 7, maxScore: 10 };
+  const withSkill = (entry) => ({
+    ...v2,
+    payload: { ...v2.payload, skillScores: [entry] },
+  });
+  parseContract('AttemptGradedV2Event', withSkill(skillScore));
+  parseContract(
+    'AttemptGradedV2Event',
+    withSkill({ ...skillScore, questionCount: 3 }),
+  );
+  for (const questionCount of [0, -1, 1.5, '3', null]) {
+    invalid(
+      'AttemptGradedV2Event',
+      withSkill({ ...skillScore, questionCount }),
+    );
+  }
   invalid('AttemptGradedV2Event', {
     ...v2,
     payload: { ...v2.payload, passed: false },
@@ -323,21 +339,27 @@ test('certificates are versioned and preserve superseded history', () => {
     status: 'SUPERSEDED',
     supersededByCertificateId: id2,
   });
+  invalid('CertificateData', { ...certificate, status: 'INVALID' });
   parseContract('CertificateVerificationData', {
     valid: true,
     status: 'SUPERSEDED',
     courseTitle: 'Course',
-    recipientName: 'Student',
+    recipientName: null,
     issuedAt: time,
   });
-  invalid('CertificateData', { ...certificate, status: 'INVALID' });
-  parseContract('CertificateVerificationData', {
+  const unknown = {
     valid: false,
+    status: null,
+    courseTitle: null,
+    recipientName: null,
+    issuedAt: null,
+  };
+  parseContract('CertificateVerificationData', unknown);
+  parseContract('CertificateVerificationData', {
+    ...unknown,
     status: 'REVOKED',
-    courseTitle: 'Course',
-    recipientName: 'Student',
-    issuedAt: time,
   });
+  invalid('CertificateVerificationData', { ...unknown, status: 'NOT_FOUND' });
 });
 
 test('re-enrollment pins a new snapshot and exposes certificate revocation', () => {
