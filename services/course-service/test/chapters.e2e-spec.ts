@@ -131,6 +131,7 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
       courseId,
       revisionId: null,
       title: 'Chapter 2',
+      endSectionQuiz: null,
       order: 2,
       version: 1,
     });
@@ -149,6 +150,9 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
       .send({ title: 'Updated', expectedVersion: 1 })
       .expect(200);
     expect(updated.body.data.version).toBe(2);
+    expect(chapterRepository.update.mock.calls[0][1]).not.toHaveProperty(
+      'endSectionQuiz',
+    );
 
     chapterRepository.findOneBy.mockResolvedValue(chapter(chapterA, 1, 2));
     await request(app.getHttpServer())
@@ -161,6 +165,50 @@ describe('Chapter endpoints (HTTP with repository test doubles)', () => {
       .set('x-mock-user', 'instructorA')
       .send({ expectedVersion: 2 })
       .expect(204);
+  });
+
+  it('persists, returns, replaces and clears the chapter end-section quiz', async () => {
+    const quiz = {
+      quizId: chapterB,
+      assessmentVersion: 2,
+      passingScorePercent: 80,
+    };
+    const created = await request(app.getHttpServer())
+      .post(`/api/v1/courses/${courseId}/chapters`)
+      .set('x-mock-user', 'instructorA')
+      .send({ title: 'Quiz chapter', endSectionQuiz: quiz })
+      .expect(201);
+    expect(created.body.data.endSectionQuiz).toEqual(quiz);
+    expect(chapterRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ endSectionQuiz: quiz }),
+    );
+
+    chapterRepository.findOneBy.mockResolvedValue(chapter(chapterA, 1));
+    chapterRepository.findOneByOrFail.mockResolvedValue({
+      ...chapter(chapterA, 1, 2),
+      endSectionQuiz: quiz,
+    });
+    const updated = await request(app.getHttpServer())
+      .patch(`/api/v1/chapters/${chapterA}`)
+      .set('x-mock-user', 'instructorA')
+      .send({ title: 'Quiz chapter', expectedVersion: 1, endSectionQuiz: quiz })
+      .expect(200);
+    expect(updated.body.data.endSectionQuiz).toEqual(quiz);
+    expect(chapterRepository.update.mock.calls[0][1].endSectionQuiz).toEqual(
+      quiz,
+    );
+
+    chapterRepository.findOneByOrFail.mockResolvedValue({
+      ...chapter(chapterA, 1, 2),
+      endSectionQuiz: null,
+    });
+    const cleared = await request(app.getHttpServer())
+      .patch(`/api/v1/chapters/${chapterA}`)
+      .set('x-mock-user', 'instructorA')
+      .send({ title: 'Quiz chapter', expectedVersion: 1, endSectionQuiz: null })
+      .expect(200);
+    expect(cleared.body.data.endSectionQuiz).toBeNull();
+    expect(chapterRepository.update.mock.calls[1][1].endSectionQuiz).toBeNull();
   });
 
   it('reorders every chapter and returns a course outline', async () => {

@@ -2,7 +2,10 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import type { EnrollmentStatus } from '@lms/contracts';
 
 @Entity('enrollments')
-@Index(['courseId', 'userId'], { unique: true })
+@Index('IDX_enrollments_current_pair', ['courseId', 'userId'], {
+  unique: true,
+  where: `"status" IN ('ACTIVE', 'COMPLETED')`,
+})
 export class Enrollment {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

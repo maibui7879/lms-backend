@@ -11,7 +11,8 @@ import type {
   ChapterCompletionPolicy,
   UpdateCompletionPolicyRequest,
 } from '@lms/contracts';
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
+import { Enrollment } from '../enrollments/entities/enrollment.entity';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Course } from '../courses/entities/course.entity';
 import { CourseRevision } from '../course-revisions/entities/course-revision.entity';
@@ -61,6 +62,16 @@ export class CompletionPolicyService {
       contentVersion,
       status: 'PUBLISHED',
     });
+    if (
+      !revision &&
+      contentVersion !==
+        (course.initialPublishedContentVersion ??
+          (course.publishedRevisionId ? undefined : course.contentVersion))
+    )
+      throw new ConflictException({
+        code: 'CONTENT_VERSION_UNAVAILABLE',
+        message: 'No published snapshot exists for the requested version',
+      });
     const policy = await this.policies.findOneBy({ courseId, contentVersion });
     const content = await this.loadContent(courseId, revision?.id);
     if (policy) return this.toContract(course, policy);
@@ -109,7 +120,11 @@ export class CompletionPolicyService {
     const requiredItemIds = content.items
       .filter((item) => item.required)
       .map((item) => item.id);
-    this.validateAssessments(dto.requiredAssessments, content.items);
+    this.validateAssessments(
+      dto.requiredAssessments,
+      content.items,
+      content.chapters,
+    );
     const chapterPolicies = this.buildChapterPolicies(
       dto.chapterPolicies,
       content.chapters,
@@ -117,12 +132,7 @@ export class CompletionPolicyService {
       content.items,
     );
     const nextContentVersion = course.contentVersion + 1;
-    const current = await this.policies.findOne({
-      where: { courseId },
-      order: { contentVersion: 'DESC' },
-    });
     const policy = this.policies.create({
-      ...(current ?? {}),
       courseId,
       contentVersion: nextContentVersion,
       requiredItemIds,
@@ -132,13 +142,22 @@ export class CompletionPolicyService {
       assessmentRule: 'ANY_PASSED_ATTEMPT_SAME_VERSION',
       certificateEnabled: dto.certificateEnabled,
     });
-    const saved = await this.policies.save(policy);
-    const result = await this.courses.update(
-      { id: courseId, version: dto.expectedVersion },
-      { version: dto.expectedVersion + 1, contentVersion: nextContentVersion },
-    );
-    if (!result.affected)
-      throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
+    const saved = await this.policies.manager.transaction(async (manager) => {
+      const result = await manager.update(
+        Course,
+        { id: courseId, version: dto.expectedVersion },
+        {
+          version: dto.expectedVersion + 1,
+          contentVersion: nextContentVersion,
+        },
+      );
+      if (!result.affected)
+        throw this.versionConflict(
+          dto.expectedVersion,
+          dto.expectedVersion + 1,
+        );
+      return manager.save(CompletionPolicy, policy);
+    });
     return this.toContract(
       { ...course, contentVersion: nextContentVersion },
       saved,
@@ -148,6 +167,7 @@ export class CompletionPolicyService {
   private validateAssessments(
     assessments: UpdateCompletionPolicyRequest['requiredAssessments'],
     items: LearningItem[],
+    chapters: Chapter[] = [],
   ): void {
     const quizItems = new Map(
       items
@@ -162,7 +182,16 @@ export class CompletionPolicyService {
         );
       seen.add(assessment.quizId);
       const item = quizItems.get(assessment.quizId);
-      if (!item || item.assessmentVersion !== assessment.assessmentVersion)
+      const sectionQuiz = chapters.some(
+        (chapter) =>
+          chapter.endSectionQuiz?.quizId === assessment.quizId &&
+          chapter.endSectionQuiz.assessmentVersion ===
+            assessment.assessmentVersion,
+      );
+      if (
+        (!item || item.assessmentVersion !== assessment.assessmentVersion) &&
+        !sectionQuiz
+      )
         throw this.requirementsConflict(
           'Required assessment must reference a quiz item in this course with the same assessmentVersion',
         );
@@ -193,7 +222,9 @@ export class CompletionPolicyService {
           .map((lesson) => lesson.id),
       );
       const chapterItems = items.filter((item) => lessonIds.has(item.lessonId));
-      this.validateAssessments(policy.requiredAssessments, chapterItems);
+      this.validateAssessments(policy.requiredAssessments, chapterItems, [
+        chapter,
+      ]);
       return {
         chapterId: chapter.id,
         requiredItemIds: chapterItems
@@ -246,7 +277,9 @@ export class CompletionPolicyService {
         requiredItemIds: items
           .filter((item) => lessonIds.has(item.lessonId) && item.required)
           .map((item) => item.id),
-        requiredAssessments: [],
+        requiredAssessments: chapter.endSectionQuiz
+          ? [chapter.endSectionQuiz]
+          : [],
       };
     });
     return {
@@ -292,6 +325,14 @@ export class CompletionPolicyService {
       course.status !== 'PUBLISHED'
     )
       throw new ForbiddenException('Enrollment or course ownership required');
+    if (user.role !== 'ADMIN' && course.instructorId !== user.id) {
+      const enrollment = await this.policies.manager.findOneBy(Enrollment, {
+        courseId,
+        userId: user.id,
+        status: In(['ACTIVE', 'COMPLETED']),
+      });
+      if (!enrollment) throw new ForbiddenException('Enrollment required');
+    }
     return course;
   }
 

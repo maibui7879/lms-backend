@@ -4,7 +4,26 @@ Owner: chưa chốt tên. Workspace `@lms/course-service`, port mặc định 30
 
 ## Trạng thái và phạm vi
 
-Đã triển khai lát cắt `POST /api/v1/courses`: TypeORM PostgreSQL, đọc config/env, runtime validation, mock auth, error envelope và seed một draft course. `GET /` vẫn trả `Hello World!`. Chưa có JWT thật, migrations/health, chapter/lesson/item APIs, enrollment, review, internal APIs hoặc RabbitMQ; sáu giai đoạn bên dưới vẫn là lộ trình, không phải báo cáo đã hoàn thành.
+Đã có API course/chapter/lesson/item, completion policy, review/revision, enrollment, discussion, patch notice và internal learning structure/migration context. Swagger dùng contract chung tại `/docs`. Các mục lộ trình phía dưới là tài liệu lịch sử; không dùng chúng để suy ra kết quả kiểm thử hay trạng thái triển khai cloud.
+
+### Cập nhật schema và tích hợp
+
+Đợt sửa này bổ sung quiz cuối chapter, lịch sử ghi danh, ánh xạ nguồn revision, change log, notice, outbox và hàng đợi HTTP migration. Với database Course **đã có schema cũ**, sao lưu trước, đặt `DB_SYNC=false`, rồi chạy:
+
+```powershell
+npm.cmd run build -w @lms/course-service
+npm.cmd run migration:run -w @lms/course-service
+```
+
+Các migration hiện tại là bản nâng cấp schema cũ, không phải migration khởi tạo một database trống. Không chạy migration nâng cấp trên database đã được synchronize sang schema mới mà chưa đối chiếu migration history. Không tự suy đoán lineage cho revision được tạo trước bản sửa; cần đối chiếu dữ liệu gốc trước khi dùng chúng để migrate tiến độ.
+
+- `MOCK_AUTH=true` chỉ dành development/test. Khi tắt mock, Course xác minh JWT RS256 với `JWT_PUBLIC_KEY`, issuer `identity-service`, rồi gọi Identity qua `IDENTITY_URL` và `IDENTITY_SERVICE_TOKEN` để kiểm tra trạng thái/role hiện tại. Identity thiếu API access thì Course trả 503, không tự chấp nhận người dùng.
+- Internal development/test dùng `COURSE_SERVICE_TOKEN`. Staging/production dùng `INTERNAL_JWT_PUBLIC_KEY`, JWT issuer `lms-internal`, audience `course-service`, subject là service được phép, scope theo operationId và TTL không quá 5 phút.
+- Enrollment create/cancel ghi outbox cùng transaction. `RABBITMQ_URL` bật publisher confirm trên exchange `lms.events`; sự cố broker giữ nguyên event để retry, cùng eventId.
+- Revision CRITICAL với `MIGRATE_AFFECTED_ITEMS` tạo job bền vững cho item thêm/sửa. Dispatcher gọi Learning bằng `LEARNING_URL` và `LEARNING_SERVICE_TOKEN`, giữ nguyên payload/revisionId khi retry. Thiếu cấu hình thì job chưa được gửi. Không tự reset toàn bộ khóa hay đổi contentVersion enrollment.
+- Contract migration hiện nhận ID item thuộc revision đích. Xóa item không còn bản đích và thay đổi policy không có endpoint revision-policy riêng; không suy diễn chúng thành yêu cầu học lại một item khác. Policy của revision được kế thừa, ánh xạ ID và kiểm tra lúc xuất bản; không hỗ trợ sửa policy của course PUBLISHED trực tiếp.
+
+Migration và kiểm thử ghép với Supabase/Identity/Quiz/Learning thật phải được chạy riêng; test double không chứng minh các kết nối cloud đã hoạt động.
 
 Course sở hữu course/chapter/lesson/learning item, review history, enrollment và immutable requirements snapshots trong PostgreSQL riêng. Quiz sở hữu câu hỏi/điểm; Learning sở hữu tiến độ. Không join DB của hai service này.
 
