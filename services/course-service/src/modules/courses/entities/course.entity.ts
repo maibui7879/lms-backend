@@ -36,6 +36,10 @@ export class Course {
   @Column({ type: 'uuid', nullable: true })
   publishedRevisionId!: string | null;
 
+  /** Version of the immutable original (non-revision) content. */
+  @Column({ type: 'integer', nullable: true })
+  initialPublishedContentVersion!: number | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 

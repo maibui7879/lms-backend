@@ -10,6 +10,7 @@ import { LearningItem } from '../learning-items/entities/learning-item.entity';
 import { Lesson } from '../lessons/entities/lesson.entity';
 import { InternalController } from './internal.controller';
 import { InternalService } from './internal.service';
+import { InternalServiceGuard } from '../../common/internal-service.guard';
 
 @Module({
   imports: [
@@ -25,7 +26,7 @@ import { InternalService } from './internal.service';
     EnrollmentsModule,
   ],
   controllers: [InternalController],
-  providers: [InternalService],
+  providers: [InternalService, InternalServiceGuard],
   exports: [InternalService],
 })
 export class InternalModule {}

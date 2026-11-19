@@ -4,7 +4,10 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import type { CourseRevisionStatus } from '@lms/contracts';
+import type {
+  CourseRevisionStatus,
+  CourseCompletionPolicy,
+} from '@lms/contracts';
 
 @Entity('course_revisions')
 export class CourseRevision {
@@ -43,4 +46,16 @@ export class CourseRevision {
 
   @Column({ type: 'varchar', length: 40, default: 'KEEP_ENROLLED_VERSION' })
   migrationPolicy!: 'KEEP_ENROLLED_VERSION' | 'MIGRATE_AFFECTED_ITEMS';
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  sourceItemIds!: Record<string, string>;
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  sourceChapterIds!: Record<string, string>;
+
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  sourceLessonIds!: Record<string, string>;
+
+  @Column({ type: 'jsonb', nullable: true })
+  completionPolicy!: CourseCompletionPolicy | null;
 }

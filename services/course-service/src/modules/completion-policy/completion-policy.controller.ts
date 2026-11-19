@@ -7,7 +7,8 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { CourseAuthGuard as MockAuthGuard } from '../../common/course-auth.guard';
 import type {
   ApiResponse,
   AuthUser,

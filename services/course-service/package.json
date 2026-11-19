@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "migration:run": "node ../../node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
     "seed:course": "node dist/database/seeds/course.seed.js",
     "test:db": "node -e \"if (!process.env.TEST_DATABASE_URL) throw Error('TEST_DATABASE_URL is required')\" && node --experimental-vm-modules ../../node_modules/jest/bin/jest.js --config ./test/jest-e2e.json --runInBand courses.db.e2e-spec.ts",
     "deploy": "nest deploy",
