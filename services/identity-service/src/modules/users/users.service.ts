@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
@@ -16,6 +17,8 @@ import {
   RoleRequestStatus,
 } from './entities/role-request.entity';
 import { UserEntity } from './entities/user.entity';
+import * as argon2 from 'argon2';
+import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
 
 export { Role, UserEntity };
 
@@ -193,5 +196,60 @@ export class UsersService {
 
       return request;
     });
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<UserEntity> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    if (dto.displayName !== undefined) {
+      user.displayName = dto.displayName.trim();
+    }
+    if (dto.bio !== undefined) {
+      user.bio = dto.bio.trim() || null;
+    }
+    if (dto.avatarUrl !== undefined) {
+      user.avatarUrl = dto.avatarUrl.trim() || null;
+    }
+
+    return this.userRepo.save(user);
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    const isCurrentValid = await argon2.verify(
+      user.passwordHash,
+      dto.currentPassword,
+    );
+    if (!isCurrentValid) {
+      throw new UnauthorizedException({
+        code: 'INVALID_CURRENT_PASSWORD',
+        message: 'Current password is incorrect',
+      });
+    }
+
+    if (dto.currentPassword === dto.newPassword) {
+      throw new BadRequestException({
+        code: 'SAME_PASSWORD',
+        message: 'New password must be different from current password',
+      });
+    }
+
+    user.passwordHash = await argon2.hash(dto.newPassword, {
+      type: argon2.argon2id,
+    });
+    await this.userRepo.save(user);
   }
 }

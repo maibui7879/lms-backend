@@ -1,10 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendOtpDto, VerifyEmailDto } from './dto/verify-email.dto';
+import { JwtAuthGuard } from '../../common/auth/guards';
+import { CurrentUser } from '../../common/auth/auth.decorators';
+import type { JwtAccessPayload } from '../../common/auth/jwt-payload.interface';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+import type { Request } from 'express';
 
 @ApiTags('Auth')
 @Controller('api/v1/auth')
@@ -29,10 +34,12 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Credentials verified' })
   @ApiResponse({ status: 401, description: 'Invalid email or password' })
   @ApiResponse({ status: 403, description: 'Account is inactive' })
-  async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(@Body() dto: LoginDto, @Req() req: Request): Promise<{ accessToken: string; refreshToken: string; user: { id: string; email: string; displayName: string; role: import("@lms/contracts").UserRole; }; }> {
+    return this.authService.login(dto, {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
   }
-
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify registration email with 6-digit OTP' })
@@ -58,5 +65,31 @@ export class AuthController {
       algorithm: 'RS256',
       publicKey,
     };
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rotate refresh token and issue new access/refresh token pair' })
+  async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+    return this.authService.refreshTokens(dto.refreshToken, {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke current refresh token (logout current session)' })
+  async logout(@Body() dto: RefreshTokenDto) {
+    return this.authService.logout(dto.refreshToken);
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Revoke all active refresh tokens of current user' })
+  async logoutAll(@CurrentUser() user: JwtAccessPayload) {
+    return this.authService.logoutAll(user.sub);
   }
 }

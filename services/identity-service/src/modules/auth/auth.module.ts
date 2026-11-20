@@ -1,42 +1,48 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JwtStrategy } from '../../common/auth/jwt.strategy';
+import { JwtAuthGuard, RolesGuard } from '../../common/auth/guards';
 import { MailService } from '../mail/mail.service';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { EmailOtpEntity } from './entities/email-otp.entity';
+import { RefreshTokenEntity } from './entities/refresh-token.entity';
 
 @Module({
   imports: [
+    ConfigModule,
     UsersModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-    TypeOrmModule.forFeature([EmailOtpEntity]),
+    TypeOrmModule.forFeature([EmailOtpEntity, RefreshTokenEntity]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        privateKey: config
-          .getOrThrow<string>('JWT_PRIVATE_KEY')
-          .replace(/\\n/g, '\n'),
-        publicKey: config
-          .getOrThrow<string>('JWT_PUBLIC_KEY')
-          .replace(/\\n/g, '\n'),
-        signOptions: {
-          algorithm: 'RS256',
-          issuer: config.get<string>('JWT_ISSUER', 'lms-identity'),
-          expiresIn: Number(
-            config.get<number>('ACCESS_TOKEN_TTL_SECONDS', 900),
-          ),
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const privateKey = configService
+          .get<string>('JWT_PRIVATE_KEY')
+          ?.replace(/\\n/g, '\n');
+        const publicKey = configService
+          .get<string>('JWT_PUBLIC_KEY')
+          ?.replace(/\\n/g, '\n');
+
+        return {
+          privateKey,
+          publicKey,
+          signOptions: {
+            algorithm: 'RS256',
+            expiresIn: (configService.get<string>('JWT_ACCESS_EXPIRES_IN') ||
+              '15m') as any,
+          },
+          verifyOptions: {
+            algorithms: ['RS256'],
+          },
+        };
+      },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, MailService, JwtStrategy],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, MailService, JwtAuthGuard, RolesGuard],
+  exports: [AuthService, JwtModule, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}

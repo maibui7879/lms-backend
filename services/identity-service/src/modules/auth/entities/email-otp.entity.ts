@@ -29,4 +29,6 @@ export class EmailOtpEntity {
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
+  attemptCount: number;
+  codeHash: string;
 }

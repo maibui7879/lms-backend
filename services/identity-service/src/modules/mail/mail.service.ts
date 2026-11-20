@@ -4,6 +4,9 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
+  sendVerificationOtp(email: string, code: string, ttlMinutes: number) {
+    throw new Error('Method not implemented.');
+  }
   private readonly logger = new Logger(MailService.name);
   private readonly transporter: nodemailer.Transporter;
 

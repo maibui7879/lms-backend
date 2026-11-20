@@ -25,6 +25,7 @@ import {
 import { AdminUpdateRoleDto, Role } from './dto/update-role.dto';
 import { RoleRequestStatus } from './entities/role-request.entity';
 import { UsersService } from './users.service';
+import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -120,6 +121,37 @@ export class UsersController {
       email: updated.email,
       displayName: updated.displayName,
       role: updated.role,
+    };
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Update current user profile (displayName, bio, avatarUrl)' })
+  async updateMe(
+    @CurrentUser() currentUser: JwtAccessPayload,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    const updated = await this.usersService.updateProfile(currentUser.sub, dto);
+    return {
+      id: updated.id,
+      email: updated.email,
+      displayName: updated.displayName,
+      role: updated.role,
+      status: updated.status,
+      avatarUrl: updated.avatarUrl ?? null,
+      bio: updated.bio ?? null,
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  @Patch('me/password')
+  @ApiOperation({ summary: 'Change current user password' })
+  async changePassword(
+    @CurrentUser() currentUser: JwtAccessPayload,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.usersService.changePassword(currentUser.sub, dto);
+    return {
+      message: 'Password changed successfully. Please log in again on other devices.',
     };
   }
 }
