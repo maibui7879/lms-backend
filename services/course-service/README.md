@@ -4,11 +4,39 @@ Owner: chưa chốt tên. Workspace `@lms/course-service`, port mặc định 30
 
 ## Trạng thái và phạm vi
 
-Đã triển khai lát cắt `POST /api/v1/courses`: TypeORM PostgreSQL, đọc config/env, runtime validation, mock auth, error envelope và seed một draft course. `GET /` vẫn trả `Hello World!`. Chưa có JWT thật, migrations/health, chapter/lesson/item APIs, enrollment, review, internal APIs hoặc RabbitMQ; sáu giai đoạn bên dưới vẫn là lộ trình, không phải báo cáo đã hoàn thành.
+Đã có API course/chapter/lesson/item, completion policy, review/revision, enrollment, discussion, patch notice và internal learning structure/migration context. Swagger dùng contract chung tại `/docs`. Các mục lộ trình phía dưới là tài liệu lịch sử; không dùng chúng để suy ra kết quả kiểm thử hay trạng thái triển khai cloud.
+
+### Cập nhật schema và tích hợp
+
+Đợt sửa này bổ sung quiz cuối chapter, lịch sử ghi danh, ánh xạ nguồn revision, change log, notice, outbox và hàng đợi HTTP migration. Với database Course **đã có schema cũ**, sao lưu trước, đặt `DB_SYNC=false`, rồi chạy:
+
+```powershell
+npm.cmd run build -w @lms/course-service
+npm.cmd run migration:run -w @lms/course-service
+```
+
+Các migration hiện tại là bản nâng cấp schema cũ, không phải migration khởi tạo một database trống. Không chạy migration nâng cấp trên database đã được synchronize sang schema mới mà chưa đối chiếu migration history. Không tự suy đoán lineage cho revision được tạo trước bản sửa; cần đối chiếu dữ liệu gốc trước khi dùng chúng để migrate tiến độ.
+
+- `MOCK_AUTH=true` chỉ dành development/test. Khi tắt mock, Course xác minh JWT RS256 với `JWT_PUBLIC_KEY`, issuer `identity-service`, rồi gọi Identity qua `IDENTITY_URL` và `IDENTITY_SERVICE_TOKEN` để kiểm tra trạng thái/role hiện tại. Identity thiếu API access thì Course trả 503, không tự chấp nhận người dùng.
+- Internal development/test dùng `COURSE_SERVICE_TOKEN`. Staging/production dùng `INTERNAL_JWT_PUBLIC_KEY`, JWT issuer `lms-internal`, audience `course-service`, subject là service được phép, scope theo operationId và TTL không quá 5 phút.
+- Enrollment create/cancel ghi outbox cùng transaction. `RABBITMQ_URL` bật publisher confirm trên exchange `lms.events`; sự cố broker giữ nguyên event để retry, cùng eventId.
+- Revision CRITICAL với `MIGRATE_AFFECTED_ITEMS` tạo job bền vững cho item thêm/sửa. Dispatcher gọi Learning bằng `LEARNING_URL` và `LEARNING_SERVICE_TOKEN`, giữ nguyên payload/revisionId khi retry. Thiếu cấu hình thì job chưa được gửi. Không tự reset toàn bộ khóa hay đổi contentVersion enrollment.
+- Contract migration hiện nhận ID item thuộc revision đích. Xóa item không còn bản đích và thay đổi policy không có endpoint revision-policy riêng; không suy diễn chúng thành yêu cầu học lại một item khác. Policy của revision được kế thừa, ánh xạ ID và kiểm tra lúc xuất bản; không hỗ trợ sửa policy của course PUBLISHED trực tiếp.
+
+Migration và kiểm thử ghép với Supabase/Identity/Quiz/Learning thật phải được chạy riêng; test double không chứng minh các kết nối cloud đã hoạt động.
 
 Course sở hữu course/chapter/lesson/learning item, review history, enrollment và immutable requirements snapshots trong PostgreSQL riêng. Quiz sở hữu câu hỏi/điểm; Learning sở hữu tiến độ. Không join DB của hai service này.
 
 ## Chạy thử POST tạo khóa học với PostgreSQL/Supabase dev
+
+## Swagger
+
+Course Service phục vụ Swagger UI từ contract OpenAPI dùng chung:
+
+- Swagger UI: `http://127.0.0.1:3002/docs`
+- OpenAPI JSON: `http://127.0.0.1:3002/docs-json`
+
+Contract được đọc từ [Course OpenAPI](../../packages/contracts/openapi/course.json), vì vậy các endpoint, schema, role và mô tả trên Swagger luôn lấy từ contract hiện tại. Sau khi sửa contract, chạy lại bước generate rồi khởi động lại Course Service để Swagger nhận phiên bản mới.
 
 Từ root repo: `npm.cmd ci`, `npm.cmd run build -w @lms/contracts`, `npm.cmd run build -w @lms/auth`. Dependency `@lms/auth` đã được khai báo, không cần install lại. Copy [env example](.env.example) sang `.env` trong thư mục service, rồi đặt:
 
@@ -62,7 +90,7 @@ Kiểm tra cả biến môi trường PowerShell đang giữ vì chúng ưu tiê
 HTTP tests mặc định dùng repository test double và được ghi tên rõ; test ghi PostgreSQL thật chạy riêng bằng database **disposable có tên kết thúc `_test`**:
 
 ```powershell
-$env:TEST_DATABASE_URL='postgresql://TEST_USER:TEST_PASSWORD@127.0.0.1:5432/course_endpoint_test'
+$env:TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 npm.cmd run test:db -w @lms/course-service
 Remove-Item Env:TEST_DATABASE_URL
 ```
@@ -232,3 +260,9 @@ npm.cmd run test:e2e -w @lms/course-service -- --runInBand
 Acceptance tests cần bổ sung: Instructor khác không sửa course; Student không review; reject thiếu lý do; published content không sửa; stale version/reorder sai parent; enrollment trùng và course draft; snapshot/version đúng; outbox không mất khi crash; access dependency unavailable; canceled enrollment bị chặn; discussion parent/author đúng course.
 
 PR bàn giao cho Quiz/Learning phải nêu provider routes đã chạy, policy snapshot, event sample đã validate và failure paths. Dataset/seed chỉ làm sau review contracts, theo [IDs chung](../../packages/contracts/fixtures/ids.json), idempotent và không tạo foreign key xuyên DB. Scaffold test pass chưa đáp ứng các acceptance trên.
+
+## Revision và critical update
+
+Course IN_REVIEW bị khóa chỉnh sửa. Instructor phải chờ Admin REJECT để sửa lại. Course PUBLISHED chỉ được thay đổi qua CourseRevision; enrollment cũ tiếp tục dùng contentVersion đã pin.
+
+Revision NORMAL chỉ áp dụng cho learner mới. Revision CRITICAL có thể tạo patch notice và gọi Learning migration theo item. Item không thay đổi giữ COMPLETED; item bị ảnh hưởng có thể thành OUTDATED hoặc RESET. Không tự động reset toàn bộ course và không xóa attempt quiz cũ.

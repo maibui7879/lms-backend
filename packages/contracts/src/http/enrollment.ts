@@ -19,7 +19,11 @@ export interface EnrollmentData {
 
 export type CreateEnrollmentResponse = ApiResponse<EnrollmentData>;
 
-/** New enrollment APIs pin the requirements snapshot; legacy data remains readable. */
+/**
+ * New enrollment APIs pin the requirements snapshot. A new enrollment is
+ * created when a learner re-enrolls after CANCELLED; enrolledAt is the start
+ * of that learning session.
+ */
 export interface EnrollmentSnapshotData extends EnrollmentData {
   contentVersion: number;
 }

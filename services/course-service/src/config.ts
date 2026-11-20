@@ -1,6 +1,25 @@
 import { resolve } from 'node:path';
 import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { Course } from './courses/entities/course.entity';
+import { Course } from './modules/courses/entities/course.entity';
+import { EnrollmentOutboxEvent } from './modules/outbox/enrollment-outbox.entity';
+import { EnrollmentOutbox1795132800000 } from './database/migrations/1795132800000-enrollment-outbox';
+import { RevisionMetadataDiscussions1795132801000 } from './database/migrations/1795132801000-revision-metadata-discussions';
+import { CourseContractAlignment1795132800001 } from './database/migrations/1795132800001-course-contract-alignment';
+import { CourseMigrationDispatch } from './modules/outbox/course-migration-dispatch';
+import { CourseMigrationDispatch1795132802000 } from './database/migrations/1795132802000-course-migration-dispatch';
+import { Chapter } from './modules/chapters/entities/chapter.entity';
+import { Lesson } from './modules/lessons/entities/lesson.entity';
+import { LearningItem } from './modules/learning-items/entities/learning-item.entity';
+import { CompletionPolicy } from './modules/completion-policy/entities/completion-policy.entity';
+import { Enrollment } from './modules/enrollments/entities/enrollment.entity';
+import { CourseReview } from './modules/course-revisions/entities/course-review.entity';
+import { CourseRevision } from './modules/course-revisions/entities/course-revision.entity';
+import { Discussion } from './modules/discussions/discussion.entity';
+import {
+  CoursePatchNotice,
+  CoursePatchNoticeRead,
+  CourseRevisionChange,
+} from './modules/revision-metadata/entities';
 
 export const envFiles = [
   resolve(__dirname, '../.env'),
@@ -57,8 +76,29 @@ export function databaseOptions(
   return {
     type: 'postgres',
     url: config.DATABASE_URL as string,
-    entities: [Course],
+    entities: [
+      EnrollmentOutboxEvent,
+      CourseMigrationDispatch,
+      Course,
+      Chapter,
+      Lesson,
+      LearningItem,
+      CompletionPolicy,
+      Enrollment,
+      CourseReview,
+      CourseRevision,
+      Discussion,
+      CoursePatchNotice,
+      CoursePatchNoticeRead,
+      CourseRevisionChange,
+    ],
     synchronize: config.DB_SYNC === 'true',
+    migrations: [
+      EnrollmentOutbox1795132800000,
+      CourseContractAlignment1795132800001,
+      RevisionMetadataDiscussions1795132801000,
+      CourseMigrationDispatch1795132802000,
+    ],
     retryAttempts: 1,
     // Keep TLS parameters from the provider URL; never disable certificate verification here.
     logging: false,

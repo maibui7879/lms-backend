@@ -5,6 +5,7 @@ export interface EndpointContract {
   service: 'identity' | 'course' | 'quiz' | 'learning';
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
   path: string;
+  description?: string;
   access:
     | 'PUBLIC'
     | 'AUTHENTICATED'
@@ -19,6 +20,7 @@ export interface EndpointContract {
   request?: string;
   query?: string;
   response?: string;
+  binaryResponse?: 'application/pdf';
   list?: boolean;
   nullable?: boolean;
   success: 200 | 201 | 204;
@@ -32,6 +34,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/auth/register',
     access: 'PUBLIC',
+    description:
+      'Đăng ký tài khoản learner mới; chỉ chấp nhận role STUDENT, chuẩn hóa email và trả thông tin profile không chứa password.',
     request: 'RegisterRequest',
     response: 'UserProfile',
     success: 201,
@@ -42,6 +46,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/auth/login',
     access: 'PUBLIC',
+    description:
+      'Xác thực email và password của tài khoản ACTIVE, sau đó cấp access token và refresh token.',
     request: 'LoginRequest',
     response: 'SessionData',
     success: 200,
@@ -52,6 +58,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/auth/refresh',
     access: 'PUBLIC',
+    description:
+      'Đổi refresh token hợp lệ lấy access token mới mà không cần đăng nhập lại.',
     request: 'RefreshSessionRequest',
     response: 'SessionData',
     success: 200,
@@ -62,6 +70,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/auth/logout',
     access: 'PUBLIC',
+    description:
+      'Đăng xuất phiên hiện tại bằng cách thu hồi refresh token được gửi lên.',
     request: 'LogoutRequest',
     success: 204,
   },
@@ -71,6 +81,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/users/me',
     access: 'AUTHENTICATED',
+    description: 'Lấy profile và trạng thái tài khoản của user đang đăng nhập.',
     response: 'UserProfile',
     success: 200,
   },
@@ -80,6 +91,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/users/me',
     access: 'AUTHENTICATED',
+    description:
+      'Cập nhật thông tin profile của user đang đăng nhập và kiểm tra expectedVersion để tránh ghi đè dữ liệu mới.',
     request: 'UpdateProfileRequest',
     response: 'UserProfile',
     success: 200,
@@ -90,6 +103,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/admin/users',
     access: 'ADMIN',
+    description: 'Liệt kê user cho admin theo bộ lọc và phân trang.',
     query: 'AdminUserQuery',
     response: 'UserSummary',
     list: true,
@@ -101,6 +115,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/admin/users/{id}/status',
     access: 'ADMIN',
+    description:
+      'Đổi trạng thái ACTIVE hoặc INACTIVE của user, ghi audit và kiểm tra expectedVersion.',
     request: 'UpdateAccountStatusRequest',
     response: 'UserProfile',
     success: 200,
@@ -111,6 +127,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/admin/users/{id}/role',
     access: 'ADMIN',
+    description:
+      'Đổi role của user bởi admin, bắt buộc lưu reason và ghi audit.',
     request: 'UpdateUserRoleRequest',
     response: 'UserProfile',
     success: 200,
@@ -121,6 +139,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/admin/users/{id}/audit',
     access: 'ADMIN',
+    description: 'Liệt kê lịch sử thay đổi trạng thái và role của một user.',
     query: 'PageQuery',
     response: 'UserAuditData',
     list: true,
@@ -132,6 +151,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/courses',
     access: 'INSTRUCTOR',
+    description:
+      'Tạo course mới cho instructor; course bắt đầu ở DRAFT và gắn ownership cho người tạo.',
     request: 'CreateCourseRequest',
     response: 'CourseData',
     success: 201,
@@ -142,6 +163,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/courses',
     access: 'PUBLIC',
+    description:
+      'Liệt kê các course mà user được phép xem theo bộ lọc và phân trang; public chỉ thấy course PUBLISHED.',
     query: 'CourseQuery',
     response: 'CourseData',
     list: true,
@@ -153,6 +176,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/courses/{id}',
     access: 'PUBLIC',
+    description: 'Lấy thông tin chi tiết của course theo quyền xem hiện tại.',
     response: 'CourseData',
     success: 200,
   },
@@ -162,6 +186,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/courses/{id}',
     access: 'COURSE_OWNER',
+    description:
+      'Cập nhật thông tin course DRAFT hoặc REJECTED khi expectedVersion khớp.',
     request: 'UpdateCourseRequest',
     response: 'CourseData',
     success: 200,
@@ -172,6 +198,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'delete',
     path: '/api/v1/courses/{id}',
     access: 'COURSE_OWNER',
+    description:
+      'Xóa course chỉ khi còn DRAFT hoặc REJECTED và chưa có enrollment.',
     request: 'VersionRequest',
     success: 204,
   },
@@ -181,6 +209,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/courses/{id}/submit-review',
     access: 'COURSE_OWNER',
+    description:
+      'Gửi course từ DRAFT hoặc REJECTED sang IN_REVIEW để admin duyệt.',
     request: 'VersionRequest',
     response: 'CourseData',
     success: 200,
@@ -191,6 +221,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/admin/courses/review-queue',
     access: 'ADMIN',
+    description: 'Liệt kê các course đang chờ admin review theo phân trang.',
     query: 'PageQuery',
     response: 'CourseData',
     list: true,
@@ -202,6 +233,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/admin/courses/{id}/review',
     access: 'ADMIN',
+    description:
+      'Admin duyệt hoặc từ chối course IN_REVIEW, lưu reason và chuyển trạng thái tương ứng.',
     request: 'ReviewCourseRequest',
     response: 'CourseReviewData',
     success: 200,
@@ -212,10 +245,104 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/courses/{id}/reviews',
     access: 'COURSE_OWNER',
+    description:
+      'Liệt kê lịch sử review của course, gồm quyết định, reviewer và reason.',
     query: 'PageQuery',
     response: 'CourseReviewData',
     list: true,
     success: 200,
+  },
+  {
+    operationId: 'createCourseRevision',
+    service: 'course',
+    method: 'post',
+    path: '/api/v1/courses/{id}/revisions',
+    access: 'COURSE_OWNER',
+    description:
+      'Tạo một revision DRAFT từ contentVersion đang public để tác giả có thể bổ sung hoặc chỉnh sửa nội dung mà không ảnh hưởng learner hiện tại.',
+    request: 'CreateCourseRevisionRequest',
+    response: 'CourseRevisionData',
+    success: 201,
+  },
+  {
+    operationId: 'listCourseRevisions',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/courses/{id}/revisions',
+    access: 'COURSE_OWNER',
+    description:
+      'Liệt kê các revision của course để owner theo dõi bản đang DRAFT, IN_REVIEW, REJECTED hoặc đã PUBLISHED.',
+    query: 'PageQuery',
+    response: 'CourseRevisionData',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'getCourseRevision',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/course-revisions/{id}',
+    access: 'COURSE_OWNER',
+    description: 'Lấy metadata và trạng thái của một revision cụ thể.',
+    response: 'CourseRevisionData',
+    success: 200,
+  },
+  {
+    operationId: 'submitCourseRevisionReview',
+    service: 'course',
+    method: 'post',
+    path: '/api/v1/course-revisions/{id}/submit-review',
+    access: 'COURSE_OWNER',
+    description:
+      'Gửi revision DRAFT hoặc REJECTED sang IN_REVIEW; server kiểm tra toàn bộ cấu trúc, quiz, assessment và quan hệ nội dung trước khi gửi admin.',
+    request: 'VersionRequest',
+    response: 'CourseRevisionData',
+    success: 200,
+  },
+  {
+    operationId: 'reviewCourseRevision',
+    service: 'course',
+    method: 'post',
+    path: '/api/v1/admin/course-revisions/{id}/review',
+    access: 'ADMIN',
+    description:
+      'Admin duyệt hoặc từ chối revision IN_REVIEW; khi APPROVE, revision trở thành contentVersion mới và course vẫn giữ trạng thái PUBLISHED.',
+    request: 'ReviewCourseRevisionRequest',
+    response: 'CourseRevisionData',
+    success: 200,
+  },
+  {
+    operationId: 'listCourseRevisionChanges',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/course-revisions/{id}/changes',
+    access: 'COURSE_OWNER',
+    description:
+      'Liệt kê chapter, lesson, learning item hoặc quiz đã được thêm, sửa hoặc xóa trong một revision; dùng để audit và xác định nội dung cần migration.',
+    response: 'CourseRevisionChangeData',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'listCoursePatchNotices',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/courses/{id}/patch-notices',
+    access: 'ENROLLED',
+    description:
+      'Liệt kê thông báo thay đổi nội dung của course mà learner có quyền xem, bao gồm cảnh báo critical và yêu cầu học lại nếu có.',
+    response: 'CoursePatchNoticeData',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'markCoursePatchNoticeRead',
+    service: 'course',
+    method: 'post',
+    path: '/api/v1/patch-notices/{id}/read',
+    access: 'AUTHENTICATED',
+    description: 'Ghi nhận learner đã đọc một thông báo thay đổi nội dung.',
+    success: 204,
   },
   {
     operationId: 'getCourseOutline',
@@ -223,6 +350,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/courses/{id}/outline',
     access: 'ENROLLED',
+    description:
+      'Lấy cấu trúc chapter, lesson và learning item của course theo contentVersion hoặc quyền truy cập.',
     response: 'CourseOutlineData',
     success: 200,
   },
@@ -232,6 +361,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/courses/{id}/completion-policy',
     access: 'ENROLLED',
+    description: 'Lấy policy xác định điều kiện learner hoàn thành course.',
     response: 'CourseCompletionPolicy',
     success: 200,
   },
@@ -241,6 +371,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'put',
     path: '/api/v1/courses/{id}/completion-policy',
     access: 'COURSE_OWNER',
+    description:
+      'Cập nhật completion policy của course với expectedVersion và kiểm tra các required item/assessment hợp lệ.',
     request: 'UpdateCompletionPolicyRequest',
     response: 'CourseCompletionPolicy',
     success: 200,
@@ -251,6 +383,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/courses/{id}/chapters',
     access: 'COURSE_OWNER',
+    description:
+      'Tạo chapter mới trong revision DRAFT của course; không thay đổi contentVersion đang public.',
     request: 'CreateChapterRequest',
     response: 'ChapterData',
     success: 201,
@@ -261,6 +395,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/chapters/{id}',
     access: 'COURSE_OWNER',
+    description:
+      'Cập nhật chapter thuộc revision DRAFT khi expectedVersion và revisionId khớp.',
     request: 'UpdateChapterRequest',
     response: 'ChapterData',
     success: 200,
@@ -271,7 +407,9 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'delete',
     path: '/api/v1/chapters/{id}',
     access: 'COURSE_OWNER',
-    request: 'VersionRequest',
+    description:
+      'Xóa chapter khỏi revision DRAFT khi revisionId và expectedVersion khớp.',
+    request: 'RevisionVersionRequest',
     success: 204,
   },
   {
@@ -280,7 +418,9 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'put',
     path: '/api/v1/courses/{id}/chapters/order',
     access: 'COURSE_OWNER',
-    request: 'ReorderRequest',
+    description:
+      'Sắp xếp lại chapter trong revision DRAFT bằng danh sách ID đầy đủ và version của revision.',
+    request: 'RevisionReorderRequest',
     response: 'CourseOutlineData',
     success: 200,
   },
@@ -290,6 +430,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/chapters/{id}/lessons',
     access: 'COURSE_OWNER',
+    description: 'Tạo lesson mới trong chapter thuộc revision DRAFT.',
     request: 'CreateLessonRequest',
     response: 'LessonData',
     success: 201,
@@ -300,6 +441,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/lessons/{id}',
     access: 'COURSE_OWNER',
+    description:
+      'Cập nhật lesson thuộc revision DRAFT khi expectedVersion và revisionId khớp.',
     request: 'UpdateLessonRequest',
     response: 'LessonData',
     success: 200,
@@ -310,7 +453,9 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'delete',
     path: '/api/v1/lessons/{id}',
     access: 'COURSE_OWNER',
-    request: 'VersionRequest',
+    description:
+      'Xóa lesson khỏi revision DRAFT khi revisionId và expectedVersion khớp.',
+    request: 'RevisionVersionRequest',
     success: 204,
   },
   {
@@ -319,7 +464,9 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'put',
     path: '/api/v1/chapters/{id}/lessons/order',
     access: 'COURSE_OWNER',
-    request: 'ReorderRequest',
+    description:
+      'Sắp xếp lại lesson trong revision DRAFT bằng danh sách ID và version của revision.',
+    request: 'RevisionReorderRequest',
     response: 'CourseOutlineData',
     success: 200,
   },
@@ -329,6 +476,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/lessons/{id}/items',
     access: 'COURSE_OWNER',
+    description:
+      'Tạo learning item VIDEO, READING hoặc QUIZ trong lesson thuộc revision DRAFT.',
     request: 'CreateLearningItemRequest',
     response: 'LearningItemData',
     success: 201,
@@ -339,6 +488,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/learning-items/{id}',
     access: 'COURSE_OWNER',
+    description:
+      'Cập nhật learning item thuộc revision DRAFT khi expectedVersion và revisionId khớp.',
     request: 'UpdateLearningItemRequest',
     response: 'LearningItemData',
     success: 200,
@@ -349,7 +500,9 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'delete',
     path: '/api/v1/learning-items/{id}',
     access: 'COURSE_OWNER',
-    request: 'VersionRequest',
+    description:
+      'Xóa learning item khỏi revision DRAFT khi revisionId và expectedVersion khớp.',
+    request: 'RevisionVersionRequest',
     success: 204,
   },
   {
@@ -358,7 +511,9 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'put',
     path: '/api/v1/lessons/{id}/items/order',
     access: 'COURSE_OWNER',
-    request: 'ReorderRequest',
+    description:
+      'Sắp xếp lại learning item trong revision DRAFT bằng danh sách ID và version của revision.',
+    request: 'RevisionReorderRequest',
     response: 'CourseOutlineData',
     success: 200,
   },
@@ -368,6 +523,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/courses/{id}/enrollments',
     access: 'STUDENT',
+    description:
+      'Chỉ ghi danh course PUBLISHED. Nếu learner đã có enrollment ACTIVE hoặc COMPLETED thì trả ALREADY_ENROLLED; nếu enrollment cũ là CANCELLED thì tạo enrollment mới, pin contentVersion hiện tại và dùng enrolledAt làm mốc bắt đầu phiên học mới.',
     request: 'CreateEnrollmentRequest',
     response: 'EnrollmentSnapshotData',
     success: 201,
@@ -378,6 +535,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/enrollments/me',
     access: 'AUTHENTICATED',
+    description:
+      'Liệt kê các enrollment của user đang đăng nhập theo trạng thái và phân trang.',
     query: 'PageQuery',
     response: 'EnrolledCourseData',
     list: true,
@@ -389,6 +548,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'delete',
     path: '/api/v1/enrollments/{id}',
     access: 'AUTHENTICATED',
+    description:
+      'Hủy enrollment thuộc user hiện tại khi trạng thái và điều kiện nghiệp vụ cho phép.',
     success: 204,
   },
   {
@@ -397,6 +558,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/instructor/courses',
     access: 'INSTRUCTOR',
+    description:
+      'Liệt kê các course do instructor hiện tại sở hữu theo trạng thái và phân trang.',
     query: 'InstructorCourseQuery',
     response: 'CourseData',
     list: true,
@@ -408,6 +571,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/courses/{id}/learners',
     access: 'COURSE_OWNER',
+    description: 'Liệt kê learner đã enroll vào course dành cho course owner.',
     query: 'PageQuery',
     response: 'CourseLearnerData',
     list: true,
@@ -419,6 +583,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/courses/{id}/discussions',
     access: 'ENROLLED',
+    description:
+      'Liệt kê các discussion trong course mà user có quyền truy cập.',
     query: 'PageQuery',
     response: 'DiscussionData',
     list: true,
@@ -430,6 +596,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/courses/{id}/discussions',
     access: 'ENROLLED',
+    description:
+      'Tạo discussion mới trong course với nội dung và thông tin author của user hiện tại.',
     request: 'CreateDiscussionRequest',
     response: 'DiscussionData',
     success: 201,
@@ -440,6 +608,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/discussions/{id}',
     access: 'DISCUSSION_AUTHOR',
+    description:
+      'Cập nhật discussion do user hiện tại tạo khi expectedVersion khớp.',
     request: 'UpdateDiscussionRequest',
     response: 'DiscussionData',
     success: 200,
@@ -450,6 +620,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'delete',
     path: '/api/v1/discussions/{id}',
     access: 'DISCUSSION_AUTHOR',
+    description:
+      'Xóa discussion do user hiện tại tạo khi expectedVersion khớp.',
     request: 'VersionRequest',
     success: 204,
   },
@@ -459,6 +631,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'put',
     path: '/api/v1/discussions/{id}/pin',
     access: 'COURSE_OWNER',
+    description:
+      'Ghim hoặc bỏ ghim discussion trong course, kiểm tra expectedVersion để tránh xung đột.',
     request: 'PinDiscussionRequest',
     response: 'DiscussionData',
     success: 200,
@@ -469,6 +643,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/quizzes',
     access: 'INSTRUCTOR',
+    description:
+      'Tạo một quiz DRAFT thuộc chapter của course do instructor sở hữu; learner được phép bắt đầu quiz khi đã hoàn thành lesson/section trước đó và thỏa điều kiện enrollment.',
     request: 'CreateQuizRequest',
     response: 'QuizData',
     success: 201,
@@ -479,6 +655,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/quizzes/{id}',
     access: 'ENROLLED',
+    description:
+      'Lấy metadata của quiz mà learner được phép xem, không bao gồm đáp án; việc truy cập được kiểm tra theo enrollment hoặc quyền preview của owner và dùng server clock cho lịch mở/đóng.',
     response: 'QuizData',
     success: 200,
   },
@@ -488,6 +666,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/quizzes/{id}',
     access: 'COURSE_OWNER',
+    description:
+      'Cập nhật metadata, policy hoặc lịch mở/đóng của quiz DRAFT; yêu cầu expectedVersion khớp và kiểm tra lại policy sau khi merge dữ liệu PATCH.',
     request: 'UpdateQuizRequest',
     response: 'QuizData',
     success: 200,
@@ -498,6 +678,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'delete',
     path: '/api/v1/quizzes/{id}',
     access: 'COURSE_OWNER',
+    description:
+      'Xóa quiz chỉ khi quiz còn ở trạng thái DRAFT và không còn Course reference; không xóa các attempt hoặc kết quả lịch sử.',
     request: 'VersionRequest',
     success: 204,
   },
@@ -507,6 +689,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/quizzes/{id}/publish',
     access: 'COURSE_OWNER',
+    description:
+      'Phát hành quiz từ DRAFT sang PUBLISHED sau khi có câu hỏi hợp lệ, tổng điểm lớn hơn 0 và Course reference đúng assessmentVersion; đồng thời đóng băng nội dung và policy.',
     request: 'VersionRequest',
     response: 'QuizData',
     success: 200,
@@ -517,6 +701,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/quizzes/{id}/archive',
     access: 'COURSE_OWNER',
+    description:
+      'Lưu trữ quiz từ PUBLISHED sang ARCHIVED để chặn attempt mới; các attempt đang chạy tiếp tục dùng snapshot cũ cho đến khi hết hạn.',
     request: 'VersionRequest',
     response: 'QuizData',
     success: 200,
@@ -527,6 +713,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/quizzes/{id}/questions',
     access: 'COURSE_OWNER',
+    description:
+      'Liệt kê các câu hỏi ở chế độ authoring của quiz để owner chỉnh sửa nội dung; hỗ trợ phân trang và không dùng dữ liệu delivery dành cho learner.',
     query: 'PageQuery',
     response: 'QuestionAuthoringDTO',
     list: true,
@@ -538,6 +726,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/quizzes/{id}/questions',
     access: 'COURSE_OWNER',
+    description:
+      'Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs.',
     request: 'CreateQuestionRequest',
     response: 'QuestionAuthoringDTO',
     success: 201,
@@ -548,6 +738,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'patch',
     path: '/api/v1/questions/{id}',
     access: 'COURSE_OWNER',
+    description:
+      'Cập nhật câu hỏi authoring thuộc quiz DRAFT; yêu cầu expectedVersion khớp và vẫn phải bảo đảm số lựa chọn, điểm số và tập đáp án đúng hợp lệ.',
     request: 'UpdateQuestionRequest',
     response: 'QuestionAuthoringDTO',
     success: 200,
@@ -558,6 +750,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'delete',
     path: '/api/v1/questions/{id}',
     access: 'COURSE_OWNER',
+    description:
+      'Xóa câu hỏi authoring khỏi quiz DRAFT khi expectedVersion khớp.',
     request: 'VersionRequest',
     success: 204,
   },
@@ -567,6 +761,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/quizzes/{id}/attempts',
     access: 'STUDENT',
+    description:
+      'Bắt đầu một attempt cho quiz PUBLISHED khi learner có enrollment/access hợp lệ, đã hoàn thành nội dung bắt buộc trước đó và chưa vượt maxAttempts; server tạo snapshot câu hỏi, policy và version trong cùng transaction.',
     request: 'StartAttemptRequest',
     response: 'StartAttemptData',
     success: 201,
@@ -578,6 +774,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/attempts/{id}',
     access: 'ATTEMPT_OWNER',
+    description:
+      'Lấy lại attempt của chính learner, gồm thứ tự câu hỏi/lựa chọn đã snapshot, các câu trả lời hiện có, expiresAt và serverTime; không shuffle lại khi đọc.',
     response: 'StartAttemptData',
     success: 200,
   },
@@ -587,6 +785,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'put',
     path: '/api/v1/attempts/{id}/answers',
     access: 'ATTEMPT_OWNER',
+    description:
+      'Lưu thay thế toàn bộ tập câu trả lời của attempt đang IN_PROGRESS khi chưa hết hạn và revision khớp; server tăng revision, còn câu bị bỏ khỏi request sẽ bị xóa câu trả lời.',
     request: 'SaveAnswersRequest',
     response: 'QuizAttemptData',
     success: 200,
@@ -597,6 +797,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/attempts/{id}/submit',
     access: 'ATTEMPT_OWNER',
+    description:
+      'Nộp attempt bằng các câu trả lời đã lưu khi revision khớp; server khóa attempt, tự chấm trên snapshot, lưu kết quả và outbox trong cùng transaction, không tin score/passed từ client.',
     request: 'SubmitAttemptRequest',
     response: 'QuizResultV2Data',
     success: 200,
@@ -608,6 +810,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/attempts/{id}/result',
     access: 'ATTEMPT_OWNER',
+    description:
+      'Lấy kết quả của attempt thuộc learner; khi chưa chấm, các trường score, maxScore, passed và gradedAt là null; khi đã chấm, trả đầy đủ kết quả đã lưu.',
     response: 'QuizResultV2Data',
     success: 200,
   },
@@ -617,6 +821,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/attempts/{id}/review',
     access: 'ATTEMPT_OWNER',
+    description:
+      'Lấy phần review câu hỏi và đáp án của attempt sau khi chấm nếu reviewPolicy là AFTER_SUBMISSION; NEVER luôn từ chối.',
     response: 'QuizReviewData',
     success: 200,
   },
@@ -626,6 +832,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/attempts/me',
     access: 'AUTHENTICATED',
+    description:
+      'Liệt kê các attempt của chính user, có thể lọc theo quizId và phân trang; response không chứa đáp án chi tiết.',
     query: 'AttemptQuery',
     response: 'QuizAttemptData',
     list: true,
@@ -637,6 +845,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/quizzes/{id}/statistics',
     access: 'COURSE_OWNER',
+    description:
+      'Lấy thống kê kết quả graded của quiz theo assessmentVersion, phục vụ course owner theo dõi learner; không tính điểm của practice quiz như kết quả graded.',
     response: 'QuizStatisticsData',
     success: 200,
   },
@@ -646,6 +856,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/courses/{id}/assessments',
     access: 'COURSE_OWNER',
+    description:
+      'Liệt kê assessment summary của learner trong course theo assessmentVersion, chỉ dành cho course owner hoặc admin và không thay thế dữ liệu điểm bằng giá trị 0 khi chưa có kết quả.',
     query: 'PageQuery',
     response: 'LearnerAssessmentSummary',
     list: true,
@@ -657,6 +869,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'put',
     path: '/api/v1/learning/lessons/{id}/completion',
     access: 'ENROLLED',
+    description:
+      'Ghi nhận learner đã hoàn thành lesson theo contentVersion đang enroll và cập nhật tiến độ.',
     request: 'CompleteLessonRequest',
     response: 'LessonProgressData',
     success: 200,
@@ -667,6 +881,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'put',
     path: '/api/v1/learning/items/{id}/completion',
     access: 'ENROLLED',
+    description:
+      'Ghi nhận learner đã hoàn thành learning item hợp lệ và cập nhật tiến độ course.',
     request: 'CompleteItemRequest',
     response: 'ItemProgressData',
     success: 200,
@@ -677,6 +893,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/lessons/{id}/progress',
     access: 'ENROLLED',
+    description:
+      'Lấy tiến độ của learner trong một lesson, gồm trạng thái item và completion.',
     response: 'LessonProgressData',
     success: 200,
   },
@@ -686,7 +904,44 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/courses/{id}/progress',
     access: 'ENROLLED',
+    description:
+      'Lấy tổng tiến độ của learner trong course theo contentVersion của enrollment.',
     response: 'CourseProgressData',
+    success: 200,
+  },
+  {
+    operationId: 'getCourseChapterAccess',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/chapters/access',
+    access: 'ENROLLED',
+    response: 'CourseChapterAccessData',
+    success: 200,
+  },
+  {
+    operationId: 'listMySyncedQuizScores',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/me/quiz-scores',
+    access: 'ENROLLED',
+    description:
+      'Tổng hợp điểm quiz có chấm điểm đã đồng bộ của học viên đang ghi danh, theo quiz và assessmentVersion.',
+    query: 'PageQuery',
+    response: 'LearnerAssessmentSummary',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'listCourseSyncedQuizScores',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/quiz-scores',
+    access: 'COURSE_OWNER',
+    description:
+      'Tổng hợp điểm quiz có chấm điểm đã đồng bộ theo học viên, quiz và assessmentVersion cho chủ khóa hoặc admin.',
+    query: 'PageQuery',
+    response: 'LearnerAssessmentSummary',
+    list: true,
     success: 200,
   },
   {
@@ -695,6 +950,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/courses/{id}/resume',
     access: 'ENROLLED',
+    description: 'Lấy checkpoint gần nhất để learner tiếp tục học course.',
     response: 'LearningResumeData',
     nullable: true,
     success: 200,
@@ -705,6 +961,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'put',
     path: '/api/v1/learning/courses/{id}/resume',
     access: 'ENROLLED',
+    description:
+      'Tạo hoặc cập nhật checkpoint tiếp tục học; kiểm tra expectedRevision và không tự thay đổi completion progress.',
     request: 'SaveResumeRequest',
     response: 'LearningResumeData',
     success: 200,
@@ -715,8 +973,67 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/me/dashboard',
     access: 'AUTHENTICATED',
+    description:
+      'Lấy dashboard học tập của user, gồm các course đang học, tiến độ và hoạt động gần đây.',
     response: 'LearningDashboardData',
     success: 200,
+  },
+  {
+    operationId: 'listCourseSkills',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/skills',
+    access: 'AUTHENTICATED',
+    description:
+      'Học viên đã ghi danh xem kỹ năng đang dùng. Chủ khóa hoặc Admin xem cả kỹ năng đã ngừng dùng.',
+    response: 'CourseSkillsData',
+    success: 200,
+  },
+  {
+    operationId: 'createCourseSkill',
+    service: 'learning',
+    method: 'post',
+    path: '/api/v1/learning/courses/{id}/skills',
+    access: 'COURSE_OWNER',
+    description:
+      'Chủ khóa hoặc Admin tạo kỹ năng đang dùng trong danh mục khóa học.',
+    request: 'CreateCourseSkillRequest',
+    response: 'CourseSkillData',
+    success: 201,
+  },
+  {
+    operationId: 'updateCourseSkill',
+    service: 'learning',
+    method: 'patch',
+    path: '/api/v1/learning/courses/{id}/skills/{skillId}',
+    access: 'COURSE_OWNER',
+    description:
+      'Chủ khóa hoặc Admin sửa tên, mô tả hoặc trạng thái kỹ năng theo expectedVersion.',
+    request: 'UpdateCourseSkillRequest',
+    response: 'CourseSkillData',
+    success: 200,
+  },
+  {
+    operationId: 'getCourseSkillReference',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/internal/courses/{id}/skills/{skillId}',
+    access: 'INTERNAL',
+    description:
+      'Tra kỹ năng trong đúng khóa với credential tra kỹ năng. Chỉ trạng thái ACTIVE được gắn mới.',
+    response: 'CourseSkillData',
+    success: 200,
+  },
+  {
+    operationId: 'validateCourseSkills',
+    service: 'learning',
+    method: 'post',
+    path: '/api/v1/internal/courses/{id}/skills/validate',
+    access: 'INTERNAL',
+    description:
+      'Xác minh tất cả mã kỹ năng gắn mới vào câu hỏi đều đang dùng và thuộc đúng khóa. Dùng credential tra kỹ năng.',
+    request: 'ValidateCourseSkillsRequest',
+    success: 204,
   },
   {
     operationId: 'getMastery',
@@ -724,7 +1041,41 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/courses/{id}/mastery',
     access: 'ENROLLED',
+    description:
+      'Lấy dữ liệu mastery hoặc mức độ nắm vững của learner trong course.',
     response: 'MasteryData',
+    success: 200,
+  },
+  {
+    operationId: 'listMasteryHistory',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/mastery/history',
+    access: 'ENROLLED',
+    description:
+      'Lấy các mốc mastery của học viên đã ghi danh từ kết quả quiz đã đồng bộ, mốc mới nhất trước.',
+    query: 'PageQuery',
+    response: 'MasteryHistoryPoint',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'getSkillPrerequisites',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/skill-prerequisites',
+    access: 'COURSE_OWNER',
+    response: 'CourseSkillPrerequisites',
+    success: 200,
+  },
+  {
+    operationId: 'saveSkillPrerequisites',
+    service: 'learning',
+    method: 'put',
+    path: '/api/v1/learning/courses/{id}/skill-prerequisites',
+    access: 'COURSE_OWNER',
+    request: 'SaveSkillPrerequisitesRequest',
+    response: 'CourseSkillPrerequisites',
     success: 200,
   },
   {
@@ -733,6 +1084,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/me/recommendations',
     access: 'AUTHENTICATED',
+    description: 'Liệt kê course hoặc nội dung được đề xuất cho user hiện tại.',
     query: 'PageQuery',
     response: 'RecommendationData',
     list: true,
@@ -744,6 +1096,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'post',
     path: '/api/v1/learning/courses/{id}/certificate',
     access: 'ENROLLED',
+    description:
+      'Phát hành theo phiên bản đã ghi danh. Mỗi bộ (userId, courseId, contentVersion) có một chứng chỉ, kể cả khi enrollmentId thay đổi. Cùng phiên bản đã thu hồi trả CERTIFICATE_REVOKED. Chỉ cấp bản mới khi contentVersion tăng và học viên hoàn thành yêu cầu bản mới.',
     response: 'CertificateData',
     success: 201,
     idempotent: true,
@@ -754,6 +1108,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/me/certificates',
     access: 'AUTHENTICATED',
+    description:
+      'Liệt kê chứng chỉ của tài khoản hiện tại, gồm các trạng thái ACTIVE, SUPERSEDED và REVOKED cùng liên kết tới chứng chỉ thay thế nếu có.',
     query: 'PageQuery',
     response: 'CertificateData',
     list: true,
@@ -765,7 +1121,32 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/certificates/verify/{code}',
     access: 'PUBLIC',
+    description:
+      'Xác minh công khai theo mã. ACTIVE là bản hiện hành, SUPERSEDED là bằng chứng lịch sử, REVOKED không còn hợp lệ. Mã không tồn tại trả status null. Chi tiết thu hồi chỉ dành cho Admin.',
     response: 'CertificateVerificationData',
+    success: 200,
+  },
+  {
+    operationId: 'downloadCertificate',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/me/certificates/{id}/download',
+    access: 'AUTHENTICATED',
+    description:
+      'Tải PDF của tài khoản hiện tại. Trả 404 nếu chứng chỉ không thuộc tài khoản, 409 nếu đã thu hồi.',
+    binaryResponse: 'application/pdf',
+    success: 200,
+  },
+  {
+    operationId: 'revokeCertificate',
+    service: 'learning',
+    method: 'put',
+    path: '/api/v1/admin/certificates/{id}/revocation',
+    access: 'ADMIN',
+    description:
+      'Admin thu hồi theo ID chứng chỉ, bắt buộc có lý do. Gửi lại trả hồ sơ thu hồi lần đầu.',
+    request: 'RevokeCertificateRequest',
+    response: 'CertificateRevocationData',
     success: 200,
   },
   {
@@ -774,6 +1155,9 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/courses/{id}/statistics',
     access: 'COURSE_OWNER',
+    description:
+      'Tỷ lệ hoàn thành và trung bình tiến độ theo bài của học viên ghi danh trong khoảng [fromAt, toAt).',
+    query: 'LearningReportDateQuery',
     response: 'LearningStatisticsData',
     success: 200,
   },
@@ -783,9 +1167,45 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/courses/{id}/learners',
     access: 'COURSE_OWNER',
+    description:
+      'Liệt kê tiến độ theo bài của học viên cho chủ khóa hoặc Admin. Màn hình dùng lessonProgressPercent.',
     query: 'PageQuery',
     response: 'LearnerProgressSummary',
     list: true,
+    success: 200,
+  },
+  {
+    operationId: 'getLearnerProgressDetail',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/learners/{userId}',
+    access: 'COURSE_OWNER',
+    description:
+      'Xem các bài đã hoàn thành và lần học gần nhất của một học viên theo phiên bản ghi danh.',
+    response: 'LearnerProgressDetail',
+    success: 200,
+  },
+  {
+    operationId: 'getLearningWeakSkills',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/weak-skills',
+    access: 'COURSE_OWNER',
+    description:
+      'Tổng hợp kỹ năng yếu của học viên có đủ bằng chứng trong khóa.',
+    response: 'LearningWeakSkillsData',
+    success: 200,
+  },
+  {
+    operationId: 'getLearningAnalytics',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/analytics',
+    access: 'COURSE_OWNER',
+    description:
+      'Phân bố tiến độ hiện tại và kết quả quiz đã chấm, với xu hướng theo ngày UTC trong khoảng [fromAt, toAt).',
+    query: 'LearningAnalyticsQuery',
+    response: 'LearningAnalyticsData',
     success: 200,
   },
   {
@@ -794,6 +1214,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/attempts/{id}/sync',
     access: 'ATTEMPT_OWNER',
+    description:
+      'Lấy dữ liệu progress sync liên quan đến attempt để đồng bộ giữa Quiz và Learning.',
     response: 'ProgressSyncData',
     success: 200,
   },
@@ -803,6 +1225,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/users/{id}/access',
     access: 'INTERNAL',
+    description:
+      'Trả trạng thái access, role và các quyền liên quan của user cho service nội bộ.',
     response: 'UserAccessStatus',
     success: 200,
   },
@@ -812,6 +1236,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/users/{id}',
     access: 'INTERNAL',
+    description:
+      'Trả summary tối thiểu của user cho service nội bộ mà không lộ dữ liệu nhạy cảm.',
     response: 'UserSummary',
     success: 200,
   },
@@ -821,6 +1247,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/enrollments/check',
     access: 'INTERNAL',
+    description:
+      'Kiểm tra user có enrollment hợp lệ trong course cho service nội bộ.',
     query: 'EnrollmentCheckQuery',
     response: 'EnrollmentCheckData',
     success: 200,
@@ -831,6 +1259,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/courses/access',
     access: 'INTERNAL',
+    description: 'Kiểm tra quyền truy cập course của user cho service nội bộ.',
     query: 'CourseAccessQuery',
     response: 'CourseAccessData',
     success: 200,
@@ -841,6 +1270,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/quizzes/{id}/reference',
     access: 'INTERNAL',
+    description:
+      'Lấy reference của quiz/content được course service sử dụng để kiểm tra quan hệ nội dung.',
     response: 'CourseContentReference',
     success: 200,
   },
@@ -850,6 +1281,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/courses/{id}/structure',
     access: 'INTERNAL',
+    description:
+      'Lấy cấu trúc học tập versioned của course cho service nội bộ.',
     query: 'ContentVersionQuery',
     response: 'CourseLearningStructure',
     success: 200,
@@ -860,6 +1293,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/attempts/{id}/graded',
     access: 'INTERNAL',
+    description:
+      'Cung cấp cho service nội bộ summary kết quả graded của attempt để đồng bộ sang Learning, gồm assessmentVersion và dữ liệu điểm đã chấm.',
     response: 'GradedAssessmentSummary',
     success: 200,
   },
@@ -869,7 +1304,21 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/attempts/{id}/access',
     access: 'INTERNAL',
+    description:
+      'Cung cấp cho service nội bộ thông tin quyền truy cập và ownership của attempt để service khác kiểm tra trước khi xử lý.',
     response: 'AttemptAccessData',
+    success: 200,
+  },
+  {
+    operationId: 'getQuizRecommendationContext',
+    service: 'quiz',
+    method: 'get',
+    path: '/api/v1/internal/quizzes/{id}/recommendation-context',
+    access: 'INTERNAL',
+    description:
+      'Trả kỹ năng theo phiên bản quiz và quyền tạo lượt mới của học viên.',
+    query: 'QuizRecommendationContextQuery',
+    response: 'QuizRecommendationContext',
     success: 200,
   },
   {
@@ -878,6 +1327,8 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/courses/{id}/assessments',
     access: 'INTERNAL',
+    description:
+      'Cung cấp cho service nội bộ danh sách assessment summary của learner trong course để phục vụ tiến độ và điều kiện hoàn thành.',
     query: 'PageQuery',
     response: 'LearnerAssessmentSummary',
     list: true,
@@ -889,9 +1340,32 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/internal/courses/{id}/learners',
     access: 'INTERNAL',
+    description: 'Cung cấp tiến độ learner trong course cho service nội bộ.',
     query: 'PageQuery',
     response: 'LearnerProgressSummary',
     list: true,
+    success: 200,
+  },
+  {
+    operationId: 'migrateCourseItems',
+    service: 'learning',
+    method: 'post',
+    path: '/api/v1/internal/courses/{id}/migrations',
+    access: 'INTERNAL',
+    description:
+      'Đánh dấu các learning item bị ảnh hưởng bởi critical revision để learner phải hoàn thành lại hoặc chỉ nhận thông báo theo migration policy.',
+    request: 'MigrateCourseItemsRequest',
+    success: 204,
+  },
+  {
+    operationId: 'getCourseItemMigrationContext',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/internal/course-revisions/{id}/item-migration-context',
+    access: 'INTERNAL',
+    description:
+      'Cung cấp revision đã xuất bản, item đích, các item nguồn trong phiên bản cũ và yêu cầu assessment mới để Learning xác minh migration.',
+    response: 'CourseItemMigrationContext',
     success: 200,
   },
 ];

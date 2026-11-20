@@ -1,12 +1,39 @@
 import type { Uuid } from './common';
 import type { ProgressSyncStatus } from './quiz';
+import type { VersionRequest } from '../common/pagination';
 
-export type LearningStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type LearningStatus =
+  'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OUTDATED' | 'RESET';
+export type ChapterAccessStatus = 'LOCKED' | 'UNLOCKED' | 'COMPLETED';
+export type ChapterAccessReason =
+  | 'ENROLLMENT_REQUIRED'
+  | 'COURSE_NOT_PUBLISHED'
+  | 'PREVIOUS_CHAPTER_NOT_COMPLETED'
+  | 'PREREQUISITE_NOT_COMPLETED';
+
+export interface ChapterAccessData {
+  chapterId: Uuid;
+  order: number;
+  contentVersion: number;
+  completedLessons: number;
+  totalLessons: number;
+  progressPercent: number;
+  status: ChapterAccessStatus;
+  reason: ChapterAccessReason | null;
+}
+export interface CourseChapterAccessData {
+  courseId: Uuid;
+  contentVersion: number;
+  chapters: ChapterAccessData[];
+}
+
 export interface ItemProgressData {
   learningItemId: Uuid;
   contentVersion: number;
   status: LearningStatus;
   completedAt: string | null;
+  invalidatedAt: string | null;
+  invalidationReason: string | null;
 }
 export interface LessonProgressData {
   userId: Uuid;
@@ -33,7 +60,12 @@ export interface CourseProgressData {
   status: LearningStatus;
   completedRequiredItems: number;
   totalRequiredItems: number;
+  /** Percentage of required items. */
   progressPercent: number;
+  completedRequiredLessons: number;
+  totalRequiredLessons: number;
+  /** Percentage of required lessons with a recorded lesson completion. */
+  lessonProgressPercent: number;
   passedRequiredAssessments: number;
   totalRequiredAssessments: number;
   completedAt: string | null;
@@ -57,42 +89,150 @@ export interface LearningResumeData {
   updatedAt: string;
   revision: number;
 }
+export type LearningNextStep =
+  | {
+      kind: 'LEARNING_ITEM';
+      lessonId: Uuid;
+      learningItemId: Uuid;
+      positionSeconds: number | null;
+    }
+  | { kind: 'COMPLETE_LESSON'; lessonId: Uuid }
+  | { kind: 'QUIZ'; quizId: Uuid; assessmentVersion: number };
+
+export interface LearningDashboardCourse extends CourseProgressData {
+  title: string;
+  lastActivityAt: string;
+  nextStep: LearningNextStep | null;
+}
+
+export interface LearningRecentQuiz {
+  attemptId: Uuid;
+  courseId: Uuid;
+  quizId: Uuid;
+  assessmentVersion: number;
+  scorePercent: number;
+  passed: boolean;
+  gradedAt: string;
+}
+
 export interface LearningDashboardData {
-  courses: CourseProgressData[];
+  courses: LearningDashboardCourse[];
+  recentQuizzes: LearningRecentQuiz[];
   updatedAt: string;
 }
+export type CourseSkillStatus = 'ACTIVE' | 'INACTIVE';
+
+export interface CreateCourseSkillRequest {
+  name: string;
+  description: string;
+}
+
+export interface UpdateCourseSkillRequest extends VersionRequest {
+  name?: string;
+  description?: string;
+  status?: CourseSkillStatus;
+}
+
+export interface CourseSkillData extends CreateCourseSkillRequest {
+  id: Uuid;
+  courseId: Uuid;
+  status: CourseSkillStatus;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseSkillsData {
+  skills: CourseSkillData[];
+}
+
+/** Check the skills newly added to a Quiz question in one request. */
+export interface ValidateCourseSkillsRequest {
+  skillIds: Uuid[];
+}
+
+export interface SkillMasteryData {
+  skillId: Uuid;
+  skillName?: string;
+  scorePercent: number;
+  level: 'BEGINNER' | 'DEVELOPING' | 'PROFICIENT';
+  /** Number of graded attempts that contributed to this result. */
+  evidenceCount: number;
+  /** Sum of graded questions across contributing attempts, null if a count is missing. */
+  questionCount?: number | null;
+}
+
 export interface MasteryData {
   courseId: Uuid;
   userId: Uuid;
-  skills: {
-    skillId: Uuid;
-    scorePercent: number;
-    level: 'BEGINNER' | 'DEVELOPING' | 'PROFICIENT';
-    evidenceCount: number;
-  }[];
+  skills: SkillMasteryData[];
   algorithmVersion: string;
   updatedAt: string;
+}
+
+export interface MasteryHistoryPoint {
+  attemptId: Uuid;
+  assessmentVersion: number;
+  contentVersion: number;
+  gradedAt: string;
+  /** Date the attempt becomes eligible in the learner's content scope. */
+  effectiveAt: string;
+  /** When Learning stored the immutable point. */
+  recordedAt?: string;
+  algorithmVersion: string;
+  skills: SkillMasteryData[];
 }
 export interface RecommendationData {
   courseId: Uuid;
   lessonId: Uuid;
   learningItemId: Uuid | null;
-  reason: 'NEXT_REQUIRED_ITEM' | 'LOW_MASTERY' | 'RETRY_ASSESSMENT';
+  reason:
+    | 'NEXT_REQUIRED_ITEM'
+    | 'LOW_MASTERY'
+    | 'RETRY_ASSESSMENT'
+    | 'SKILL_PREREQUISITE';
   explanation: string;
 }
+export interface SkillPrerequisiteEdge {
+  skillId: Uuid;
+  prerequisiteSkillId: Uuid;
+}
+export interface CourseSkillPrerequisites {
+  courseId: Uuid;
+  version: number;
+  edges: SkillPrerequisiteEdge[];
+}
+export interface SaveSkillPrerequisitesRequest {
+  expectedVersion: number;
+  edges: SkillPrerequisiteEdge[];
+}
+export type CertificateStatus = 'ACTIVE' | 'SUPERSEDED' | 'REVOKED';
 export interface CertificateData {
   id: Uuid;
   courseId: Uuid;
   userId: Uuid;
   enrollmentId: Uuid;
   contentVersion: number;
+  status: CertificateStatus;
+  supersededByCertificateId: Uuid | null;
   issuedAt: string;
   verificationCode: string;
   downloadUrl: string;
 }
-/** Public verification intentionally excludes email, userId and enrollmentId. */
+export interface RevokeCertificateRequest {
+  reason: string;
+}
+export interface CertificateRevocationData {
+  certificateId: Uuid;
+  status: 'REVOKED';
+  revokedAt: string;
+  revokedBy: Uuid;
+  reason: string;
+}
+/** Public verification excludes private identifiers and revocation audit details. */
 export interface CertificateVerificationData {
   valid: boolean;
+  status: CertificateStatus | null;
   courseTitle: string | null;
   recipientName: string | null;
   issuedAt: string | null;
@@ -101,7 +241,52 @@ export interface LearningStatisticsData {
   courseId: Uuid;
   enrolledCount: number;
   completedCount: number;
+  completionRatePercent: number | null;
   averageProgressPercent: number | null;
+  updatedAt: string;
+}
+export interface LearningReportDateQuery {
+  fromAt?: string;
+  toAt?: string;
+}
+export interface LearningAnalyticsQuery extends LearningReportDateQuery {
+  quizId?: Uuid;
+  assessmentVersion?: number;
+  classId?: Uuid;
+}
+export interface LearningWeakSkillsData {
+  courseId: Uuid;
+  enrolledCount: number;
+  skills: {
+    skillId: Uuid;
+    skillName: string;
+    assessedLearnerCount: number;
+    weakLearnerCount: number;
+    weakRatePercent: number;
+  }[];
+  updatedAt: string;
+}
+export interface LearningPercentBand {
+  fromPercent: number;
+  toPercent: number;
+  count: number;
+}
+export interface LearningAnalyticsData {
+  courseId: Uuid;
+  enrolledCount: number;
+  lessonProgressDistribution: LearningPercentBand[];
+  lessonProgressTrend: { day: string; completedLessons: number }[];
+  quizScores: {
+    quizId: Uuid;
+    assessmentVersion: number;
+    gradedAttempts: number;
+    scoreDistribution: LearningPercentBand[];
+    trend: {
+      day: string;
+      gradedAttempts: number;
+      averageScorePercent: number;
+    }[];
+  }[];
   updatedAt: string;
 }
 export interface ProgressSyncData {

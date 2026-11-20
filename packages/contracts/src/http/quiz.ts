@@ -11,29 +11,29 @@ export interface QuizPolicy {
   requiredForCompletion: boolean;
   shuffleQuestions: boolean;
   shuffleChoices: boolean;
-  reviewPolicy: 'AFTER_SUBMISSION' | 'AFTER_CLOSE' | 'NEVER';
+  reviewPolicy: 'AFTER_SUBMISSION' | 'NEVER';
 }
-export interface CreateQuizRequest {
+export type QuizPlacement =
+  | { placement: 'LESSON'; lessonId: Uuid }
+  | { placement: 'SECTION_END'; lessonId: null };
+export interface CreateQuizRequestBase {
   courseId: Uuid;
-  lessonId: Uuid;
+  chapterId: Uuid;
   title: string;
   policy: QuizPolicy;
-  opensAt: string | null;
-  closesAt: string | null;
 }
+export type CreateQuizRequest = CreateQuizRequestBase & QuizPlacement;
 export interface UpdateQuizRequest extends VersionRequest {
   title?: string;
   policy?: QuizPolicy;
-  opensAt?: string | null;
-  closesAt?: string | null;
 }
-export interface QuizData extends CreateQuizRequest {
+export type QuizData = CreateQuizRequest & {
   id: Uuid;
   instructorId: Uuid;
   status: QuizStatus;
   assessmentVersion: number;
   version: number;
-}
+};
 export interface ChoiceData {
   id: Uuid;
   text: string;

@@ -82,6 +82,7 @@ function propertyRules(name, schema) {
         'durationSeconds',
         'version',
         'contentVersion',
+        'baseContentVersion',
         'assessmentVersion',
         'expectedVersion',
         'revision',
@@ -91,9 +92,18 @@ function propertyRules(name, schema) {
         'responses',
         'correctResponses',
         'gradedAttempts',
+        'attemptsRemaining',
         'evidenceCount',
+        'questionCount',
         'enrolledCount',
+        'assessedLearnerCount',
+        'weakLearnerCount',
+        'count',
         'completedCount',
+        'completedLessons',
+        'totalLessons',
+        'completedRequiredLessons',
+        'totalRequiredLessons',
       ].includes(name)
     )
       schema.type = 'integer';
@@ -105,8 +115,10 @@ function propertyRules(name, schema) {
         'durationSeconds',
         'version',
         'contentVersion',
+        'baseContentVersion',
         'assessmentVersion',
         'expectedVersion',
+        'questionCount',
       ].includes(name)
     )
       schema.minimum = 1;
@@ -180,6 +192,41 @@ const definitions = Object.fromEntries(
 );
 definitions.Uuid.format = 'uuid';
 definitions.IsoDateTime.format = 'date-time';
+for (const name of [
+  'CreateCourseSkillRequest',
+  'UpdateCourseSkillRequest',
+  'CourseSkillData',
+]) {
+  Object.assign(definitions[name].properties.name, {
+    minLength: 1,
+    maxLength: 200,
+    pattern: '^(?=[^\\u0000]*\\S)[^\\u0000]+$',
+  });
+  Object.assign(definitions[name].properties.description, {
+    maxLength: 2000,
+    pattern: '^[^\\u0000]*$',
+  });
+}
+definitions.UpdateCourseSkillRequest.minProperties = 2;
+definitions.UpdateCourseSkillRequest.properties.expectedVersion.maximum = 2147483647;
+Object.assign(definitions.ValidateCourseSkillsRequest.properties.skillIds, {
+  minItems: 1,
+  maxItems: 100,
+});
+definitions.CourseSkillPrerequisites.properties.version.minimum = 0;
+Object.assign(
+  definitions.SaveSkillPrerequisitesRequest.properties.expectedVersion,
+  {
+    minimum: 0,
+    maximum: 2147483646,
+  },
+);
+definitions.SaveSkillPrerequisitesRequest.properties.edges.maxItems = 500;
+Object.assign(definitions.RevokeCertificateRequest.properties.reason, {
+  maxLength: 500,
+  pattern: '^(?=[^\\u0000\\uD800-\\uDFFF]*\\S)[^\\u0000\\uD800-\\uDFFF]+$',
+});
+definitions.CertificateRevocationData.properties.revokedBy.format = 'uuid';
 // Contract-specific shape constraints. Cross-record/domain rules live in validation.ts and README.
 for (const name of [
   'CreateQuestionRequest',
@@ -261,7 +308,7 @@ for (const e of ENDPOINTS) {
   });
   const responses = {
     [e.success]: {
-      description: 'Success',
+      description: 'Thành công',
       ...(data
         ? {
             content: {
@@ -280,15 +327,26 @@ for (const e of ENDPOINTS) {
   };
   for (const status of [400, 401, 403, 404, 409, 422, 503, 504])
     responses[status] = {
-      description: `See shared error rules (${status})`,
+      description: `Xem quy tắc lỗi dùng chung (${status})`,
       content: { 'application/json': { schema: ref('ApiErrorResponse') } },
     };
+  if (e.binaryResponse) {
+    responses[e.success].content = {
+      [e.binaryResponse]: { schema: { type: 'string', format: 'binary' } },
+    };
+    responses[e.success].headers = {
+      'Content-Disposition': { schema: { type: 'string' } },
+    };
+  }
   paths[e.path] ??= {};
   if (paths[e.path][e.method]) throw new Error(`Duplicate route ${e.path}`);
   paths[e.path][e.method] = {
     operationId: e.operationId,
     tags: [e.service],
-    description: `Access policy: ${e.access}. See packages/contracts/README.md for ownership, state transitions and side effects.`,
+    description: `Role sử dụng: ${e.access}. ${
+      e.description ??
+      'Xem packages/contracts/README.md để biết quyền sở hữu, chuyển trạng thái và các tác động phụ.'
+    }`,
     'x-access-policy': e.access,
     security:
       e.access === 'PUBLIC'
@@ -319,7 +377,7 @@ const api = openapiRefs({
     title: 'LMS contract baseline',
     version: '0.2.0',
     description:
-      'Contract-first specification. Business endpoints are not implemented by this package. Owner review required for policy decisions.',
+      'Đặc tả theo hướng contract-first. Các endpoint nghiệp vụ không được triển khai trong package này. Chủ sở hữu cần xem xét các quyết định về chính sách.',
   },
   paths,
   components: {
@@ -330,7 +388,7 @@ const api = openapiRefs({
         type: 'http',
         scheme: 'bearer',
         description:
-          'Separate service JWT: service issuer/audience/scope; never accept a public user token as a service credential.',
+          'JWT riêng cho service: bao gồm issuer/audience/scope của service; không bao giờ chấp nhận token người dùng công khai làm thông tin xác thực của service.',
       },
     },
   },

@@ -246,6 +246,22 @@ test('v1 events remain readable; v2 requires versioned grading evidence', () => 
     },
   };
   parseContract('AttemptGradedV2Event', v2);
+  const skillScore = { skillId: id, score: 7, maxScore: 10 };
+  const withSkill = (entry) => ({
+    ...v2,
+    payload: { ...v2.payload, skillScores: [entry] },
+  });
+  parseContract('AttemptGradedV2Event', withSkill(skillScore));
+  parseContract(
+    'AttemptGradedV2Event',
+    withSkill({ ...skillScore, questionCount: 3 }),
+  );
+  for (const questionCount of [0, -1, 1.5, '3', null]) {
+    invalid(
+      'AttemptGradedV2Event',
+      withSkill({ ...skillScore, questionCount }),
+    );
+  }
   invalid('AttemptGradedV2Event', {
     ...v2,
     payload: { ...v2.payload, passed: false },
@@ -285,8 +301,79 @@ test('new enrollments require pinned snapshots and the correct event producer', 
     contentVersion: 1,
     requiredItemIds: [],
     requiredAssessments: [],
+    chapterPolicies: [],
     sequence: 'FREE',
     assessmentRule: 'ANY_PASSED_ATTEMPT_SAME_VERSION',
     certificateEnabled: true,
+  });
+  parseContract('CourseCompletionPolicy', {
+    courseId: id,
+    contentVersion: 1,
+    requiredItemIds: [id],
+    requiredAssessments: [],
+    chapterPolicies: [
+      { chapterId: id2, requiredItemIds: [id], requiredAssessments: [] },
+    ],
+    sequence: 'SEQUENTIAL',
+    assessmentRule: 'ANY_PASSED_ATTEMPT_SAME_VERSION',
+    certificateEnabled: true,
+  });
+});
+
+test('certificates are versioned and preserve superseded history', () => {
+  const certificate = {
+    id,
+    courseId: id,
+    userId: id2,
+    enrollmentId: id,
+    contentVersion: 2,
+    status: 'ACTIVE',
+    supersededByCertificateId: null,
+    issuedAt: time,
+    verificationCode: 'certificate-code',
+    downloadUrl: 'https://example.test/certificates/certificate-code.pdf',
+  };
+  parseContract('CertificateData', certificate);
+  parseContract('CertificateData', {
+    ...certificate,
+    status: 'SUPERSEDED',
+    supersededByCertificateId: id2,
+  });
+  invalid('CertificateData', { ...certificate, status: 'INVALID' });
+  parseContract('CertificateVerificationData', {
+    valid: true,
+    status: 'SUPERSEDED',
+    courseTitle: 'Course',
+    recipientName: null,
+    issuedAt: time,
+  });
+  const unknown = {
+    valid: false,
+    status: null,
+    courseTitle: null,
+    recipientName: null,
+    issuedAt: null,
+  };
+  parseContract('CertificateVerificationData', unknown);
+  parseContract('CertificateVerificationData', {
+    ...unknown,
+    status: 'REVOKED',
+  });
+  invalid('CertificateVerificationData', { ...unknown, status: 'NOT_FOUND' });
+});
+
+test('re-enrollment pins a new snapshot and exposes certificate revocation', () => {
+  parseContract('EnrollmentSnapshotData', {
+    enrollmentId: id2,
+    courseId: id,
+    userId: id,
+    status: 'ACTIVE',
+    enrolledAt: time,
+    contentVersion: 2,
+  });
+  parseContract('ApiError', {
+    code: 'CERTIFICATE_REVOKED',
+    message: 'Certificate has been revoked',
+    details: {},
   });
 });
