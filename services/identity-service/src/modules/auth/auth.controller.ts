@@ -1,4 +1,5 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -8,7 +9,10 @@ import { ResendOtpDto, VerifyEmailDto } from './dto/verify-email.dto';
 @ApiTags('Auth')
 @Controller('api/v1/auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
@@ -44,5 +48,15 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'New OTP sent to email' })
   async resendOtp(@Body() dto: ResendOtpDto) {
     return this.authService.resendOtp(dto);
+  }
+
+  @Get('public-key')
+  @ApiOperation({ summary: 'Get RS256 public key for token verification across microservices' })
+  getPublicKey() {
+    const publicKey = this.configService.get<string>('JWT_PUBLIC_KEY')?.replace(/\\n/g, '\n');
+    return {
+      algorithm: 'RS256',
+      publicKey,
+    };
   }
 }
