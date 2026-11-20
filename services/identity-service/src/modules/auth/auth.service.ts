@@ -14,7 +14,7 @@ import { IsNull, Repository } from 'typeorm';
 import { JwtAccessPayload } from '../../common/auth/jwt-payload.interface';
 import { MailService } from '../mail/mail.service';
 import { UserEntity } from '../users/entities/user.entity';
-import { AccountStatus, Role, UsersService } from '../users/users.service';
+import { Role, UsersService, UserStatus as AccountStatus } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendOtpDto, VerifyEmailDto } from './dto/verify-email.dto';

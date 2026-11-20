@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
+import { DeepPartial, IsNull, Repository } from 'typeorm';
 import {
   CreateRoleRequestDto,
   ReviewRoleRequestDto,
@@ -19,15 +19,19 @@ import {
 import { UserEntity } from './entities/user.entity';
 import * as argon2 from 'argon2';
 import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
+import { RefreshTokenEntity } from '../auth/entities/refresh-token.entity';
+import { AdminAuditAction, AdminAuditLogEntity } from './entities/admin-audit-log.entity';
+import { ListUsersQueryDto, UpdateUserStatusDto } from './dto/admin-users.dto';
+import type { AccountStatus } from '@lms/contracts';
+
+export const UserStatus = {
+  ACTIVE: 'ACTIVE' as AccountStatus,
+  INACTIVE: 'INACTIVE' as AccountStatus,
+  BLOCKED: 'BLOCKED' as AccountStatus,
+};
 
 export { Role, UserEntity };
-
-export enum AccountStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
-  PENDING = 'PENDING',
-  BLOCKED = 'BLOCKED',
-}
+export type { AccountStatus };
 
 export interface CreateUserInput {
   email: string;
@@ -44,6 +48,10 @@ export class UsersService {
     private readonly userRepo: Repository<UserEntity>,
     @InjectRepository(RoleRequestEntity)
     private readonly roleRequestRepo: Repository<RoleRequestEntity>,
+    @InjectRepository(AdminAuditLogEntity)
+    private readonly auditLogRepo: Repository<AdminAuditLogEntity>,
+    @InjectRepository(RefreshTokenEntity)
+    private readonly refreshTokenRepo: Repository<RefreshTokenEntity>,
   ) {}
 
   normalizeEmail(email: string): string {
@@ -75,13 +83,13 @@ export class UsersService {
       passwordHash: input.passwordHash,
       displayName: input.displayName.trim(),
       role: input.role ?? Role.STUDENT,
-      status: input.status ?? AccountStatus.ACTIVE,
+      status: input.status ?? UserStatus.ACTIVE,
     } as DeepPartial<UserEntity>) as UserEntity;
 
     return this.userRepo.save(user) as Promise<UserEntity>;
   }
 
-  async activateUser(userId: string): Promise<UserEntity> {
+ async activateUser(userId: string): Promise<UserEntity> {
     const user = await this.findById(userId);
     if (!user) {
       throw new NotFoundException({
@@ -89,7 +97,7 @@ export class UsersService {
         message: 'User not found',
       });
     }
-    user.status = AccountStatus.ACTIVE;
+    user.status = UserStatus.ACTIVE; 
     user.emailVerifiedAt = new Date();
     return this.userRepo.save(user);
   }
@@ -157,7 +165,7 @@ export class UsersService {
     });
   }
 
-  async reviewRoleRequest(
+ async reviewRoleRequest(
     requestId: string,
     adminId: string,
     dto: ReviewRoleRequestDto,
@@ -165,6 +173,8 @@ export class UsersService {
     return this.roleRequestRepo.manager.transaction(async (manager) => {
       const reqRepo = manager.getRepository(RoleRequestEntity);
       const userRepo = manager.getRepository(UserEntity);
+      const auditRepo = manager.getRepository(AdminAuditLogEntity);
+      const tokenRepo = manager.getRepository(RefreshTokenEntity);
 
       const request = await reqRepo.findOne({ where: { id: requestId } });
       if (!request) {
@@ -192,7 +202,29 @@ export class UsersService {
           { id: request.userId },
           { role: request.requestedRole },
         );
+
+        await tokenRepo.update(
+          { userId: request.userId, revokedAt: IsNull() },
+          { revokedAt: new Date() },
+        );
       }
+
+      await auditRepo.save(
+        auditRepo.create({
+          actorId: adminId,
+          targetUserId: request.userId,
+          action:
+            dto.decision === RoleRequestStatus.APPROVED
+              ? AdminAuditAction.APPROVE_ROLE_REQUEST
+              : AdminAuditAction.REJECT_ROLE_REQUEST,
+          metadata: {
+            requestId: request.id,
+            requestedRole: request.requestedRole,
+            decision: dto.decision,
+          },
+          reason: dto.reviewNote?.trim() ?? null,
+        }),
+      );
 
       return request;
     });
@@ -251,5 +283,238 @@ export class UsersService {
       type: argon2.argon2id,
     });
     await this.userRepo.save(user);
+  }
+
+  private async revokeAllUserSessions(userId: string): Promise<void> {
+    await this.refreshTokenRepo.update(
+      { userId, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+  }
+
+  private async ensureNotLastActiveAdmin(targetUser: UserEntity): Promise<void> {
+    if (
+      targetUser.role === Role.ADMIN &&
+      targetUser.status === UserStatus.ACTIVE
+    ) {
+      const activeAdminCount = await this.userRepo.count({
+        where: { role: Role.ADMIN, status: UserStatus.ACTIVE },
+      });
+      if (activeAdminCount <= 1) {
+        throw new BadRequestException({
+          code: 'LAST_ACTIVE_ADMIN',
+          message: 'Cannot demote or disable the last active ADMIN account',
+        });
+      }
+    }
+  }
+
+  async writeAuditLog(params: {
+    actorId: string;
+    targetUserId: string;
+    action: AdminAuditAction;
+    metadata?: Record<string, unknown>;
+    reason?: string | null;
+  }) {
+    const log = this.auditLogRepo.create({
+      actorId: params.actorId,
+      targetUserId: params.targetUserId,
+      action: params.action,
+      metadata: params.metadata ?? null,
+      reason: params.reason ?? null,
+    });
+    return this.auditLogRepo.save(log);
+  }
+
+  async listUsersPaginated(query: ListUsersQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const skip = (page - 1) * limit;
+
+    const qb = this.userRepo.createQueryBuilder('u');
+
+    if (query.role) {
+      qb.andWhere('u.role = :role', { role: query.role });
+    }
+    if (query.status) {
+      qb.andWhere('u.status = :status', { status: query.status });
+    }
+    if (query.search?.trim()) {
+      const term = `%${query.search.trim()}%`;
+      qb.andWhere('(u.email ILIKE :term OR u.displayName ILIKE :term)', {
+        term,
+      });
+    }
+
+    qb.orderBy('u.createdAt', 'DESC').skip(skip).take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
+
+    return {
+      items: items.map((u) => ({
+        id: u.id,
+        email: u.email,
+        displayName: u.displayName,
+        role: u.role,
+        status: u.status,
+        avatarUrl: u.avatarUrl ?? null,
+        emailVerifiedAt: u.emailVerifiedAt?.toISOString() ?? null,
+        createdAt: u.createdAt.toISOString(),
+        updatedAt: u.updatedAt.toISOString(),
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async adminUpdateUserStatus(
+    actorId: string,
+    targetUserId: string,
+    dto: UpdateUserStatusDto,
+  ) {
+    if (actorId === targetUserId && dto.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException({
+        code: 'SELF_DISABLE_FORBIDDEN',
+        message: 'Admin cannot disable their own account',
+      });
+    }
+
+    const user = await this.findById(targetUserId);
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    if (dto.status !== UserStatus.ACTIVE) {
+      await this.ensureNotLastActiveAdmin(user);
+    }
+
+    const previousStatus = user.status;
+    user.status = dto.status;
+    const saved = await this.userRepo.save(user);
+
+    if (dto.status !== UserStatus.ACTIVE) {
+      await this.revokeAllUserSessions(targetUserId);
+    }
+
+    await this.writeAuditLog({
+      actorId,
+      targetUserId,
+      action: AdminAuditAction.CHANGE_STATUS,
+      metadata: { previousStatus, newStatus: dto.status },
+      reason: dto.reason ?? null,
+    });
+
+    return {
+      id: saved.id,
+      email: saved.email,
+      displayName: saved.displayName,
+      role: saved.role,
+      status: saved.status,
+      updatedAt: saved.updatedAt.toISOString(),
+    };
+  }
+
+  async adminUpdateUserRoleWithAudit(
+    actorId: string,
+    targetUserId: string,
+    newRole: Role,
+    reason?: string,
+  ) {
+    const user = await this.findById(targetUserId);
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    if (user.role === Role.ADMIN && newRole !== Role.ADMIN) {
+      await this.ensureNotLastActiveAdmin(user);
+    }
+
+    const previousRole = user.role;
+    user.role = newRole;
+    const saved = await this.userRepo.save(user);
+
+    await this.revokeAllUserSessions(targetUserId);
+
+    await this.writeAuditLog({
+      actorId,
+      targetUserId,
+      action: AdminAuditAction.CHANGE_ROLE,
+      metadata: { previousRole, newRole },
+      reason: reason ?? null,
+    });
+
+    return {
+      id: saved.id,
+      email: saved.email,
+      displayName: saved.displayName,
+      role: saved.role,
+      status: saved.status,
+      updatedAt: saved.updatedAt.toISOString(),
+    };
+  }
+
+  async listAuditLogs(page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [items, total] = await this.auditLogRepo.findAndCount({
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getInternalUserSummary(userId: string) {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      role: user.role,
+      status: user.status,
+      avatarUrl: user.avatarUrl ?? null,
+    };
+  }
+
+  async getInternalUserAccessStatus(userId: string) {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    return {
+      userId: user.id,
+      role: user.role,
+      status: user.status,
+      canAccess: user.status === UserStatus.ACTIVE,
+    };
   }
 }
