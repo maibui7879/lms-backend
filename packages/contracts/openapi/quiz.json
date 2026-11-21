@@ -1061,7 +1061,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs.",
+        "description": "Role sử dụng: COURSE_OWNER. Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs. Quiz PRACTICE không bắt buộc gán kỹ năng: gửi skillIds: []; server lấy loại bài từ quiz cha, không gọi xác minh kỹ năng khi danh sách rỗng.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {

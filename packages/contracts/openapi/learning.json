@@ -2273,7 +2273,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: ENROLLED. Lấy dữ liệu mastery hoặc mức độ nắm vững của learner trong course.",
+        "description": "Role sử dụng: ENROLLED. Lấy mức độ nắm vững kỹ năng của learner trong course. Chỉ tính bài đánh giá có quizType GRADED đã chấm xong; loại trừ PRACTICE kể cả khi câu hỏi có gắn kỹ năng.",
         "x-access-policy": "ENROLLED",
         "security": [
           {
@@ -2414,7 +2414,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: ENROLLED. Lấy các mốc mastery của học viên đã ghi danh từ kết quả quiz đã đồng bộ, mốc mới nhất trước.",
+        "description": "Role sử dụng: ENROLLED. Lấy các mốc mastery của học viên đã ghi danh từ bài đánh giá có quizType GRADED đã chấm và đồng bộ, mốc mới nhất trước; không tính PRACTICE.",
         "x-access-policy": "ENROLLED",
         "security": [
           {

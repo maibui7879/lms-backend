@@ -106,6 +106,31 @@ test('student delivery rejects answer keys and explanations; authoring validates
   });
   invalid('QuestionAuthoringDTO', { ...authoring, points: 0 });
 });
+test('practice questions accept empty skills and retain existing skill mappings', () => {
+  parseContract('QuizPolicy', {
+    ...policy,
+    quizType: 'PRACTICE',
+    requiredForCompletion: false,
+  });
+  const request = {
+    type: question.type,
+    prompt: question.prompt,
+    choices: question.choices,
+    points: question.points,
+    skillIds: [],
+    correctChoiceIds: [id],
+    explanation: null,
+  };
+  parseContract('CreateQuestionRequest', request);
+  parseContract('UpdateQuestionRequest', { ...request, expectedVersion: 1 });
+  parseContract('QuestionAuthoringDTO', {
+    ...request,
+    id,
+    skillIds: [id2],
+    version: 1,
+  });
+});
+
 test('policy rejects invalid thresholds, durations, attempts and practice requirements', () => {
   parseContract('QuizPolicy', policy);
   for (const bad of [

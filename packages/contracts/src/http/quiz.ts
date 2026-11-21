@@ -46,12 +46,14 @@ export interface QuestionDeliveryDTO {
   points: number;
 }
 export interface QuestionAuthoringDTO extends QuestionDeliveryDTO {
+  /** PRACTICE may use []; existing skill mappings remain readable and do not contribute to mastery. */
   skillIds: Uuid[];
   correctChoiceIds: Uuid[];
   explanation: string | null;
   version: number;
 }
 export interface CreateQuestionRequest {
+  /** PRACTICE does not require skills: send []; Quiz resolves the type from the parent quiz. */
   skillIds: Uuid[];
   type: QuestionDeliveryDTO['type'];
   prompt: string;
