@@ -214,11 +214,33 @@ export class UsersService {
   }
 
   async listRoleRequests(status?: RoleRequestStatus) {
-    return this.roleRequestRepo.find({
+    const requests = await this.roleRequestRepo.find({
       where: status ? { status } : {},
       relations: { user: true },
       order: { createdAt: 'DESC' },
     });
+
+    return requests.map((req) => ({
+      id: req.id,
+      userId: req.userId,
+      requestedRole: req.requestedRole,
+      reason: req.reason,
+      status: req.status,
+      reviewedBy: req.reviewedBy ?? null,
+      reviewNote: req.reviewNote ?? null,
+      reviewedAt: req.reviewedAt ? req.reviewedAt.toISOString() : null,
+      createdAt: req.createdAt.toISOString(),
+      user: req.user
+        ? {
+            id: req.user.id,
+            email: req.user.email,
+            displayName: req.user.displayName,
+            role: req.user.role,
+            status: req.user.status,
+            avatarUrl: req.user.avatarUrl ?? null,
+          }
+        : null,
+    }));
   }
 
   async reviewRoleRequest(

@@ -149,14 +149,18 @@ export class AuthController {
   @Public()
   @Get('google/callback')
   @ApiOperation({ summary: 'Handle Google OAuth2 callback and issue tokens' })
-  googleCallback(@Query('code') code: string, @Req() req: Request) {
+  googleCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Req() req: Request,
+  ) {
     if (!code) {
       throw new BadRequestException({
         code: 'VALIDATION_ERROR',
         message: 'Missing authorization code',
       });
     }
-    return this.authService.handleGoogleCallback(code, {
+    return this.authService.handleGoogleCallback(code, state, {
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });
@@ -172,14 +176,18 @@ export class AuthController {
   @Public()
   @Get('github/callback')
   @ApiOperation({ summary: 'Handle GitHub OAuth2 callback and issue tokens' })
-  githubCallback(@Query('code') code: string, @Req() req: Request) {
+  githubCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Req() req: Request,
+  ) {
     if (!code) {
       throw new BadRequestException({
         code: 'VALIDATION_ERROR',
         message: 'Missing authorization code',
       });
     }
-    return this.authService.handleGithubCallback(code, {
+    return this.authService.handleGithubCallback(code, state, {
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });

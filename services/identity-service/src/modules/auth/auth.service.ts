@@ -70,6 +70,77 @@ export class AuthService {
     return crypto.createHash('sha256').update(rawToken).digest('hex');
   }
 
+  private getOAuthStateSecret(): string {
+    return (
+      this.configService.get<string>('OAUTH_STATE_SECRET') ||
+      this.configService.getOrThrow<string>('JWT_PRIVATE_KEY')
+    );
+  }
+
+  private createOAuthState(provider: 'GOOGLE' | 'GITHUB'): string {
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const exp = Date.now() + 5 * 60 * 1000;
+    const data = `${provider}.${nonce}.${exp}`;
+    const sig = crypto
+      .createHmac('sha256', this.getOAuthStateSecret())
+      .update(data)
+      .digest('base64url');
+    return `${data}.${sig}`;
+  }
+
+  private verifyOAuthState(
+    state: string | undefined,
+    expectedProvider: 'GOOGLE' | 'GITHUB',
+  ): void {
+    if (!state) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Missing OAuth state parameter',
+      });
+    }
+
+    const parts = state.split('.');
+    if (parts.length !== 4) {
+      throw new UnauthorizedException({
+        code: 'UNAUTHORIZED',
+        message: 'Invalid OAuth state format',
+      });
+    }
+
+    const [provider, nonce, expStr, sig] = parts;
+    if (provider !== expectedProvider || !nonce || !expStr || !sig) {
+      throw new UnauthorizedException({
+        code: 'UNAUTHORIZED',
+        message: 'OAuth state provider mismatch',
+      });
+    }
+
+    const exp = Number(expStr);
+    if (!Number.isFinite(exp) || exp < Date.now()) {
+      throw new UnauthorizedException({
+        code: 'UNAUTHORIZED',
+        message: 'OAuth state has expired',
+      });
+    }
+
+    const expectedSig = crypto
+      .createHmac('sha256', this.getOAuthStateSecret())
+      .update(`${provider}.${nonce}.${expStr}`)
+      .digest('base64url');
+
+    const sigBuf = Buffer.from(sig);
+    const expectedBuf = Buffer.from(expectedSig);
+    if (
+      sigBuf.length !== expectedBuf.length ||
+      !crypto.timingSafeEqual(sigBuf, expectedBuf)
+    ) {
+      throw new UnauthorizedException({
+        code: 'UNAUTHORIZED',
+        message: 'Invalid OAuth state signature',
+      });
+    }
+  }
+
   private async issueTokenPair(
     user: UserEntity,
     meta?: { userAgent?: string; ipAddress?: string; familyId?: string },
@@ -403,14 +474,18 @@ export class AuthService {
       scope: 'openid email profile',
       access_type: 'offline',
       prompt: 'select_account',
+      state: this.createOAuthState('GOOGLE'),
     });
     return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
   }
 
   async handleGoogleCallback(
     code: string,
+    state: string | undefined,
     meta?: { userAgent?: string; ipAddress?: string },
   ) {
+    this.verifyOAuthState(state, 'GOOGLE');
+
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -492,14 +567,18 @@ export class AuthService {
       client_id: clientId,
       redirect_uri: redirectUri,
       scope: 'read:user user:email',
+      state: this.createOAuthState('GITHUB'),
     });
     return `https://github.com/login/oauth/authorize?${params.toString()}`;
   }
 
   async handleGithubCallback(
     code: string,
+    state: string | undefined,
     meta?: { userAgent?: string; ipAddress?: string },
   ) {
+    this.verifyOAuthState(state, 'GITHUB');
+
     const tokenRes = await fetch(
       'https://github.com/login/oauth/access_token',
       {

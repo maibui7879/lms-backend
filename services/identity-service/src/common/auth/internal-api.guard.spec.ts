@@ -193,4 +193,22 @@ describe('InternalApiGuard - Service-to-Service RS256 JWT & Strict Operation Sco
     );
     expect(() => g2.canActivate(c2)).toThrow(UnauthorizedException);
   });
+
+  it('rejects token when sub (caller service) is missing or untrusted', () => {
+    const missingSub = signInternalJwt({ sub: undefined });
+    const { context: c1, guard: g1 } = makeContext(
+      `Bearer ${missingSub}`,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => g1.canActivate(c1)).toThrow(UnauthorizedException);
+
+    const unknownSub = signInternalJwt({ sub: 'random-untrusted-service' });
+    const { context: c2, guard: g2 } = makeContext(
+      `Bearer ${unknownSub}`,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => g2.canActivate(c2)).toThrow(ForbiddenException);
+  });
 });

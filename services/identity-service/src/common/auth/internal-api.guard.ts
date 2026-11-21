@@ -145,13 +145,18 @@ export class InternalApiGuard implements CanActivate {
       if (!audiences.includes('identity-service')) {
         throw new Error('Invalid target service audience');
       }
+
+      // Bắt buộc phải có sub (tên service gọi sang) hợp lệ
+      if (typeof claims.sub !== 'string' || !claims.sub.trim()) {
+        throw new Error('Missing internal service caller (sub)');
+      }
     } catch (err) {
       if (err instanceof ServiceUnavailableException) {
         throw err;
       }
       throw new UnauthorizedException({
         code: 'UNAUTHORIZED',
-        message: 'Invalid internal JWT, issuer, audience or lifetime',
+        message: 'Invalid internal JWT, issuer, audience, caller or lifetime',
       });
     }
 
@@ -174,14 +179,12 @@ export class InternalApiGuard implements CanActivate {
       });
     }
 
-    if (typeof claims.sub === 'string') {
-      const validCallers = ALLOWED_CALLERS_BY_SCOPE[requiredScope] || [];
-      if (!validCallers.includes(claims.sub)) {
-        throw new ForbiddenException({
-          code: 'INSUFFICIENT_SCOPE',
-          message: 'Caller not authorized for operation',
-        });
-      }
+    const validCallers = ALLOWED_CALLERS_BY_SCOPE[requiredScope] || [];
+    if (!validCallers.includes(claims.sub as string)) {
+      throw new ForbiddenException({
+        code: 'INSUFFICIENT_SCOPE',
+        message: 'Caller not authorized for operation',
+      });
     }
 
     return true;
