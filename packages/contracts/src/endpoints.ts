@@ -667,7 +667,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/quizzes/{id}',
     access: 'COURSE_OWNER',
     description:
-      'Cập nhật metadata, policy hoặc lịch mở/đóng của quiz DRAFT; yêu cầu expectedVersion khớp và kiểm tra lại policy sau khi merge dữ liệu PATCH.',
+      'Chỉ sửa title hoặc policy khi quiz chưa phát hành và còn DRAFT; yêu cầu expectedVersion khớp và kiểm tra lại policy sau khi merge PATCH. Quiz PUBLISHED hoặc ARCHIVED trả 409 INVALID_QUIZ_TRANSITION dù version khớp; không cho chuyển ngược về DRAFT để sửa. Server kiểm tra trạng thái và version cùng thao tác ghi để tránh sửa đồng thời với publish.',
     request: 'UpdateQuizRequest',
     response: 'QuizData',
     success: 200,
@@ -727,7 +727,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/quizzes/{id}/questions',
     access: 'COURSE_OWNER',
     description:
-      'Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs. Quiz PRACTICE không bắt buộc gán kỹ năng: gửi skillIds: []; server lấy loại bài từ quiz cha, không gọi xác minh kỹ năng khi danh sách rỗng.',
+      'Tạo một câu hỏi authoring chỉ khi quiz cha còn DRAFT với các lựa chọn, điểm và đáp án đúng; PUBLISHED hoặc ARCHIVED trả 409 INVALID_QUIZ_TRANSITION. Server kiểm tra tính duy nhất và tính hợp lệ của choice IDs. Quiz PRACTICE không bắt buộc gán kỹ năng: gửi skillIds: []; server lấy loại bài từ quiz cha, không gọi xác minh kỹ năng khi danh sách rỗng.',
     request: 'CreateQuestionRequest',
     response: 'QuestionAuthoringDTO',
     success: 201,
@@ -739,7 +739,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/questions/{id}',
     access: 'COURSE_OWNER',
     description:
-      'Cập nhật câu hỏi authoring thuộc quiz DRAFT; yêu cầu expectedVersion khớp và vẫn phải bảo đảm số lựa chọn, điểm số và tập đáp án đúng hợp lệ.',
+      'Chỉ sửa câu hỏi khi quiz cha còn DRAFT; yêu cầu expectedVersion khớp và bảo đảm số lựa chọn, điểm số, kỹ năng và tập đáp án đúng hợp lệ. Quiz cha PUBLISHED hoặc ARCHIVED trả 409 INVALID_QUIZ_TRANSITION dù version câu hỏi khớp. Kiểm tra trạng thái quiz cha và ghi câu hỏi phải được bảo vệ khỏi publish đồng thời.',
     request: 'UpdateQuestionRequest',
     response: 'QuestionAuthoringDTO',
     success: 200,
@@ -751,7 +751,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/questions/{id}',
     access: 'COURSE_OWNER',
     description:
-      'Xóa câu hỏi authoring khỏi quiz DRAFT khi expectedVersion khớp.',
+      'Chỉ xóa câu hỏi khi quiz cha còn DRAFT và expectedVersion khớp. Quiz cha PUBLISHED hoặc ARCHIVED trả 409 INVALID_QUIZ_TRANSITION; bảo vệ thao tác khỏi publish đồng thời và không xóa snapshot hoặc kết quả lịch sử.',
     request: 'VersionRequest',
     success: 204,
   },

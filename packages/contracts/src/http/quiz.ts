@@ -2,6 +2,7 @@ import type { Uuid } from './common';
 import type { PageQuery, VersionRequest } from '../common/pagination';
 
 export type QuizType = 'PRACTICE' | 'GRADED';
+/** Chỉ DRAFT được sửa; PUBLISHED và ARCHIVED không được sửa nội dung hoặc policy. */
 export type QuizStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 export interface QuizPolicy {
   quizType: QuizType;
@@ -23,6 +24,7 @@ export interface CreateQuizRequestBase {
   policy: QuizPolicy;
 }
 export type CreateQuizRequest = CreateQuizRequestBase & QuizPlacement;
+/** Chỉ áp dụng khi trạng thái quiz trong DB là DRAFT; version khớp không thay thế kiểm tra trạng thái. */
 export type UpdateQuizRequest = Partial<
   Pick<CreateQuizRequestBase, 'title' | 'policy'>
 > &
@@ -52,6 +54,7 @@ export interface QuestionAuthoringDTO extends QuestionDeliveryDTO {  //câu hỏ
   explanation: string | null;
   version: number;
 }
+/** Chỉ thêm câu hỏi khi quiz cha còn DRAFT. */
 export interface CreateQuestionRequest {
   /** PRACTICE does not require skills: send []; Quiz resolves the type from the parent quiz. */
   skillIds: Uuid[];
@@ -62,6 +65,7 @@ export interface CreateQuestionRequest {
   correctChoiceIds: Uuid[];
   explanation: string | null;
 }
+/** Chỉ sửa câu hỏi khi quiz cha còn DRAFT, kể cả khi expectedVersion khớp. */
 export type UpdateQuestionRequest = CreateQuestionRequest & VersionRequest;
 export type AttemptStatus = 'IN_PROGRESS' | 'SUBMITTED' | 'EXPIRED';
 /** MVP quizzes are graded automatically; there is no manual-review state. */
