@@ -91,11 +91,7 @@ export interface CreateCourseRequest {
   description: string;
   thumbnailUrl?: string | null;
 }
-export interface UpdateCourseRequest extends VersionRequest {
-  title?: string;
-  description?: string;
-  thumbnailUrl?: string | null;
-}
+export type UpdateCourseRequest = Partial<CreateCourseRequest> & VersionRequest;
 export interface CourseQuery extends PageQuery {
   search?: string;
   instructorId?: Uuid;
@@ -139,10 +135,8 @@ export interface CreateChapterRequest {
   title: string;
   endSectionQuiz?: SectionEndQuizRef | null;
 }
-export interface UpdateChapterRequest extends RevisionVersionRequest {
-  title: string;
-  endSectionQuiz?: SectionEndQuizRef | null;
-}
+export type UpdateChapterRequest = CreateChapterRequest &
+  RevisionVersionRequest;
 export interface LessonData {
   id: Uuid;
   courseId: Uuid;
@@ -156,9 +150,7 @@ export interface CreateLessonRequest {
   revisionId?: Uuid;
   title: string;
 }
-export interface UpdateLessonRequest extends RevisionVersionRequest {
-  title: string;
-}
+export type UpdateLessonRequest = CreateLessonRequest & RevisionVersionRequest;
 export type LearningItemContent =
   | { type: 'VIDEO'; videoUrl: string; durationSeconds: number }
   | { type: 'READING'; body: string }
@@ -213,12 +205,11 @@ export interface CourseCompletionPolicy {
   assessmentRule: 'ANY_PASSED_ATTEMPT_SAME_VERSION';
   certificateEnabled: boolean;
 }
-export interface UpdateCompletionPolicyRequest extends VersionRequest {
-  sequence: 'FREE' | 'SEQUENTIAL';
-  certificateEnabled: boolean;
-  requiredAssessments: RequiredAssessment[];
-  chapterPolicies: ChapterCompletionPolicy[];
-}
+export type UpdateCompletionPolicyRequest = Pick<
+  CourseCompletionPolicy,
+  'sequence' | 'certificateEnabled' | 'requiredAssessments' | 'chapterPolicies'
+> &
+  VersionRequest;
 export interface EnrolledCourseData {
   enrollment: EnrollmentSnapshotData;
   course: CourseData;

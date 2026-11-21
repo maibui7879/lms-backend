@@ -181,11 +181,11 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "const": "createdAt"
+                  "const": "title"
                 },
                 {
                   "type": "string",
-                  "const": "title"
+                  "const": "createdAt"
                 }
               ]
             }
@@ -5387,11 +5387,11 @@
               "anyOf": [
                 {
                   "type": "string",
-                  "const": "createdAt"
+                  "const": "title"
                 },
                 {
                   "type": "string",
-                  "const": "title"
+                  "const": "createdAt"
                 }
               ]
             }
@@ -9751,11 +9751,11 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "createdAt"
+                "const": "title"
               },
               {
                 "type": "string",
-                "const": "title"
+                "const": "createdAt"
               }
             ]
           },
@@ -11671,11 +11671,11 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "createdAt"
+                "const": "title"
               },
               {
                 "type": "string",
-                "const": "title"
+                "const": "createdAt"
               }
             ]
           },
@@ -15697,6 +15697,10 @@
       "UpdateChapterRequest": {
         "type": "object",
         "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string",
             "minLength": 1,
@@ -15711,10 +15715,6 @@
                 "$ref": "#/components/schemas/SectionEndQuizRef"
               }
             ]
-          },
-          "revisionId": {
-            "type": "string",
-            "format": "uuid"
           },
           "expectedVersion": {
             "type": "integer",
@@ -15987,14 +15987,14 @@
       "UpdateLessonRequest": {
         "type": "object",
         "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200
-          },
-          "revisionId": {
-            "type": "string",
-            "format": "uuid"
           },
           "expectedVersion": {
             "type": "integer",
