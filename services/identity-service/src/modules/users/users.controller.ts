@@ -30,7 +30,9 @@ export class UsersController {
   }
 
   @Patch('me')
-  @ApiOperation({ summary: 'Update current user profile with optimistic locking' })
+  @ApiOperation({
+    summary: 'Update current user profile with optimistic locking',
+  })
   updateMe(
     @CurrentUser() user: JwtAccessPayload,
     @Body() dto: UpdateProfileDto,
@@ -40,7 +42,9 @@ export class UsersController {
 
   @Post('me/password')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Change current user password and revoke all sessions' })
+  @ApiOperation({
+    summary: 'Change current user password and revoke all sessions',
+  })
   async changePassword(
     @CurrentUser() user: JwtAccessPayload,
     @Body() dto: ChangePasswordDto,

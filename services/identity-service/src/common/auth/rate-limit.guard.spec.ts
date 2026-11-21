@@ -1,13 +1,21 @@
 import { ExecutionContext, HttpException, HttpStatus } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { RATE_LIMIT_KEY, RateLimitGuard, RateLimitRule } from './rate-limit.guard';
+import {
+  RATE_LIMIT_KEY,
+  RateLimitGuard,
+  RateLimitRule,
+} from './rate-limit.guard';
 
 describe('RateLimitGuard (IAM-08)', () => {
   const makeContext = (
     ip: string,
     email: string,
     rule: RateLimitRule,
-  ): { context: ExecutionContext; guard: RateLimitGuard; setHeader: jest.Mock } => {
+  ): {
+    context: ExecutionContext;
+    guard: RateLimitGuard;
+    setHeader: jest.Mock;
+  } => {
     const reflector = {
       getAllAndOverride: jest.fn((key: string) =>
         key === RATE_LIMIT_KEY ? rule : undefined,
@@ -37,7 +45,11 @@ describe('RateLimitGuard (IAM-08)', () => {
   };
 
   it('allows requests within limit and blocks the request exceeding limit with 429', () => {
-    const rule: RateLimitRule = { limit: 3, windowSeconds: 60, keyByEmail: true };
+    const rule: RateLimitRule = {
+      limit: 3,
+      windowSeconds: 60,
+      keyByEmail: true,
+    };
     const { context, guard, setHeader } = makeContext(
       '10.0.0.1',
       'user@lms.edu.vn',
@@ -53,7 +65,9 @@ describe('RateLimitGuard (IAM-08)', () => {
       fail('Expected 429 Too Many Requests');
     } catch (err) {
       expect(err).toBeInstanceOf(HttpException);
-      expect((err as HttpException).getStatus()).toBe(HttpStatus.TOO_MANY_REQUESTS);
+      expect((err as HttpException).getStatus()).toBe(
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
       expect(setHeader).toHaveBeenCalledWith('Retry-After', expect.any(String));
     }
   });

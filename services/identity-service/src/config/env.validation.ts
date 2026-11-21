@@ -22,7 +22,7 @@ export function validateEnv(config: Record<string, unknown>) {
     'REFRESH_TOKEN_TTL_DAYS',
     'JWT_PRIVATE_KEY',
     'JWT_PUBLIC_KEY',
-    'INTERNAL_JWT_PUBLIC_KEY'
+    'INTERNAL_JWT_PUBLIC_KEY',
   ];
 
   for (const key of required) {

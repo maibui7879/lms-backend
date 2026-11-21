@@ -15,10 +15,7 @@ import { UsersModule } from './modules/users/users.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [
-        'services/identity-service/.env',
-        '.env',
-      ],
+      envFilePath: ['services/identity-service/.env', '.env'],
       validate: validateEnv,
     }),
     DatabaseModule,

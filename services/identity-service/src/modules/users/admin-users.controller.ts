@@ -37,7 +37,9 @@ export class AdminUsersController {
   }
 
   @Patch(':id/status')
-  @ApiOperation({ summary: '[ADMIN] Update user account status with version check' })
+  @ApiOperation({
+    summary: '[ADMIN] Update user account status with version check',
+  })
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() admin: JwtAccessPayload,
@@ -73,7 +75,9 @@ export class AdminUsersController {
   }
 
   @Patch('role-requests/:requestId/review')
-  @ApiOperation({ summary: 'Approve or reject an instructor role request (Admin)' })
+  @ApiOperation({
+    summary: 'Approve or reject an instructor role request (Admin)',
+  })
   reviewRoleRequest(
     @CurrentUser() admin: JwtAccessPayload,
     @Param('requestId', ParseUUIDPipe) requestId: string,

@@ -15,9 +15,14 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 254, unique: true })
   email!: string;
 
-  @Column({ name: 'password_hash', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'password_hash',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   passwordHash!: string | null;
-  
+
   @Column({ name: 'display_name', type: 'varchar', length: 200 })
   displayName!: string;
 
@@ -45,9 +50,19 @@ export class UserEntity {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt!: Date;
 
-  @Column({ name: 'oauth_provider', type: 'varchar', length: 30, nullable: true })
+  @Column({
+    name: 'oauth_provider',
+    type: 'varchar',
+    length: 30,
+    nullable: true,
+  })
   oauthProvider!: 'LOCAL' | 'GOOGLE' | 'GITHUB' | null;
 
-  @Column({ name: 'oauth_provider_id', type: 'varchar', length: 255, nullable: true })
+  @Column({
+    name: 'oauth_provider_id',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
   oauthProviderId!: string | null;
 }

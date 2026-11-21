@@ -32,9 +32,11 @@ import { RefreshTokenEntity } from './entities/refresh-token.entity';
           signOptions: {
             algorithm: 'RS256',
             issuer: configService.getOrThrow<string>('JWT_ISSUER'),
-            expiresIn: Number(configService.getOrThrow<number>('ACCESS_TOKEN_TTL_SECONDS')),
+            expiresIn: Number(
+              configService.getOrThrow<number>('ACCESS_TOKEN_TTL_SECONDS'),
+            ),
           },
-            verifyOptions: {
+          verifyOptions: {
             algorithms: ['RS256'],
           },
         };

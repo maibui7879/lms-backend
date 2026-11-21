@@ -9,7 +9,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const dbUrl = config.getOrThrow<string>('DATABASE_URL');
-        const isLocal = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
+        const isLocal =
+          dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
 
         return {
           type: 'postgres' as const,

@@ -10,7 +10,8 @@ import { RoleRequestStatus } from '../entities/role-request.entity';
 
 export class CreateRoleRequestDto {
   @ApiProperty({
-    example: 'Tôi là giảng viên khoa CNTT, muốn đăng ký mở khóa học trên hệ thống.',
+    example:
+      'Tôi là giảng viên khoa CNTT, muốn đăng ký mở khóa học trên hệ thống.',
   })
   @IsString()
   @IsNotEmpty({ message: 'Reason is required' })

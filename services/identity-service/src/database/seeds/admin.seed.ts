@@ -3,7 +3,9 @@ import AppDataSource from '../data-source';
 import { UserEntity } from '../../modules/users/entities/user.entity';
 
 async function seedAdmin() {
-  const email = (process.env.ADMIN_EMAIL || 'admin@lms.edu.vn').trim().toLowerCase();
+  const email = (process.env.ADMIN_EMAIL || 'admin@lms.edu.vn')
+    .trim()
+    .toLowerCase();
   const password = process.env.ADMIN_PASSWORD || 'Admin@123456';
   const displayName = (process.env.ADMIN_DISPLAY_NAME || 'System Admin').trim();
 

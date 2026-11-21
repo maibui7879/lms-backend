@@ -113,9 +113,10 @@ export class InternalApiGuard implements CanActivate {
         throw new Error('Invalid signature');
       }
 
-      claims = JSON.parse(
-        Buffer.from(body, 'base64url').toString(),
-      ) as Record<string, unknown>;
+      claims = JSON.parse(Buffer.from(body, 'base64url').toString()) as Record<
+        string,
+        unknown
+      >;
 
       const now = Math.floor(Date.now() / 1000);
 

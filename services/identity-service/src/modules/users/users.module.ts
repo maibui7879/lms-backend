@@ -18,11 +18,7 @@ import { UsersService } from './users.service';
       RefreshTokenEntity,
     ]),
   ],
-  controllers: [
-    UsersController,
-    AdminUsersController,
-    InternalUsersController,
-  ],
+  controllers: [UsersController, AdminUsersController, InternalUsersController],
   providers: [UsersService],
   exports: [UsersService],
 })

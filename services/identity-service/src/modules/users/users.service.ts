@@ -25,10 +25,7 @@ import {
   RoleRequestEntity,
   RoleRequestStatus,
 } from './entities/role-request.entity';
-import {
-  UserAuditAction,
-  UserAuditEntity,
-} from './entities/user-audit.entity';
+import { UserAuditAction, UserAuditEntity } from './entities/user-audit.entity';
 import { UserEntity } from './entities/user.entity';
 
 export const UserStatus = {
@@ -433,7 +430,10 @@ export class UsersService {
     manager: EntityManager,
     targetUser: UserEntity,
   ): Promise<void> {
-    if (targetUser.role === 'ADMIN' && targetUser.status === UserStatus.ACTIVE) {
+    if (
+      targetUser.role === 'ADMIN' &&
+      targetUser.status === UserStatus.ACTIVE
+    ) {
       const activeAdminCount = await manager.getRepository(UserEntity).count({
         where: { role: 'ADMIN', status: UserStatus.ACTIVE },
       });

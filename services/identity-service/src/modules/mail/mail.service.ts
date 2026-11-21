@@ -23,7 +23,12 @@ export class MailService {
     });
   }
 
-  async sendOtpEmail(toEmail: string, fullName: string, otpCode: string, ttlMinutes: number) {
+  async sendOtpEmail(
+    toEmail: string,
+    fullName: string,
+    otpCode: string,
+    ttlMinutes: number,
+  ) {
     const from = this.config.get<string>('SMTP_USER');
     try {
       await this.transporter.sendMail({

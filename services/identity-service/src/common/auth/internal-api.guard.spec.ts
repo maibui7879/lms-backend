@@ -144,7 +144,10 @@ describe('InternalApiGuard - Service-to-Service RS256 JWT & Strict Operation Sco
   });
 
   it('rejects token signed with untrusted private key', () => {
-    const token = signInternalJwt({ scope: 'getUserAccess' }, foreignPrivateKey);
+    const token = signInternalJwt(
+      { scope: 'getUserAccess' },
+      foreignPrivateKey,
+    );
     const { context, guard } = makeContext(
       `Bearer ${token}`,
       'getUserAccess',

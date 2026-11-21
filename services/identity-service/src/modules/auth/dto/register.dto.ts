@@ -29,5 +29,4 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Display name is required' })
   @MaxLength(120)
   displayName!: string;
-
 }

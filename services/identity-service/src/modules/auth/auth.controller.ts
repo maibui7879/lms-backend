@@ -73,7 +73,10 @@ export class AuthController {
   @Post('verify-email')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify registration email with 6-digit OTP' })
-  @ApiResponse({ status: 200, description: 'Email verified and account activated' })
+  @ApiResponse({
+    status: 200,
+    description: 'Email verified and account activated',
+  })
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
   async verifyEmail(@Body() dto: VerifyEmailDto) {
     return this.authService.verifyEmail(dto);

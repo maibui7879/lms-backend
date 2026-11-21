@@ -350,7 +350,10 @@ export class AuthService {
       });
     }
 
-    const isPasswordValid = await argon2.verify(user.passwordHash, dto.password);
+    const isPasswordValid = await argon2.verify(
+      user.passwordHash,
+      dto.password,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException({
         code: 'UNAUTHORIZED',
@@ -497,23 +500,26 @@ export class AuthService {
     code: string,
     meta?: { userAgent?: string; ipAddress?: string },
   ) {
-    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
+    const tokenRes = await fetch(
+      'https://github.com/login/oauth/access_token',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: this.configService.getOrThrow<string>('GITHUB_CLIENT_ID'),
+          client_secret: this.configService.getOrThrow<string>(
+            'GITHUB_CLIENT_SECRET',
+          ),
+          code,
+          redirect_uri: this.configService.getOrThrow<string>(
+            'GITHUB_CALLBACK_URL',
+          ),
+        }),
       },
-      body: JSON.stringify({
-        client_id: this.configService.getOrThrow<string>('GITHUB_CLIENT_ID'),
-        client_secret: this.configService.getOrThrow<string>(
-          'GITHUB_CLIENT_SECRET',
-        ),
-        code,
-        redirect_uri: this.configService.getOrThrow<string>(
-          'GITHUB_CALLBACK_URL',
-        ),
-      }),
-    });
+    );
 
     const tokenData = (await tokenRes.json()) as { access_token?: string };
     if (!tokenData.access_token) {
