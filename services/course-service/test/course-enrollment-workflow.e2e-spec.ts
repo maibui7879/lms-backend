@@ -17,6 +17,8 @@ import { CourseReview } from '../src/modules/course-revisions/entities/course-re
 import { CourseRevision } from '../src/modules/course-revisions/entities/course-revision.entity';
 import { EnrollmentsModule } from '../src/modules/enrollments/enrollments.module';
 import { DataSource } from 'typeorm';
+import { EnrollmentOutboxPublisher } from '../src/modules/outbox/enrollment-outbox.publisher';
+import { CourseMigrationDispatcher } from '../src/modules/outbox/course-migration-dispatch';
 
 describe('Course creation to enrollment workflow', () => {
   let app: INestApplication;
@@ -49,6 +51,7 @@ describe('Course creation to enrollment workflow', () => {
   const lessonRepository = { find: jest.fn() };
   const itemRepository = { find: jest.fn() };
   const enrollmentRepository = {
+    manager: { transaction: jest.fn() },
     findOneBy: jest.fn(),
     findAndCount: jest.fn(),
     create: jest.fn((value: unknown) => value),
@@ -61,7 +64,13 @@ describe('Course creation to enrollment workflow', () => {
     findAndCount: jest.fn(),
   };
   const revisionRepository = {};
-  const transactionManager = { update: jest.fn() };
+  const transactionManager = {
+    update: jest.fn(),
+    queryRunner: { isTransactionActive: true },
+    insert: jest.fn(),
+    getRepository: (entity: unknown) =>
+      entity === Course ? courseRepository : enrollmentRepository,
+  };
   const dataSource = {
     transaction: jest.fn(
       async (callback: (manager: typeof transactionManager) => unknown) =>
@@ -108,6 +117,10 @@ describe('Course creation to enrollment workflow', () => {
       .useValue(revisionRepository)
       .overrideProvider(DataSource)
       .useValue(dataSource)
+      .overrideProvider(CourseMigrationDispatcher)
+      .useValue({})
+      .overrideProvider(EnrollmentOutboxPublisher)
+      .useValue({})
       .compile();
     app = module.createNestApplication();
     app.use(requestContext);
@@ -117,6 +130,10 @@ describe('Course creation to enrollment workflow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    enrollmentRepository.manager.transaction.mockImplementation(async (work) =>
+      work(transactionManager),
+    );
+    transactionManager.insert.mockResolvedValue({});
     Object.assign(state.course, {
       status: 'DRAFT',
       version: 1,

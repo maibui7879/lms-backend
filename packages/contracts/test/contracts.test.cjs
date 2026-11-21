@@ -106,6 +106,31 @@ test('student delivery rejects answer keys and explanations; authoring validates
   });
   invalid('QuestionAuthoringDTO', { ...authoring, points: 0 });
 });
+test('practice questions accept empty skills and retain existing skill mappings', () => {
+  parseContract('QuizPolicy', {
+    ...policy,
+    quizType: 'PRACTICE',
+    requiredForCompletion: false,
+  });
+  const request = {
+    type: question.type,
+    prompt: question.prompt,
+    choices: question.choices,
+    points: question.points,
+    skillIds: [],
+    correctChoiceIds: [id],
+    explanation: null,
+  };
+  parseContract('CreateQuestionRequest', request);
+  parseContract('UpdateQuestionRequest', { ...request, expectedVersion: 1 });
+  parseContract('QuestionAuthoringDTO', {
+    ...request,
+    id,
+    skillIds: [id2],
+    version: 1,
+  });
+});
+
 test('policy rejects invalid thresholds, durations, attempts and practice requirements', () => {
   parseContract('QuizPolicy', policy);
   for (const bad of [
@@ -168,7 +193,7 @@ test('answers, concurrency and course rejection have strict request shapes', () 
   });
   invalid('PageQuery', { page: 0, limit: 101 });
 });
-test('pending results use null scores; sync cannot invent successful receipts', () => {
+test('ungraded results use null scores; sync cannot invent successful receipts', () => {
   const result = {
     attemptId: id,
     quizId: id,
@@ -176,13 +201,16 @@ test('pending results use null scores; sync cannot invent successful receipts', 
     userId: id,
     assessmentVersion: 1,
     attemptStatus: 'SUBMITTED',
-    gradingStatus: 'PENDING_REVIEW',
+    gradingStatus: 'NOT_GRADED',
     score: null,
     maxScore: null,
     passed: null,
     gradedAt: null,
   };
   parseContract('QuizResultV2Data', result);
+  invalid('QuizResultV2Data', { ...result, gradingStatus: 'PENDING_REVIEW' });
+  invalid('GradingStatus', 'PENDING_REVIEW');
+  invalid('QuizAttemptStatus', 'PENDING_REVIEW');
   invalid('QuizResultV2Data', { ...result, score: 0 });
   invalid('QuizResultV2Data', { ...result, gradingStatus: 'GRADED' });
   parseContract('QuizResultV2Data', {
@@ -246,6 +274,22 @@ test('v1 events remain readable; v2 requires versioned grading evidence', () => 
     },
   };
   parseContract('AttemptGradedV2Event', v2);
+  const skillScore = { skillId: id, score: 7, maxScore: 10 };
+  const withSkill = (entry) => ({
+    ...v2,
+    payload: { ...v2.payload, skillScores: [entry] },
+  });
+  parseContract('AttemptGradedV2Event', withSkill(skillScore));
+  parseContract(
+    'AttemptGradedV2Event',
+    withSkill({ ...skillScore, questionCount: 3 }),
+  );
+  for (const questionCount of [0, -1, 1.5, '3', null]) {
+    invalid(
+      'AttemptGradedV2Event',
+      withSkill({ ...skillScore, questionCount }),
+    );
+  }
   invalid('AttemptGradedV2Event', {
     ...v2,
     payload: { ...v2.payload, passed: false },
@@ -323,21 +367,27 @@ test('certificates are versioned and preserve superseded history', () => {
     status: 'SUPERSEDED',
     supersededByCertificateId: id2,
   });
+  invalid('CertificateData', { ...certificate, status: 'INVALID' });
   parseContract('CertificateVerificationData', {
     valid: true,
     status: 'SUPERSEDED',
     courseTitle: 'Course',
-    recipientName: 'Student',
+    recipientName: null,
     issuedAt: time,
   });
-  invalid('CertificateData', { ...certificate, status: 'INVALID' });
-  parseContract('CertificateVerificationData', {
+  const unknown = {
     valid: false,
+    status: null,
+    courseTitle: null,
+    recipientName: null,
+    issuedAt: null,
+  };
+  parseContract('CertificateVerificationData', unknown);
+  parseContract('CertificateVerificationData', {
+    ...unknown,
     status: 'REVOKED',
-    courseTitle: 'Course',
-    recipientName: 'Student',
-    issuedAt: time,
   });
+  invalid('CertificateVerificationData', { ...unknown, status: 'NOT_FOUND' });
 });
 
 test('re-enrollment pins a new snapshot and exposes certificate revocation', () => {

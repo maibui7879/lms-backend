@@ -110,6 +110,16 @@ export class InternalService {
       contentVersion: query.contentVersion,
       status: 'PUBLISHED',
     });
+    if (
+      !revision &&
+      query.contentVersion !==
+        (course.initialPublishedContentVersion ??
+          (course.publishedRevisionId ? undefined : course.contentVersion))
+    )
+      throw new ConflictException({
+        code: 'CONTENT_VERSION_UNAVAILABLE',
+        message: 'No published snapshot exists for the requested version',
+      });
     const revisionId = revision?.id ?? IsNull();
     const [chapters, lessons, items] = await Promise.all([
       this.chapters.find({

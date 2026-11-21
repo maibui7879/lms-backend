@@ -20,6 +20,7 @@ export interface EndpointContract {
   request?: string;
   query?: string;
   response?: string;
+  binaryResponse?: 'application/pdf';
   list?: boolean;
   nullable?: boolean;
   success: 200 | 201 | 204;
@@ -726,7 +727,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/quizzes/{id}/questions',
     access: 'COURSE_OWNER',
     description:
-      'Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs.',
+      'Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs. Quiz PRACTICE không bắt buộc gán kỹ năng: gửi skillIds: []; server lấy loại bài từ quiz cha, không gọi xác minh kỹ năng khi danh sách rỗng.',
     request: 'CreateQuestionRequest',
     response: 'QuestionAuthoringDTO',
     success: 201,
@@ -918,6 +919,32 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     success: 200,
   },
   {
+    operationId: 'listMySyncedQuizScores',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/me/quiz-scores',
+    access: 'ENROLLED',
+    description:
+      'Tổng hợp điểm quiz có chấm điểm đã đồng bộ của học viên đang ghi danh, theo quiz và assessmentVersion.',
+    query: 'PageQuery',
+    response: 'LearnerAssessmentSummary',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'listCourseSyncedQuizScores',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/quiz-scores',
+    access: 'COURSE_OWNER',
+    description:
+      'Tổng hợp điểm quiz có chấm điểm đã đồng bộ theo học viên, quiz và assessmentVersion cho chủ khóa hoặc admin.',
+    query: 'PageQuery',
+    response: 'LearnerAssessmentSummary',
+    list: true,
+    success: 200,
+  },
+  {
     operationId: 'getResume',
     service: 'learning',
     method: 'get',
@@ -952,14 +979,103 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     success: 200,
   },
   {
+    operationId: 'listCourseSkills',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/skills',
+    access: 'AUTHENTICATED',
+    description:
+      'Học viên đã ghi danh xem kỹ năng đang dùng. Chủ khóa hoặc Admin xem cả kỹ năng đã ngừng dùng.',
+    response: 'CourseSkillsData',
+    success: 200,
+  },
+  {
+    operationId: 'createCourseSkill',
+    service: 'learning',
+    method: 'post',
+    path: '/api/v1/learning/courses/{id}/skills',
+    access: 'COURSE_OWNER',
+    description:
+      'Chủ khóa hoặc Admin tạo kỹ năng đang dùng trong danh mục khóa học.',
+    request: 'CreateCourseSkillRequest',
+    response: 'CourseSkillData',
+    success: 201,
+  },
+  {
+    operationId: 'updateCourseSkill',
+    service: 'learning',
+    method: 'patch',
+    path: '/api/v1/learning/courses/{id}/skills/{skillId}',
+    access: 'COURSE_OWNER',
+    description:
+      'Chủ khóa hoặc Admin sửa tên, mô tả hoặc trạng thái kỹ năng theo expectedVersion.',
+    request: 'UpdateCourseSkillRequest',
+    response: 'CourseSkillData',
+    success: 200,
+  },
+  {
+    operationId: 'getCourseSkillReference',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/internal/courses/{id}/skills/{skillId}',
+    access: 'INTERNAL',
+    description:
+      'Tra kỹ năng trong đúng khóa với credential tra kỹ năng. Chỉ trạng thái ACTIVE được gắn mới.',
+    response: 'CourseSkillData',
+    success: 200,
+  },
+  {
+    operationId: 'validateCourseSkills',
+    service: 'learning',
+    method: 'post',
+    path: '/api/v1/internal/courses/{id}/skills/validate',
+    access: 'INTERNAL',
+    description:
+      'Xác minh tất cả mã kỹ năng gắn mới vào câu hỏi đều đang dùng và thuộc đúng khóa. Dùng credential tra kỹ năng.',
+    request: 'ValidateCourseSkillsRequest',
+    success: 204,
+  },
+  {
     operationId: 'getMastery',
     service: 'learning',
     method: 'get',
     path: '/api/v1/learning/courses/{id}/mastery',
     access: 'ENROLLED',
     description:
-      'Lấy dữ liệu mastery hoặc mức độ nắm vững của learner trong course.',
+      'Lấy mức độ nắm vững kỹ năng của learner trong course. Chỉ tính bài đánh giá có quizType GRADED đã chấm xong; loại trừ PRACTICE kể cả khi câu hỏi có gắn kỹ năng.',
     response: 'MasteryData',
+    success: 200,
+  },
+  {
+    operationId: 'listMasteryHistory',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/mastery/history',
+    access: 'ENROLLED',
+    description:
+      'Lấy các mốc mastery của học viên đã ghi danh từ bài đánh giá có quizType GRADED đã chấm và đồng bộ, mốc mới nhất trước; không tính PRACTICE.',
+    query: 'PageQuery',
+    response: 'MasteryHistoryPoint',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'getSkillPrerequisites',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/skill-prerequisites',
+    access: 'COURSE_OWNER',
+    response: 'CourseSkillPrerequisites',
+    success: 200,
+  },
+  {
+    operationId: 'saveSkillPrerequisites',
+    service: 'learning',
+    method: 'put',
+    path: '/api/v1/learning/courses/{id}/skill-prerequisites',
+    access: 'COURSE_OWNER',
+    request: 'SaveSkillPrerequisitesRequest',
+    response: 'CourseSkillPrerequisites',
     success: 200,
   },
   {
@@ -981,7 +1097,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/learning/courses/{id}/certificate',
     access: 'ENROLLED',
     description:
-      'Phát hành certificate khi learner đủ điều kiện của contentVersion hiện tại. Khóa chống trùng là userId, courseId và contentVersion, không phụ thuộc enrollmentId. Nếu certificate đã tồn tại thì trả bản ghi hiện có; nếu certificate cùng phiên bản đã REVOKED thì trả CERTIFICATE_REVOKED; chỉ cấp certificate mới khi contentVersion tăng và learner hoàn thành lại requirement.',
+      'Phát hành theo phiên bản đã ghi danh. Mỗi bộ (userId, courseId, contentVersion) có một chứng chỉ, kể cả khi enrollmentId thay đổi. Cùng phiên bản đã thu hồi trả CERTIFICATE_REVOKED. Chỉ cấp bản mới khi contentVersion tăng và học viên hoàn thành yêu cầu bản mới.',
     response: 'CertificateData',
     success: 201,
     idempotent: true,
@@ -993,7 +1109,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/learning/me/certificates',
     access: 'AUTHENTICATED',
     description:
-      'Liệt kê certificate của user hiện tại, bao gồm trạng thái ACTIVE, SUPERSEDED hoặc REVOKED; không xóa certificate cũ khi có contentVersion mới.',
+      'Liệt kê chứng chỉ của tài khoản hiện tại, gồm các trạng thái ACTIVE, SUPERSEDED và REVOKED cùng liên kết tới chứng chỉ thay thế nếu có.',
     query: 'PageQuery',
     response: 'CertificateData',
     list: true,
@@ -1006,8 +1122,31 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/certificates/verify/{code}',
     access: 'PUBLIC',
     description:
-      'Xác minh certificate công khai bằng code và trả trạng thái ACTIVE, SUPERSEDED hoặc REVOKED. Certificate SUPERSEDED vẫn là bằng chứng lịch sử; certificate REVOKED không còn hợp lệ.',
+      'Xác minh công khai theo mã. ACTIVE là bản hiện hành, SUPERSEDED là bằng chứng lịch sử, REVOKED không còn hợp lệ. Mã không tồn tại trả status null. Chi tiết thu hồi chỉ dành cho Admin.',
     response: 'CertificateVerificationData',
+    success: 200,
+  },
+  {
+    operationId: 'downloadCertificate',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/me/certificates/{id}/download',
+    access: 'AUTHENTICATED',
+    description:
+      'Tải PDF của tài khoản hiện tại. Trả 404 nếu chứng chỉ không thuộc tài khoản, 409 nếu đã thu hồi.',
+    binaryResponse: 'application/pdf',
+    success: 200,
+  },
+  {
+    operationId: 'revokeCertificate',
+    service: 'learning',
+    method: 'put',
+    path: '/api/v1/admin/certificates/{id}/revocation',
+    access: 'ADMIN',
+    description:
+      'Admin thu hồi theo ID chứng chỉ, bắt buộc có lý do. Gửi lại trả hồ sơ thu hồi lần đầu.',
+    request: 'RevokeCertificateRequest',
+    response: 'CertificateRevocationData',
     success: 200,
   },
   {
@@ -1016,7 +1155,9 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     method: 'get',
     path: '/api/v1/learning/courses/{id}/statistics',
     access: 'COURSE_OWNER',
-    description: 'Lấy thống kê học tập của learner trong course.',
+    description:
+      'Tỷ lệ hoàn thành và trung bình tiến độ theo bài của học viên ghi danh trong khoảng [fromAt, toAt).',
+    query: 'LearningReportDateQuery',
     response: 'LearningStatisticsData',
     success: 200,
   },
@@ -1027,10 +1168,44 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/learning/courses/{id}/learners',
     access: 'COURSE_OWNER',
     description:
-      'Liệt kê tiến độ của các learner trong course dành cho owner hoặc admin.',
+      'Liệt kê tiến độ theo bài của học viên cho chủ khóa hoặc Admin. Màn hình dùng lessonProgressPercent.',
     query: 'PageQuery',
     response: 'LearnerProgressSummary',
     list: true,
+    success: 200,
+  },
+  {
+    operationId: 'getLearnerProgressDetail',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/learners/{userId}',
+    access: 'COURSE_OWNER',
+    description:
+      'Xem các bài đã hoàn thành và lần học gần nhất của một học viên theo phiên bản ghi danh.',
+    response: 'LearnerProgressDetail',
+    success: 200,
+  },
+  {
+    operationId: 'getLearningWeakSkills',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/weak-skills',
+    access: 'COURSE_OWNER',
+    description:
+      'Tổng hợp kỹ năng yếu của học viên có đủ bằng chứng trong khóa.',
+    response: 'LearningWeakSkillsData',
+    success: 200,
+  },
+  {
+    operationId: 'getLearningAnalytics',
+    service: 'learning',
+    method: 'get',
+    path: '/api/v1/learning/courses/{id}/analytics',
+    access: 'COURSE_OWNER',
+    description:
+      'Phân bố tiến độ hiện tại và kết quả quiz đã chấm, với xu hướng theo ngày UTC trong khoảng [fromAt, toAt).',
+    query: 'LearningAnalyticsQuery',
+    response: 'LearningAnalyticsData',
     success: 200,
   },
   {
@@ -1135,6 +1310,18 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     success: 200,
   },
   {
+    operationId: 'getQuizRecommendationContext',
+    service: 'quiz',
+    method: 'get',
+    path: '/api/v1/internal/quizzes/{id}/recommendation-context',
+    access: 'INTERNAL',
+    description:
+      'Trả kỹ năng theo phiên bản quiz và quyền tạo lượt mới của học viên.',
+    query: 'QuizRecommendationContextQuery',
+    response: 'QuizRecommendationContext',
+    success: 200,
+  },
+  {
     operationId: 'getLearnerAssessments',
     service: 'quiz',
     method: 'get',
@@ -1169,5 +1356,16 @@ export const ENDPOINTS: readonly EndpointContract[] = [
       'Đánh dấu các learning item bị ảnh hưởng bởi critical revision để learner phải hoàn thành lại hoặc chỉ nhận thông báo theo migration policy.',
     request: 'MigrateCourseItemsRequest',
     success: 204,
+  },
+  {
+    operationId: 'getCourseItemMigrationContext',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/internal/course-revisions/{id}/item-migration-context',
+    access: 'INTERNAL',
+    description:
+      'Cung cấp revision đã xuất bản, item đích, các item nguồn trong phiên bản cũ và yêu cầu assessment mới để Learning xác minh migration.',
+    response: 'CourseItemMigrationContext',
+    success: 200,
   },
 ];

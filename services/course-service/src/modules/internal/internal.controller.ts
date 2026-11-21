@@ -5,6 +5,7 @@ import {
   Param,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import type {
   ApiResponse,
@@ -21,8 +22,10 @@ import type { Request } from 'express';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
 import { InternalService } from './internal.service';
 import { validateCourseId } from '../courses/dto/course-request.pipe';
+import { InternalServiceGuard } from '../../common/internal-service.guard';
 
 @Controller('api/v1/internal')
+@UseGuards(InternalServiceGuard)
 export class InternalController {
   constructor(
     private readonly enrollments: EnrollmentsService,
@@ -73,6 +76,17 @@ export class InternalController {
     query: Record<string, unknown>,
   ): T {
     try {
+      if (
+        name === 'ContentVersionQuery' &&
+        typeof query.contentVersion === 'string'
+      ) {
+        if (
+          !/^[1-9]\d*$/.test(query.contentVersion) ||
+          !Number.isSafeInteger(Number(query.contentVersion))
+        )
+          throw new BadRequestException('Invalid contentVersion');
+        query = { ...query, contentVersion: Number(query.contentVersion) };
+      }
       return parseContract(name, query) as T;
     } catch (error) {
       if (error instanceof ContractValidationError)
