@@ -4,6 +4,7 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
+  [x: string]: any;
   sendVerificationOtp(email: string, code: string, ttlMinutes: number) {
     throw new Error('Method not implemented.');
   }
@@ -44,5 +45,23 @@ export class MailService {
       this.logger.error(`Failed to send OTP email to ${toEmail}`, error);
       throw error;
     }
+  }
+
+  async sendPasswordResetEmail(
+    to: string,
+    displayName: string,
+    otpCode: string,
+    ttlMinutes: number,
+  ): Promise<void> {
+    await this.transporter.sendMail({
+      from: this.config.get<string>('SMTP_USER'),
+      to,
+      subject: '[LMS] Mã xác nhận đặt lại mật khẩu',
+      html: `
+        <p>Xin chào <b>${displayName}</b>,</p>
+        <p>Mã OTP đặt lại mật khẩu của bạn là: <b style="font-size:20px">${otpCode}</b></p>
+        <p>Mã có hiệu lực trong <b>${ttlMinutes} phút</b>. Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
+      `,
+    });
   }
 }

@@ -19,6 +19,8 @@ import {
 } from './dto/admin-users.dto';
 import { UsersService } from './users.service';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ReviewRoleRequestDto } from './dto/role-request.dto';
+import { RoleRequestStatus } from './entities/role-request.entity';
 
 @ApiTags('Admin - Users')
 @ApiBearerAuth()
@@ -62,5 +64,21 @@ export class AdminUsersController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit = 20,
   ) {
     return this.usersService.listUserAudits(id, page, limit);
+  }
+
+  @Get('role-requests')
+  @ApiOperation({ summary: 'List instructor role upgrade requests (Admin)' })
+  listRoleRequests(@Query('status') status?: RoleRequestStatus) {
+    return this.usersService.listRoleRequests(status);
+  }
+
+  @Patch('role-requests/:requestId/review')
+  @ApiOperation({ summary: 'Approve or reject an instructor role request (Admin)' })
+  reviewRoleRequest(
+    @CurrentUser() admin: JwtAccessPayload,
+    @Param('requestId', ParseUUIDPipe) requestId: string,
+    @Body() dto: ReviewRoleRequestDto,
+  ) {
+    return this.usersService.reviewRoleRequest(requestId, admin.sub, dto);
   }
 }

@@ -120,6 +120,46 @@ export class UsersService {
     return this.userRepo.save(user) as Promise<UserEntity>;
   }
 
+  async findOrCreateOAuthUser(input: {
+    provider: 'GOOGLE' | 'GITHUB';
+    providerId: string;
+    email: string;
+    displayName: string;
+    avatarUrl?: string | null;
+  }): Promise<UserEntity> {
+    const normalizedEmail = this.normalizeEmail(input.email);
+    const existing = await this.findByEmail(normalizedEmail);
+
+    if (existing) {
+      if (!existing.oauthProviderId) {
+        existing.oauthProvider = input.provider;
+        existing.oauthProviderId = input.providerId;
+      }
+      if (!existing.emailVerifiedAt) {
+        existing.emailVerifiedAt = new Date();
+      }
+      if (!existing.avatarUrl && input.avatarUrl) {
+        existing.avatarUrl = input.avatarUrl;
+      }
+      return this.userRepo.save(existing);
+    }
+
+    const created = this.userRepo.create({
+      email: normalizedEmail,
+      passwordHash: null,
+      displayName: input.displayName.trim() || normalizedEmail.split('@')[0],
+      avatarUrl: input.avatarUrl ?? null,
+      role: 'STUDENT',
+      status: UserStatus.ACTIVE,
+      emailVerifiedAt: new Date(),
+      oauthProvider: input.provider,
+      oauthProviderId: input.providerId,
+      version: 1,
+    } as DeepPartial<UserEntity>) as UserEntity;
+
+    return this.userRepo.save(created);
+  }
+
   async activateUser(userId: string): Promise<UserEntity> {
     const user = await this.findById(userId);
     if (!user) {
@@ -331,6 +371,14 @@ export class UsersService {
       });
     }
 
+    if (!user.passwordHash) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message:
+          'Account registered via OAuth does not have a local password. Use forgot-password to set one.',
+      });
+    }
+
     const isCurrentValid = await argon2.verify(
       user.passwordHash,
       dto.currentPassword,
@@ -353,6 +401,22 @@ export class UsersService {
       type: argon2.argon2id,
     });
 
+    await this.userRepo.manager.transaction(async (manager) => {
+      const userRepo = manager.getRepository(UserEntity);
+      const tokenRepo = manager.getRepository(RefreshTokenEntity);
+
+      await userRepo.update({ id: userId }, { passwordHash: newPasswordHash });
+      await tokenRepo.update(
+        { userId, revokedAt: IsNull() },
+        { revokedAt: new Date() },
+      );
+    });
+  }
+
+  async resetUserPassword(
+    userId: string,
+    newPasswordHash: string,
+  ): Promise<void> {
     await this.userRepo.manager.transaction(async (manager) => {
       const userRepo = manager.getRepository(UserEntity);
       const tokenRepo = manager.getRepository(RefreshTokenEntity);
@@ -481,7 +545,7 @@ export class UsersService {
     });
   }
 
-async adminUpdateUserRole(
+  async adminUpdateUserRole(
     actorId: string,
     targetUserId: string,
     dto: UpdateUserRoleDto,
@@ -540,6 +604,7 @@ async adminUpdateUserRole(
       return this.toUserProfile(updated);
     });
   }
+
   async listUserAudits(userId: string, page = 1, limit = 20) {
     const user = await this.findById(userId);
     if (!user) {

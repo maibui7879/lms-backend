@@ -6,6 +6,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+export type OtpPurpose = 'VERIFY_EMAIL' | 'RESET_PASSWORD';
+
 @Entity('email_otps')
 export class EmailOtpEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -14,6 +16,9 @@ export class EmailOtpEntity {
   @Index()
   @Column({ type: 'varchar', length: 255 })
   email!: string;
+
+  @Column({ type: 'varchar', length: 30, default: 'VERIFY_EMAIL' })
+  purpose!: OtpPurpose;
 
   @Column({ name: 'otp_hash', type: 'varchar', length: 64 })
   otpHash!: string;
@@ -29,6 +34,4 @@ export class EmailOtpEntity {
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
-  attemptCount: number;
-  codeHash: string;
 }

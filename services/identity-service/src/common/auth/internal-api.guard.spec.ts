@@ -1,123 +1,193 @@
 import { generateKeyPairSync, sign } from 'node:crypto';
-import type { ExecutionContext } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InternalApiGuard } from './internal-api.guard';
+import { Reflector } from '@nestjs/core';
+import { InternalApiGuard, INTERNAL_SCOPE_KEY } from './internal-api.guard';
 
-describe('InternalApiGuard', () => {
-  const originalEnv = { ...process.env };
-  const keys = generateKeyPairSync('rsa', { modulusLength: 2048 });
-  const otherKeys = generateKeyPairSync('rsa', { modulusLength: 2048 });
+describe('InternalApiGuard - Service-to-Service RS256 JWT & Strict Operation Scopes', () => {
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
 
-  let headers: Record<string, string | undefined> = {};
-  let currentHandlerName = 'getUserSummary';
+  const { privateKey: foreignPrivateKey } = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: 'spki', format: 'pem' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
 
-  const mockContext = {
-    getHandler: () => ({ name: currentHandlerName }),
-    switchToHttp: () => ({
-      getRequest: () => ({ headers }),
-    }),
-  } as unknown as ExecutionContext;
-
-  const configService = {
-    get: (key: string) => process.env[key],
-  } as ConfigService;
-
-  const guard = new InternalApiGuard(configService);
-
-  function createToken(extra: Record<string, unknown> = {}, signKey = keys.privateKey) {
+  const signInternalJwt = (
+    overrides: Record<string, unknown> = {},
+    keyPem: string = privateKey,
+  ): string => {
     const now = Math.floor(Date.now() / 1000);
-    const head = Buffer.from(JSON.stringify({ alg: 'RS256' })).toString('base64url');
-    const body = Buffer.from(
+    const header = Buffer.from(
+      JSON.stringify({ alg: 'RS256', typ: 'JWT' }),
+    ).toString('base64url');
+    const payload = Buffer.from(
       JSON.stringify({
         iss: 'lms-internal',
         aud: 'identity-service',
         sub: 'course-service',
-        scope: 'getUserSummary',
+        scope: 'getUserAccess',
         iat: now,
-        exp: now + 300,
-        ...extra,
+        exp: now + 180,
+        ...overrides,
       }),
     ).toString('base64url');
-    const signature = sign('RSA-SHA256', Buffer.from(`${head}.${body}`), signKey).toString('base64url');
-    return `Bearer ${head}.${body}.${signature}`;
-  }
 
-  beforeEach(() => {
-    process.env.NODE_ENV = 'production';
-    delete process.env.IDENTITY_SERVICE_TOKEN;
-    process.env.INTERNAL_JWT_PUBLIC_KEY = keys.publicKey
-      .export({ format: 'pem', type: 'spki' })
-      .toString();
-    currentHandlerName = 'getUserSummary';
-    headers = { authorization: createToken() };
+    const signature = sign(
+      'RSA-SHA256',
+      Buffer.from(`${header}.${payload}`),
+      keyPem,
+    ).toString('base64url');
+
+    return `${header}.${payload}.${signature}`;
+  };
+
+  const makeContext = (
+    authHeader: string | undefined,
+    handlerName: string,
+    requiredScope?: string,
+  ): { context: ExecutionContext; guard: InternalApiGuard } => {
+    const configService = {
+      get: jest.fn((key: string) =>
+        key === 'INTERNAL_JWT_PUBLIC_KEY' ? publicKey : undefined,
+      ),
+    } as unknown as ConfigService;
+
+    const reflector = {
+      get: jest.fn((metaKey: string) =>
+        metaKey === INTERNAL_SCOPE_KEY ? requiredScope : undefined,
+      ),
+    } as unknown as Reflector;
+
+    const guard = new InternalApiGuard(configService, reflector);
+
+    const handler = Object.defineProperty(() => undefined, 'name', {
+      value: handlerName,
+    });
+
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          headers: authHeader ? { authorization: authHeader } : {},
+        }),
+      }),
+      getHandler: () => handler,
+    } as unknown as ExecutionContext;
+
+    return { context, guard };
+  };
+
+  it('allows valid RS256 token with exact getUserAccess scope', () => {
+    const token = signInternalJwt({ scope: 'getUserAccess' });
+    const { context, guard } = makeContext(
+      `Bearer ${token}`,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(guard.canActivate(context)).toBe(true);
   });
 
-  afterAll(() => {
-    process.env = originalEnv;
+  it('allows valid RS256 token with exact getUserSummary scope', () => {
+    const token = signInternalJwt({ scope: 'getUserSummary' });
+    const { context, guard } = makeContext(
+      `Bearer ${token}`,
+      'getUserSummary',
+      'getUserSummary',
+    );
+    expect(guard.canActivate(context)).toBe(true);
   });
 
-  it('accepts a valid internal Service JWT for getUserSummary', () => {
-    expect(guard.canActivate(mockContext)).toBe(true);
+  it('rejects wildcard scopes (*, internal, internal:users) with ForbiddenException', () => {
+    for (const badScope of ['*', 'internal', 'internal:users']) {
+      const token = signInternalJwt({ scope: badScope });
+      const { context, guard } = makeContext(
+        `Bearer ${token}`,
+        'getUserSummary',
+        'getUserSummary',
+      );
+      expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+    }
   });
 
-  it('accepts a valid internal Service JWT for getUserAccess with corresponding scope', () => {
-    currentHandlerName = 'getUserAccess';
-    headers.authorization = createToken({ scope: 'getUserAccess' });
-    expect(guard.canActivate(mockContext)).toBe(true);
+  it('rejects token when scope belongs to a different operation', () => {
+    const token = signInternalJwt({ scope: 'getUserSummary' });
+    const { context, guard } = makeContext(
+      `Bearer ${token}`,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
 
-  it('rejects request when Authorization header is missing', () => {
-    headers = {};
-    expect(() => guard.canActivate(mockContext)).toThrow('Authorization header with Bearer token is required');
+  it('rejects missing or non-Bearer Authorization header', () => {
+    const { context: noHeaderCtx, guard: g1 } = makeContext(
+      undefined,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => g1.canActivate(noHeaderCtx)).toThrow(UnauthorizedException);
+
+    const { context: basicCtx, guard: g2 } = makeContext(
+      'Basic abc123',
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => g2.canActivate(basicCtx)).toThrow(UnauthorizedException);
   });
 
-  it('rejects request with non-Bearer authorization scheme', () => {
-    headers.authorization = 'Basic dXNlcjpwYXNz';
-    expect(() => guard.canActivate(mockContext)).toThrow('Authorization header with Bearer token is required');
+  it('rejects token signed with untrusted private key', () => {
+    const token = signInternalJwt({ scope: 'getUserAccess' }, foreignPrivateKey);
+    const { context, guard } = makeContext(
+      `Bearer ${token}`,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
   });
 
-  it('rejects malformed token string', () => {
-    headers.authorization = 'Bearer not.a.valid.jwt';
-    expect(() => guard.canActivate(mockContext)).toThrow('Invalid internal JWT');
+  it('rejects token with wrong issuer or wrong audience', () => {
+    const badIss = signInternalJwt({ iss: 'unknown-service' });
+    const { context: c1, guard: g1 } = makeContext(
+      `Bearer ${badIss}`,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => g1.canActivate(c1)).toThrow(UnauthorizedException);
+
+    const badAud = signInternalJwt({ aud: 'course-service' });
+    const { context: c2, guard: g2 } = makeContext(
+      `Bearer ${badAud}`,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => g2.canActivate(c2)).toThrow(UnauthorizedException);
   });
 
-  it('rejects token signed by an untrusted key', () => {
-    headers.authorization = createToken({}, otherKeys.privateKey);
-    expect(() => guard.canActivate(mockContext)).toThrow('Invalid internal JWT');
-  });
-
-  it('rejects mismatched audience', () => {
-    headers.authorization = createToken({ aud: 'course-service' });
-    expect(() => guard.canActivate(mockContext)).toThrow('Invalid internal JWT');
-  });
-
-  it('rejects untrusted issuer', () => {
-    headers.authorization = createToken({ iss: 'untrusted-issuer' });
-    expect(() => guard.canActivate(mockContext)).toThrow('Invalid internal JWT');
-  });
-
-  it('rejects insufficient scope for handler', () => {
-    currentHandlerName = 'getUserAccess';
-    headers.authorization = createToken({ scope: 'otherScope' });
-    expect(() => guard.canActivate(mockContext)).toThrow('Invalid internal JWT');
-  });
-
-  it('rejects token with TTL exceeding 5 minutes (300 seconds)', () => {
+  it('rejects expired token or token with TTL > 5 minutes (300s)', () => {
     const now = Math.floor(Date.now() / 1000);
-    headers.authorization = createToken({ exp: now + 301 });
-    expect(() => guard.canActivate(mockContext)).toThrow('Invalid internal JWT');
-  });
 
-  it('rejects expired token', () => {
-    const now = Math.floor(Date.now() / 1000);
-    headers.authorization = createToken({ iat: now - 400, exp: now - 100 });
-    expect(() => guard.canActivate(mockContext)).toThrow('Invalid internal JWT');
-  });
+    const expired = signInternalJwt({ iat: now - 400, exp: now - 10 });
+    const { context: c1, guard: g1 } = makeContext(
+      `Bearer ${expired}`,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => g1.canActivate(c1)).toThrow(UnauthorizedException);
 
-  it('allows IDENTITY_SERVICE_TOKEN in test/development when configured', () => {
-    process.env.NODE_ENV = 'test';
-    process.env.IDENTITY_SERVICE_TOKEN = 'secret-dev-token';
-    headers.authorization = 'Bearer secret-dev-token';
-    expect(guard.canActivate(mockContext)).toBe(true);
+    const tooLongTtl = signInternalJwt({ iat: now, exp: now + 600 });
+    const { context: c2, guard: g2 } = makeContext(
+      `Bearer ${tooLongTtl}`,
+      'getUserAccess',
+      'getUserAccess',
+    );
+    expect(() => g2.canActivate(c2)).toThrow(UnauthorizedException);
   });
 });

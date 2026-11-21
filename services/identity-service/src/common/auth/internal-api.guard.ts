@@ -1,7 +1,8 @@
-import { createPublicKey, timingSafeEqual, verify } from 'node:crypto';
+import { createPublicKey, verify } from 'node:crypto';
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   Optional,
   ServiceUnavailableException,
@@ -15,6 +16,25 @@ import type { Request } from 'express';
 export const INTERNAL_SCOPE_KEY = 'internal_scope';
 export const InternalScope = (scope: string) =>
   SetMetadata(INTERNAL_SCOPE_KEY, scope);
+
+const ALLOWED_CALLERS_BY_SCOPE: Record<string, string[]> = {
+  getUserSummary: [
+    'api-gateway',
+    'course-service',
+    'quiz-service',
+    'learning-service',
+    'identity-service',
+    'assessment-service',
+  ],
+  getUserAccess: [
+    'api-gateway',
+    'course-service',
+    'quiz-service',
+    'learning-service',
+    'identity-service',
+    'assessment-service',
+  ],
+};
 
 @Injectable()
 export class InternalApiGuard implements CanActivate {
@@ -45,25 +65,6 @@ export class InternalApiGuard implements CanActivate {
       });
     }
 
-    const nodeEnv =
-      this.configService.get<string>('NODE_ENV') || process.env.NODE_ENV || '';
-    const devServiceToken = (
-      this.configService.get<string>('IDENTITY_SERVICE_TOKEN') ||
-      process.env.IDENTITY_SERVICE_TOKEN ||
-      ''
-    ).trim();
-
-    if (['development', 'test'].includes(nodeEnv) && devServiceToken) {
-      const expected = Buffer.from(devServiceToken);
-      const actual = Buffer.from(token);
-      if (
-        actual.length === expected.length &&
-        timingSafeEqual(actual, expected)
-      ) {
-        return true;
-      }
-    }
-
     return this.verifyServiceJwt(token, context);
   }
 
@@ -82,6 +83,7 @@ export class InternalApiGuard implements CanActivate {
       });
     }
 
+    let claims: Record<string, unknown>;
     try {
       if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
         throw new Error('Invalid JWT format');
@@ -111,7 +113,7 @@ export class InternalApiGuard implements CanActivate {
         throw new Error('Invalid signature');
       }
 
-      const claims = JSON.parse(
+      claims = JSON.parse(
         Buffer.from(body, 'base64url').toString(),
       ) as Record<string, unknown>;
 
@@ -122,7 +124,7 @@ export class InternalApiGuard implements CanActivate {
         typeof claims.exp !== 'number' ||
         !Number.isSafeInteger(claims.iat) ||
         !Number.isSafeInteger(claims.exp) ||
-        claims.iat > now + 60 ||
+        claims.iat > now ||
         claims.exp <= now ||
         claims.exp <= claims.iat ||
         claims.exp - claims.iat > 300
@@ -130,22 +132,7 @@ export class InternalApiGuard implements CanActivate {
         throw new Error('Invalid or expired time claims');
       }
 
-      const allowedIssuersConfig =
-        this.configService.get<string>('INTERNAL_JWT_ALLOWED_ISSUERS') ||
-        process.env.INTERNAL_JWT_ALLOWED_ISSUERS ||
-        'lms-internal';
-      const allowedIssuers = allowedIssuersConfig
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (!allowedIssuers.includes('lms-internal')) {
-        allowedIssuers.push('lms-internal');
-      }
-
-      if (
-        typeof claims.iss !== 'string' ||
-        !allowedIssuers.includes(claims.iss)
-      ) {
+      if (claims.iss !== 'lms-internal') {
         throw new Error('Invalid issuer');
       }
 
@@ -157,62 +144,45 @@ export class InternalApiGuard implements CanActivate {
       if (!audiences.includes('identity-service')) {
         throw new Error('Invalid target service audience');
       }
-
-      const requiredScope =
-        this.reflector?.get<string>(INTERNAL_SCOPE_KEY, context.getHandler()) ||
-        context.getHandler().name;
-
-      const rawScope = claims.scope;
-      const scopes = Array.isArray(rawScope)
-        ? rawScope
-        : typeof rawScope === 'string'
-          ? rawScope.split(/[\s,]+/)
-          : [];
-
-      const hasScope =
-        scopes.includes(requiredScope) ||
-        scopes.includes('*') ||
-        scopes.includes('internal') ||
-        scopes.includes('internal:users');
-
-      if (!hasScope) {
-        throw new Error(`Insufficient scope for operation ${requiredScope}`);
-      }
-
-      if (typeof claims.sub === 'string') {
-        const allowedCallers: Record<string, string[]> = {
-          getUserSummary: [
-            'api-gateway',
-            'course-service',
-            'quiz-service',
-            'learning-service',
-            'identity-service',
-            'assessment-service',
-          ],
-          getUserAccess: [
-            'api-gateway',
-            'course-service',
-            'quiz-service',
-            'learning-service',
-            'identity-service',
-            'assessment-service',
-          ],
-        };
-        const validCallers = allowedCallers[requiredScope] || allowedIssuers;
-        if (!validCallers.includes(claims.sub)) {
-          throw new Error('Caller not authorized for operation');
-        }
-      }
-
-      return true;
     } catch (err) {
       if (err instanceof ServiceUnavailableException) {
         throw err;
       }
       throw new UnauthorizedException({
         code: 'UNAUTHORIZED',
-        message: 'Invalid internal JWT, caller, audience or scope',
+        message: 'Invalid internal JWT, issuer, audience or lifetime',
       });
     }
+
+    const requiredScope =
+      this.reflector?.get<string>(INTERNAL_SCOPE_KEY, context.getHandler()) ||
+      context.getHandler().name;
+
+    const rawScope = claims.scope;
+    const scopes = Array.isArray(rawScope)
+      ? rawScope.filter((s): s is string => typeof s === 'string')
+      : typeof rawScope === 'string'
+        ? rawScope.split(/[\s,]+/).filter(Boolean)
+        : [];
+
+    // Bắt buộc khớp đúng tên operation (getUserSummary / getUserAccess), không chấp nhận '*', 'internal', 'internal:users'
+    if (!scopes.includes(requiredScope)) {
+      throw new ForbiddenException({
+        code: 'INSUFFICIENT_SCOPE',
+        message: `Insufficient scope for operation ${requiredScope}`,
+      });
+    }
+
+    if (typeof claims.sub === 'string') {
+      const validCallers = ALLOWED_CALLERS_BY_SCOPE[requiredScope] || [];
+      if (!validCallers.includes(claims.sub)) {
+        throw new ForbiddenException({
+          code: 'INSUFFICIENT_SCOPE',
+          message: 'Caller not authorized for operation',
+        });
+      }
+    }
+
+    return true;
   }
 }

@@ -19,6 +19,7 @@ import {
   Role,
   UsersService,
 } from '../users/users.service';
+import { ForgotPasswordDto, ResetPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendOtpDto, VerifyEmailDto } from './dto/verify-email.dto';
@@ -124,7 +125,7 @@ export class AuthService {
     );
 
     await this.otpRepo.update(
-      { email: normalizedEmail, usedAt: IsNull() },
+      { email: normalizedEmail, purpose: 'VERIFY_EMAIL', usedAt: IsNull() },
       { usedAt: new Date() },
     );
 
@@ -133,6 +134,7 @@ export class AuthService {
 
     const otpEntity = this.otpRepo.create({
       email: normalizedEmail,
+      purpose: 'VERIFY_EMAIL',
       otpHash: this.hashOtp(otpCode),
       expiresAt,
       usedAt: null,
@@ -166,7 +168,6 @@ export class AuthService {
 
     await this.issueAndSendOtp(user.email, user.displayName);
 
-    // Contract RegisterResponse yêu cầu data là UserProfile trực tiếp
     return this.toUserProfile(user);
   }
 
@@ -185,7 +186,11 @@ export class AuthService {
     }
 
     const latestOtp = await this.otpRepo.findOne({
-      where: { email: normalizedEmail, usedAt: IsNull() },
+      where: {
+        email: normalizedEmail,
+        purpose: 'VERIFY_EMAIL',
+        usedAt: IsNull(),
+      },
       order: { createdAt: 'DESC' },
     });
 
@@ -240,9 +245,105 @@ export class AuthService {
     };
   }
 
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const normalizedEmail = this.usersService.normalizeEmail(dto.email);
+    const user = await this.usersService.findByEmail(normalizedEmail);
+
+    if (!user) {
+      return {
+        message: 'If the email exists, a password reset code has been sent',
+      };
+    }
+
+    const ttlMinutes = Number(
+      this.configService.get<number>('OTP_TTL_MINUTES', 10),
+    );
+
+    await this.otpRepo.update(
+      { email: normalizedEmail, purpose: 'RESET_PASSWORD', usedAt: IsNull() },
+      { usedAt: new Date() },
+    );
+
+    const otpCode = crypto.randomInt(100000, 1000000).toString();
+    const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000);
+
+    await this.otpRepo.save(
+      this.otpRepo.create({
+        email: normalizedEmail,
+        purpose: 'RESET_PASSWORD',
+        otpHash: this.hashOtp(otpCode),
+        expiresAt,
+        usedAt: null,
+        attempts: 0,
+      }),
+    );
+
+    await this.mailService.sendPasswordResetEmail(
+      normalizedEmail,
+      user.displayName,
+      otpCode,
+      ttlMinutes,
+    );
+
+    return {
+      message: 'If the email exists, a password reset code has been sent',
+    };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const normalizedEmail = this.usersService.normalizeEmail(dto.email);
+    const user = await this.usersService.findByEmail(normalizedEmail);
+    if (!user) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Reset code is invalid or has expired',
+      });
+    }
+
+    const latestOtp = await this.otpRepo.findOne({
+      where: {
+        email: normalizedEmail,
+        purpose: 'RESET_PASSWORD',
+        usedAt: IsNull(),
+      },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!latestOtp || latestOtp.expiresAt < new Date()) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Reset code is invalid or has expired',
+      });
+    }
+
+    if (latestOtp.otpHash !== this.hashOtp(dto.otp)) {
+      latestOtp.attempts += 1;
+      if (latestOtp.attempts >= 5) {
+        latestOtp.usedAt = new Date();
+      }
+      await this.otpRepo.save(latestOtp);
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Incorrect reset code',
+      });
+    }
+
+    latestOtp.usedAt = new Date();
+    await this.otpRepo.save(latestOtp);
+
+    const newPasswordHash = await argon2.hash(dto.newPassword, {
+      type: argon2.argon2id,
+    });
+    await this.usersService.resetUserPassword(user.id, newPasswordHash);
+
+    return {
+      message: 'Password has been reset successfully',
+    };
+  }
+
   async validateCredentials(dto: LoginDto): Promise<UserEntity> {
     const user = await this.usersService.findByEmail(dto.email);
-    if (!user) {
+    if (!user || !user.passwordHash) {
       throw new UnauthorizedException({
         code: 'UNAUTHORIZED',
         message: 'Invalid email or password',
@@ -287,6 +388,210 @@ export class AuthService {
     };
   }
 
+  getGoogleOAuthUrl(): string {
+    const clientId = this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID');
+    const redirectUri = this.configService.getOrThrow<string>(
+      'GOOGLE_CALLBACK_URL',
+    );
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      scope: 'openid email profile',
+      access_type: 'offline',
+      prompt: 'select_account',
+    });
+    return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  }
+
+  async handleGoogleCallback(
+    code: string,
+    meta?: { userAgent?: string; ipAddress?: string },
+  ) {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: this.configService.getOrThrow<string>('GOOGLE_CLIENT_ID'),
+        client_secret: this.configService.getOrThrow<string>(
+          'GOOGLE_CLIENT_SECRET',
+        ),
+        redirect_uri: this.configService.getOrThrow<string>(
+          'GOOGLE_CALLBACK_URL',
+        ),
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      throw new UnauthorizedException({
+        code: 'UNAUTHORIZED',
+        message: 'Failed to exchange Google authorization code',
+      });
+    }
+
+    const tokenData = (await tokenRes.json()) as { access_token?: string };
+    const profileRes = await fetch(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      { headers: { Authorization: `Bearer ${tokenData.access_token}` } },
+    );
+    const profile = (await profileRes.json()) as {
+      sub?: string;
+      email?: string;
+      name?: string;
+      picture?: string;
+    };
+
+    if (!profile.sub || !profile.email) {
+      throw new UnauthorizedException({
+        code: 'UNAUTHORIZED',
+        message: 'Google account did not provide a verified email',
+      });
+    }
+
+    const user = await this.usersService.findOrCreateOAuthUser({
+      provider: 'GOOGLE',
+      providerId: profile.sub,
+      email: profile.email,
+      displayName: profile.name || profile.email.split('@')[0],
+      avatarUrl: profile.picture ?? null,
+    });
+
+    if (user.status !== AccountStatus.ACTIVE) {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_INACTIVE',
+        message: 'Your account is inactive',
+      });
+    }
+
+    const pair = await this.issueTokenPair(user, meta);
+    const expiresIn = Number(
+      this.configService.getOrThrow<number>('ACCESS_TOKEN_TTL_SECONDS'),
+    );
+
+    return {
+      accessToken: pair.accessToken,
+      refreshToken: pair.refreshToken,
+      tokenType: 'Bearer' as const,
+      expiresIn,
+      refreshExpiresAt: pair.refreshExpiresAt,
+      user: this.toAuthUser(user),
+    };
+  }
+
+  getGithubOAuthUrl(): string {
+    const clientId = this.configService.getOrThrow<string>('GITHUB_CLIENT_ID');
+    const redirectUri = this.configService.getOrThrow<string>(
+      'GITHUB_CALLBACK_URL',
+    );
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: 'read:user user:email',
+    });
+    return `https://github.com/login/oauth/authorize?${params.toString()}`;
+  }
+
+  async handleGithubCallback(
+    code: string,
+    meta?: { userAgent?: string; ipAddress?: string },
+  ) {
+    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: this.configService.getOrThrow<string>('GITHUB_CLIENT_ID'),
+        client_secret: this.configService.getOrThrow<string>(
+          'GITHUB_CLIENT_SECRET',
+        ),
+        code,
+        redirect_uri: this.configService.getOrThrow<string>(
+          'GITHUB_CALLBACK_URL',
+        ),
+      }),
+    });
+
+    const tokenData = (await tokenRes.json()) as { access_token?: string };
+    if (!tokenData.access_token) {
+      throw new UnauthorizedException({
+        code: 'UNAUTHORIZED',
+        message: 'Failed to exchange GitHub authorization code',
+      });
+    }
+
+    const ghHeaders = {
+      Authorization: `Bearer ${tokenData.access_token}`,
+      Accept: 'application/vnd.github+json',
+    };
+
+    const userRes = await fetch('https://api.github.com/user', {
+      headers: ghHeaders,
+    });
+    const ghUser = (await userRes.json()) as {
+      id?: number;
+      login?: string;
+      name?: string;
+      email?: string | null;
+      avatar_url?: string;
+    };
+
+    let email = ghUser.email ?? null;
+    if (!email) {
+      const emailsRes = await fetch('https://api.github.com/user/emails', {
+        headers: ghHeaders,
+      });
+      const emails = (await emailsRes.json()) as Array<{
+        email: string;
+        primary: boolean;
+        verified: boolean;
+      }>;
+      const primary =
+        emails.find((e) => e.primary && e.verified) ??
+        emails.find((e) => e.verified);
+      email = primary?.email ?? null;
+    }
+
+    if (!ghUser.id || !email) {
+      throw new UnauthorizedException({
+        code: 'UNAUTHORIZED',
+        message: 'GitHub account did not provide a verified email',
+      });
+    }
+
+    const user = await this.usersService.findOrCreateOAuthUser({
+      provider: 'GITHUB',
+      providerId: String(ghUser.id),
+      email,
+      displayName: ghUser.name || ghUser.login || email.split('@')[0],
+      avatarUrl: ghUser.avatar_url ?? null,
+    });
+
+    if (user.status !== AccountStatus.ACTIVE) {
+      throw new ForbiddenException({
+        code: 'ACCOUNT_INACTIVE',
+        message: 'Your account is inactive',
+      });
+    }
+
+    const pair = await this.issueTokenPair(user, meta);
+    const expiresIn = Number(
+      this.configService.getOrThrow<number>('ACCESS_TOKEN_TTL_SECONDS'),
+    );
+
+    return {
+      accessToken: pair.accessToken,
+      refreshToken: pair.refreshToken,
+      tokenType: 'Bearer' as const,
+      expiresIn,
+      refreshExpiresAt: pair.refreshExpiresAt,
+      user: this.toAuthUser(user),
+    };
+  }
+
   async refreshTokens(
     rawRefreshToken: string,
     meta?: { userAgent?: string; ipAddress?: string },
@@ -297,7 +602,6 @@ export class AuthService {
       const tokenRepo = manager.getRepository(RefreshTokenEntity);
       const userRepo = manager.getRepository(UserEntity);
 
-      // Pessimistic write lock ngăn 2 request refresh đồng thời cùng xoay vòng token
       const existing = await tokenRepo.findOne({
         where: { tokenHash },
         lock: { mode: 'pessimistic_write' },
