@@ -3,7 +3,6 @@ import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import { UserEntity } from '../modules/users/entities/user.entity';
-import { RefreshSessionEntity } from '../modules/users/entities/refresh-session.entity';
 import { UserAuditEntity } from '../modules/users/entities/user-audit.entity';
 import { EmailOtpEntity } from '../modules/auth/entities/email-otp.entity';
 import { RoleRequestEntity } from '../modules/users/entities/role-request.entity';
@@ -23,7 +22,7 @@ const isLocal = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
 const AppDataSource = new DataSource({
   type: 'postgres',
   url: dbUrl,
-  entities: [UserEntity, RefreshSessionEntity, UserAuditEntity, EmailOtpEntity, RoleRequestEntity,RefreshTokenEntity],
+  entities: [UserEntity, UserAuditEntity, EmailOtpEntity, RoleRequestEntity,RefreshTokenEntity],
   migrations: [path.resolve(__dirname, 'migrations/*{.ts,.js}')],
   synchronize: false,
   ssl: isLocal ? false : { rejectUnauthorized: false },

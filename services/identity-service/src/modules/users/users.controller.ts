@@ -25,7 +25,8 @@ import {
 import { AdminUpdateRoleDto, Role } from './dto/update-role.dto';
 import { RoleRequestStatus } from './entities/role-request.entity';
 import { UsersService } from './users.service';
-import { ChangePasswordDto, UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { ChangePasswordDto } from './dto/update-profile.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -139,7 +140,6 @@ export class UsersController {
       status: updated.status,
       avatarUrl: updated.avatarUrl ?? null,
       bio: updated.bio ?? null,
-      updatedAt: updated.updatedAt.toISOString(),
     };
   }
 

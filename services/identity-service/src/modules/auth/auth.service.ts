@@ -10,11 +10,15 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
-import { IsNull, Repository } from 'typeorm';
+import { EntityManager, IsNull, Repository } from 'typeorm';
 import { JwtAccessPayload } from '../../common/auth/jwt-payload.interface';
 import { MailService } from '../mail/mail.service';
 import { UserEntity } from '../users/entities/user.entity';
-import { Role, UsersService, UserStatus as AccountStatus } from '../users/users.service';
+import {
+  UserStatus as AccountStatus,
+  Role,
+  UsersService,
+} from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { ResendOtpDto, VerifyEmailDto } from './dto/verify-email.dto';
@@ -34,6 +38,15 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
+  private toAuthUser(user: UserEntity) {
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+    };
+  }
+
   private toUserProfile(user: UserEntity) {
     return {
       id: user.id,
@@ -43,11 +56,8 @@ export class AuthService {
       status: user.status,
       avatarUrl: user.avatarUrl ?? null,
       bio: user.bio ?? null,
-      emailVerifiedAt: user.emailVerifiedAt
-        ? user.emailVerifiedAt.toISOString()
-        : null,
       createdAt: user.createdAt.toISOString(),
-      updatedAt: user.updatedAt.toISOString(),
+      version: user.version,
     };
   }
 
@@ -62,6 +72,7 @@ export class AuthService {
   private async issueTokenPair(
     user: UserEntity,
     meta?: { userAgent?: string; ipAddress?: string; familyId?: string },
+    manager?: EntityManager,
   ) {
     const payload: JwtAccessPayload = {
       sub: user.id,
@@ -74,14 +85,18 @@ export class AuthService {
     const rawRefreshToken = crypto.randomBytes(48).toString('hex');
     const tokenHash = this.hashToken(rawRefreshToken);
     const refreshTtlDays = Number(
-      this.configService.get<number>('JWT_REFRESH_TTL_DAYS', 7),
+      this.configService.getOrThrow<number>('REFRESH_TOKEN_TTL_DAYS'),
     );
     const expiresAt = new Date(
       Date.now() + refreshTtlDays * 24 * 60 * 60 * 1000,
     );
 
-    const savedRefresh = await this.refreshTokenRepo.save(
-      this.refreshTokenRepo.create({
+    const tokenRepo = manager
+      ? manager.getRepository(RefreshTokenEntity)
+      : this.refreshTokenRepo;
+
+    const savedRefresh = await tokenRepo.save(
+      tokenRepo.create({
         userId: user.id,
         tokenHash,
         familyId: meta?.familyId ?? crypto.randomUUID(),
@@ -95,10 +110,14 @@ export class AuthService {
       accessToken,
       refreshToken: rawRefreshToken,
       refreshTokenId: savedRefresh.id,
+      refreshExpiresAt: savedRefresh.expiresAt.toISOString(),
     };
   }
 
-  private async issueAndSendOtp(email: string, displayName: string): Promise<void> {
+  private async issueAndSendOtp(
+    email: string,
+    displayName: string,
+  ): Promise<void> {
     const normalizedEmail = this.usersService.normalizeEmail(email);
     const ttlMinutes = Number(
       this.configService.get<number>('OTP_TTL_MINUTES', 10),
@@ -134,20 +153,21 @@ export class AuthService {
       type: argon2.argon2id,
     });
 
+    const displayName =
+      dto.displayName?.trim() || dto.email.split('@')[0].trim();
+
     const user = await this.usersService.createUser({
       email: dto.email,
       passwordHash,
-      displayName: dto.displayName.trim(),
+      displayName,
       role: Role.STUDENT,
       status: AccountStatus.INACTIVE,
     });
 
     await this.issueAndSendOtp(user.email, user.displayName);
 
-    return {
-      message: 'Registration successful. Please verify your email with the OTP sent.',
-      user: this.toUserProfile(user),
-    };
+    // Contract RegisterResponse yêu cầu data là UserProfile trực tiếp
+    return this.toUserProfile(user);
   }
 
   async verifyEmail(dto: VerifyEmailDto) {
@@ -155,16 +175,13 @@ export class AuthService {
     const user = await this.usersService.findByEmail(normalizedEmail);
     if (!user) {
       throw new NotFoundException({
-        code: 'USER_NOT_FOUND',
+        code: 'NOT_FOUND',
         message: 'Account not found',
       });
     }
 
     if (user.emailVerifiedAt && user.status === AccountStatus.ACTIVE) {
-      return {
-        message: 'Email is already verified',
-        user: this.toUserProfile(user),
-      };
+      return this.toUserProfile(user);
     }
 
     const latestOtp = await this.otpRepo.findOne({
@@ -174,7 +191,7 @@ export class AuthService {
 
     if (!latestOtp || latestOtp.expiresAt < new Date()) {
       throw new BadRequestException({
-        code: 'INVALID_OR_EXPIRED_OTP',
+        code: 'VALIDATION_ERROR',
         message: 'OTP is invalid or has expired',
       });
     }
@@ -187,7 +204,7 @@ export class AuthService {
       await this.otpRepo.save(latestOtp);
 
       throw new BadRequestException({
-        code: 'INVALID_OTP',
+        code: 'VALIDATION_ERROR',
         message: 'Incorrect OTP code',
       });
     }
@@ -195,20 +212,8 @@ export class AuthService {
     latestOtp.usedAt = new Date();
     await this.otpRepo.save(latestOtp);
 
-    await this.usersService.activateUser(user.id);
-    const activatedUser = await this.usersService.findById(user.id);
-
-    if (!activatedUser) {
-      throw new NotFoundException({
-        code: 'USER_NOT_FOUND',
-        message: 'Account not found after activation',
-      });
-    }
-
-    return {
-      message: 'Email verified successfully',
-      user: this.toUserProfile(activatedUser),
-    };
+    const activatedUser = await this.usersService.activateUser(user.id);
+    return this.toUserProfile(activatedUser);
   }
 
   async resendOtp(dto: ResendOtpDto) {
@@ -216,14 +221,14 @@ export class AuthService {
     const user = await this.usersService.findByEmail(normalizedEmail);
     if (!user) {
       throw new NotFoundException({
-        code: 'USER_NOT_FOUND',
+        code: 'NOT_FOUND',
         message: 'Account not found',
       });
     }
 
     if (user.emailVerifiedAt && user.status === AccountStatus.ACTIVE) {
       throw new BadRequestException({
-        code: 'EMAIL_ALREADY_VERIFIED',
+        code: 'VALIDATION_ERROR',
         message: 'Email is already verified',
       });
     }
@@ -239,7 +244,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
       throw new UnauthorizedException({
-        code: 'INVALID_CREDENTIALS',
+        code: 'UNAUTHORIZED',
         message: 'Invalid email or password',
       });
     }
@@ -247,7 +252,7 @@ export class AuthService {
     const isPasswordValid = await argon2.verify(user.passwordHash, dto.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException({
-        code: 'INVALID_CREDENTIALS',
+        code: 'UNAUTHORIZED',
         message: 'Invalid email or password',
       });
     }
@@ -269,15 +274,16 @@ export class AuthService {
     const user = await this.validateCredentials(dto);
     const pair = await this.issueTokenPair(user, meta);
     const expiresIn = Number(
-      this.configService.get<number>('ACCESS_TOKEN_TTL_SECONDS', 900),
+      this.configService.getOrThrow<number>('ACCESS_TOKEN_TTL_SECONDS'),
     );
 
     return {
       accessToken: pair.accessToken,
       refreshToken: pair.refreshToken,
-      tokenType: 'Bearer',
+      tokenType: 'Bearer' as const,
       expiresIn,
-      user: this.toUserProfile(user),
+      refreshExpiresAt: pair.refreshExpiresAt,
+      user: this.toAuthUser(user),
     };
   }
 
@@ -286,69 +292,82 @@ export class AuthService {
     meta?: { userAgent?: string; ipAddress?: string },
   ) {
     const tokenHash = this.hashToken(rawRefreshToken);
-    const existing = await this.refreshTokenRepo.findOne({
-      where: { tokenHash },
-    });
 
-    if (!existing) {
-      throw new UnauthorizedException({
-        code: 'INVALID_REFRESH_TOKEN',
-        message: 'Refresh token is invalid',
+    return this.refreshTokenRepo.manager.transaction(async (manager) => {
+      const tokenRepo = manager.getRepository(RefreshTokenEntity);
+      const userRepo = manager.getRepository(UserEntity);
+
+      // Pessimistic write lock ngăn 2 request refresh đồng thời cùng xoay vòng token
+      const existing = await tokenRepo.findOne({
+        where: { tokenHash },
+        lock: { mode: 'pessimistic_write' },
       });
-    }
 
-    if (existing.revokedAt) {
-      await this.refreshTokenRepo.update(
-        { familyId: existing.familyId, revokedAt: IsNull() },
-        { revokedAt: new Date() },
+      if (!existing) {
+        throw new UnauthorizedException({
+          code: 'INVALID_REFRESH_TOKEN',
+          message: 'Refresh token is invalid',
+        });
+      }
+
+      if (existing.revokedAt) {
+        await tokenRepo.update(
+          { familyId: existing.familyId, revokedAt: IsNull() },
+          { revokedAt: new Date() },
+        );
+        throw new UnauthorizedException({
+          code: 'INVALID_REFRESH_TOKEN',
+          message: 'Refresh token reuse detected. Please log in again.',
+        });
+      }
+
+      if (existing.expiresAt.getTime() <= Date.now()) {
+        existing.revokedAt = new Date();
+        await tokenRepo.save(existing);
+        throw new UnauthorizedException({
+          code: 'INVALID_REFRESH_TOKEN',
+          message: 'Refresh token has expired',
+        });
+      }
+
+      const user = await userRepo.findOne({ where: { id: existing.userId } });
+      if (!user || user.status !== AccountStatus.ACTIVE) {
+        throw new ForbiddenException({
+          code: 'ACCOUNT_INACTIVE',
+          message: 'User account is not active',
+        });
+      }
+
+      const pair = await this.issueTokenPair(
+        user,
+        {
+          userAgent: meta?.userAgent,
+          ipAddress: meta?.ipAddress,
+          familyId: existing.familyId,
+        },
+        manager,
       );
-      throw new UnauthorizedException({
-        code: 'REFRESH_TOKEN_REUSED',
-        message: 'Refresh token reuse detected. Please log in again.',
-      });
-    }
 
-    if (existing.expiresAt.getTime() <= Date.now()) {
       existing.revokedAt = new Date();
-      await this.refreshTokenRepo.save(existing);
-      throw new UnauthorizedException({
-        code: 'REFRESH_TOKEN_EXPIRED',
-        message: 'Refresh token has expired',
-      });
-    }
+      existing.replacedByTokenId = pair.refreshTokenId;
+      await tokenRepo.save(existing);
 
-    const user = await this.usersService.findById(existing.userId);
-    if (!user || user.status !== AccountStatus.ACTIVE) {
-      throw new UnauthorizedException({
-        code: 'ACCOUNT_INACTIVE',
-        message: 'User account is not active',
-      });
-    }
+      const expiresIn = Number(
+        this.configService.getOrThrow<number>('ACCESS_TOKEN_TTL_SECONDS'),
+      );
 
-    const pair = await this.issueTokenPair(user, {
-      userAgent: meta?.userAgent,
-      ipAddress: meta?.ipAddress,
-      familyId: existing.familyId,
+      return {
+        accessToken: pair.accessToken,
+        refreshToken: pair.refreshToken,
+        tokenType: 'Bearer' as const,
+        expiresIn,
+        refreshExpiresAt: pair.refreshExpiresAt,
+        user: this.toAuthUser(user),
+      };
     });
-
-    existing.revokedAt = new Date();
-    existing.replacedByTokenId = pair.refreshTokenId;
-    await this.refreshTokenRepo.save(existing);
-
-    const expiresIn = Number(
-      this.configService.get<number>('ACCESS_TOKEN_TTL_SECONDS', 900),
-    );
-
-    return {
-      accessToken: pair.accessToken,
-      refreshToken: pair.refreshToken,
-      tokenType: 'Bearer',
-      expiresIn,
-      user: this.toUserProfile(user),
-    };
   }
 
-  async logout(rawRefreshToken: string) {
+  async logout(rawRefreshToken: string): Promise<void> {
     const tokenHash = this.hashToken(rawRefreshToken);
     const existing = await this.refreshTokenRepo.findOne({
       where: { tokenHash },
@@ -358,15 +377,12 @@ export class AuthService {
       existing.revokedAt = new Date();
       await this.refreshTokenRepo.save(existing);
     }
-
-    return { message: 'Logged out successfully' };
   }
 
-  async logoutAll(userId: string) {
+  async logoutAll(userId: string): Promise<void> {
     await this.refreshTokenRepo.update(
       { userId, revokedAt: IsNull() },
       { revokedAt: new Date() },
     );
-    return { message: 'Logged out from all devices successfully' };
   }
 }

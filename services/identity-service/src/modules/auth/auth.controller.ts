@@ -30,12 +30,19 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify credentials and login' })
-  @ApiResponse({ status: 200, description: 'Credentials verified' })
-  @ApiResponse({ status: 401, description: 'Invalid email or password' })
-  @ApiResponse({ status: 403, description: 'Account is inactive' })
-  async login(@Body() dto: LoginDto, @Req() req: Request): Promise<{ accessToken: string; refreshToken: string; user: { id: string; email: string; displayName: string; role: import("@lms/contracts").UserRole; }; }> {
+  @ApiOperation({ summary: 'Login with email and password' })
+  login(@Body() dto: LoginDto, @Req() req: Request) {
     return this.authService.login(dto, {
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Rotate refresh token and issue new access token' })
+  refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+    return this.authService.refreshTokens(dto.refreshToken, {
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });
@@ -67,21 +74,10 @@ export class AuthController {
     };
   }
 
-  @Post('refresh')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Rotate refresh token and issue new access/refresh token pair' })
-  async refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
-    return this.authService.refreshTokens(dto.refreshToken, {
-      userAgent: req.headers['user-agent'],
-      ipAddress: req.ip,
-    });
-  }
-
   @Post('logout')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Revoke current refresh token (logout current session)' })
-  async logout(@Body() dto: RefreshTokenDto) {
-    return this.authService.logout(dto.refreshToken);
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout(@Body() dto: RefreshTokenDto): Promise<void> {
+    await this.authService.logout(dto.refreshToken);
   }
 
   @Post('logout-all')

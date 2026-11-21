@@ -31,10 +31,10 @@ import { RefreshTokenEntity } from './entities/refresh-token.entity';
           publicKey,
           signOptions: {
             algorithm: 'RS256',
-            expiresIn: (configService.get<string>('JWT_ACCESS_EXPIRES_IN') ||
-              '15m') as any,
+            issuer: configService.getOrThrow<string>('JWT_ISSUER'),
+            expiresIn: Number(configService.getOrThrow<number>('ACCESS_TOKEN_TTL_SECONDS')),
           },
-          verifyOptions: {
+            verifyOptions: {
             algorithms: ['RS256'],
           },
         };

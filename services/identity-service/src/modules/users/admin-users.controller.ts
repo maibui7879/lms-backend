@@ -3,70 +3,64 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, Roles } from '../../common/auth/auth.decorators';
 import { JwtAuthGuard, RolesGuard } from '../../common/auth/guards';
 import type { JwtAccessPayload } from '../../common/auth/jwt-payload.interface';
-import { ListUsersQueryDto, UpdateUserStatusDto } from './dto/admin-users.dto';
-import { Role, UsersService } from './users.service';
+import {
+  ListUsersQueryDto,
+  UpdateUserRoleDto,
+  UpdateUserStatusDto,
+} from './dto/admin-users.dto';
+import { UsersService } from './users.service';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
-@ApiTags('Admin - Users & Audit')
+@ApiTags('Admin - Users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
-@Controller('api/v1/admin')
+@Roles('ADMIN')
+@Controller('api/v1/admin/users')
 export class AdminUsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get('users')
-  @ApiOperation({ summary: 'List all users with pagination and filters (ADMIN)' })
-  async listUsers(@Query() query: ListUsersQueryDto) {
+  @Get()
+  @ApiOperation({ summary: '[ADMIN] List users with filters & pagination' })
+  listUsers(@Query() query: ListUsersQueryDto) {
     return this.usersService.listUsersPaginated(query);
   }
 
-  @Patch('users/:id/status')
-  @ApiOperation({
-    summary: 'Update user status (ACTIVE/BLOCKED), revoke sessions, and write audit log',
-  })
-  async updateUserStatus(
-    @CurrentUser() admin: JwtAccessPayload,
+  @Patch(':id/status')
+  @ApiOperation({ summary: '[ADMIN] Update user account status with version check' })
+  updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() admin: JwtAccessPayload,
     @Body() dto: UpdateUserStatusDto,
   ) {
     return this.usersService.adminUpdateUserStatus(admin.sub, id, dto);
   }
 
-  @Patch('users/:id/role')
-  @ApiOperation({
-    summary: 'Update user role with last-admin protection, session revocation, and audit log',
-  })
-  async updateUserRole(
-    @CurrentUser() admin: JwtAccessPayload,
+  @Patch(':id/role')
+  @ApiOperation({ summary: '[ADMIN] Update user role with version check' })
+  updateRole(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { role: Role; reason?: string },
+    @CurrentUser() admin: JwtAccessPayload,
+    @Body() dto: UpdateUserRoleDto,
   ) {
-    return this.usersService.adminUpdateUserRoleWithAudit(
-      admin.sub,
-      id,
-      body.role,
-      body.reason,
-    );
+    return this.usersService.adminUpdateUserRole(admin.sub, id, dto);
   }
 
-  @Get('audit-logs')
-  @ApiOperation({ summary: 'List admin audit logs with pagination (ADMIN)' })
-  async getAuditLogs(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+  @Get(':id/audit')
+  @ApiOperation({ summary: '[ADMIN] List audit history for a specific user' })
+  listUserAudits(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('page', new ParseIntPipe({ optional: true })) page = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit = 20,
   ) {
-    return this.usersService.listAuditLogs(
-      Number(page) || 1,
-      Number(limit) || 20,
-    );
+    return this.usersService.listUserAudits(id, page, limit);
   }
 }

@@ -1,29 +1,32 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Entity,
   Index,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 
-@Entity('user_audits')
+export type UserAuditAction = 'STATUS_CHANGED' | 'ROLE_CHANGED';
+
+@Entity({ name: 'user_audits' })
 export class UserAuditEntity {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Index()
   @Column({ name: 'user_id', type: 'uuid' })
-  userId: string;
+  userId!: string;
 
+  @Index()
   @Column({ name: 'actor_id', type: 'uuid' })
-  actorId: string;
+  actorId!: string;
 
-  @Column({ type: 'varchar', length: 30 })
-  action: 'STATUS_CHANGED' | 'ROLE_CHANGED';
+  @Column({ type: 'varchar', length: 32 })
+  action!: UserAuditAction;
 
   @Column({ type: 'text' })
-  reason: string;
+  reason!: string;
 
   @CreateDateColumn({ name: 'occurred_at', type: 'timestamptz' })
-  occurredAt: Date;
+  occurredAt!: Date;
 }
