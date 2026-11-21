@@ -62,7 +62,8 @@ export interface CreateQuestionRequest {
 }
 export type UpdateQuestionRequest = CreateQuestionRequest & VersionRequest;
 export type AttemptStatus = 'IN_PROGRESS' | 'SUBMITTED' | 'EXPIRED';
-export type GradingStatus = 'NOT_GRADED' | 'PENDING_REVIEW' | 'GRADED';
+/** MVP quizzes are graded automatically; there is no manual-review state. */
+export type GradingStatus = 'NOT_GRADED' | 'GRADED';
 export type ProgressSyncStatus = 'PENDING' | 'SYNCED' | 'FAILED';
 export interface QuizAnswer {
   questionId: Uuid;
