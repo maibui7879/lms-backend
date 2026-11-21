@@ -353,10 +353,6 @@
           "anyOf": [
             {
               "type": "string",
-              "const": "PENDING_REVIEW"
-            },
-            {
-              "type": "string",
               "const": "GRADED"
             },
             {
@@ -4356,10 +4352,6 @@
       "anyOf": [
         {
           "type": "string",
-          "const": "PENDING_REVIEW"
-        },
-        {
-          "type": "string",
           "const": "GRADED"
         },
         {
@@ -6789,10 +6781,6 @@
           "anyOf": [
             {
               "type": "string",
-              "const": "PENDING_REVIEW"
-            },
-            {
-              "type": "string",
               "const": "GRADED"
             },
             {
@@ -6857,10 +6845,6 @@
         {
           "type": "string",
           "const": "SUBMITTED"
-        },
-        {
-          "type": "string",
-          "const": "PENDING_REVIEW"
         }
       ]
     },
@@ -7240,10 +7224,6 @@
             {
               "type": "string",
               "const": "SUBMITTED"
-            },
-            {
-              "type": "string",
-              "const": "PENDING_REVIEW"
             }
           ]
         },
@@ -7397,16 +7377,8 @@
               ]
             },
             "gradingStatus": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "const": "PENDING_REVIEW"
-                },
-                {
-                  "type": "string",
-                  "const": "NOT_GRADED"
-                }
-              ]
+              "type": "string",
+              "const": "NOT_GRADED"
             },
             "score": {
               "type": "null"
@@ -7558,16 +7530,8 @@
                   ]
                 },
                 "gradingStatus": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "const": "PENDING_REVIEW"
-                    },
-                    {
-                      "type": "string",
-                      "const": "NOT_GRADED"
-                    }
-                  ]
+                  "type": "string",
+                  "const": "NOT_GRADED"
                 },
                 "score": {
                   "type": "null"
@@ -8343,10 +8307,6 @@
         },
         "gradingStatus": {
           "anyOf": [
-            {
-              "type": "string",
-              "const": "PENDING_REVIEW"
-            },
             {
               "type": "string",
               "const": "GRADED"

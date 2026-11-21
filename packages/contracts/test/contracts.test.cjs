@@ -168,7 +168,7 @@ test('answers, concurrency and course rejection have strict request shapes', () 
   });
   invalid('PageQuery', { page: 0, limit: 101 });
 });
-test('pending results use null scores; sync cannot invent successful receipts', () => {
+test('ungraded results use null scores; sync cannot invent successful receipts', () => {
   const result = {
     attemptId: id,
     quizId: id,
@@ -176,13 +176,16 @@ test('pending results use null scores; sync cannot invent successful receipts', 
     userId: id,
     assessmentVersion: 1,
     attemptStatus: 'SUBMITTED',
-    gradingStatus: 'PENDING_REVIEW',
+    gradingStatus: 'NOT_GRADED',
     score: null,
     maxScore: null,
     passed: null,
     gradedAt: null,
   };
   parseContract('QuizResultV2Data', result);
+  invalid('QuizResultV2Data', { ...result, gradingStatus: 'PENDING_REVIEW' });
+  invalid('GradingStatus', 'PENDING_REVIEW');
+  invalid('QuizAttemptStatus', 'PENDING_REVIEW');
   invalid('QuizResultV2Data', { ...result, score: 0 });
   invalid('QuizResultV2Data', { ...result, gradingStatus: 'GRADED' });
   parseContract('QuizResultV2Data', {
