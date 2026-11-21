@@ -174,7 +174,7 @@ export class InternalApiGuard implements CanActivate {
     // Bắt buộc khớp đúng tên operation (getUserSummary / getUserAccess), không chấp nhận '*', 'internal', 'internal:users'
     if (!scopes.includes(requiredScope)) {
       throw new ForbiddenException({
-        code: 'INSUFFICIENT_SCOPE',
+        code: 'FORBIDDEN',
         message: `Insufficient scope for operation ${requiredScope}`,
       });
     }
@@ -182,7 +182,7 @@ export class InternalApiGuard implements CanActivate {
     const validCallers = ALLOWED_CALLERS_BY_SCOPE[requiredScope] || [];
     if (!validCallers.includes(claims.sub as string)) {
       throw new ForbiddenException({
-        code: 'INSUFFICIENT_SCOPE',
+        code: 'FORBIDDEN',
         message: 'Caller not authorized for operation',
       });
     }
