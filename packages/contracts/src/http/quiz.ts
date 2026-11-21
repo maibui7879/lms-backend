@@ -23,10 +23,10 @@ export interface CreateQuizRequestBase {
   policy: QuizPolicy;
 }
 export type CreateQuizRequest = CreateQuizRequestBase & QuizPlacement;
-export interface UpdateQuizRequest extends VersionRequest {
-  title?: string;
-  policy?: QuizPolicy;
-}
+export type UpdateQuizRequest = Partial<
+  Pick<CreateQuizRequestBase, 'title' | 'policy'>
+> &
+  VersionRequest;
 export type QuizData = CreateQuizRequest & {
   id: Uuid;
   instructorId: Uuid;
