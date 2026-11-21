@@ -5,22 +5,18 @@ import {
   ParseUUIDPipe,
   UseGuards,
 } from '@nestjs/common';
-import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InternalApiGuard } from '../../common/auth/internal-api.guard';
 import { UsersService } from './users.service';
 
 @ApiTags('Internal - Service Integration')
-@ApiHeader({
-  name: 'x-internal-api-key',
-  description: 'Internal service credential key',
-  required: true,
-})
+@ApiBearerAuth()
 @UseGuards(InternalApiGuard)
 @Controller('api/v1/internal/users')
 export class InternalUsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Get(':id/summary')
+  @Get(':id')
   @ApiOperation({ summary: 'Get minimal user summary for internal services' })
   async getUserSummary(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.getInternalUserSummary(id);

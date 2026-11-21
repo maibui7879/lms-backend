@@ -49,7 +49,6 @@ export interface CreateUserInput {
 
 @Injectable()
 export class UsersService {
-  [x: string]: any;
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
@@ -257,7 +256,7 @@ export class UsersService {
     });
   }
 
-  async getMe(userId: string) {
+  async getProfile(userId: string) {
     const user = await this.findById(userId);
     if (!user) {
       throw new NotFoundException({
@@ -585,19 +584,20 @@ async adminUpdateUserRole(
     return this.toUserSummary(user);
   }
 
-  async getInternalUserAccessStatus(userId: string) {
+ async getInternalUserAccessStatus(userId: string) {
     const user = await this.findById(userId);
     if (!user) {
-      throw new NotFoundException({
-        code: 'NOT_FOUND',
-        message: 'User not found',
-      });
+      return {
+        userId,
+        exists: false,
+        isActive: false,
+      };
     }
 
     return {
       userId: user.id,
-      status: user.status,
-      role: user.role,
+      exists: true,
+      isActive: user.status === UserStatus.ACTIVE,
     };
   }
 }
