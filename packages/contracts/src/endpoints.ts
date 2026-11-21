@@ -727,7 +727,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/quizzes/{id}/questions',
     access: 'COURSE_OWNER',
     description:
-      'Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs.',
+      'Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs. Quiz PRACTICE không bắt buộc gán kỹ năng: gửi skillIds: []; server lấy loại bài từ quiz cha, không gọi xác minh kỹ năng khi danh sách rỗng.',
     request: 'CreateQuestionRequest',
     response: 'QuestionAuthoringDTO',
     success: 201,
@@ -1042,7 +1042,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/learning/courses/{id}/mastery',
     access: 'ENROLLED',
     description:
-      'Lấy dữ liệu mastery hoặc mức độ nắm vững của learner trong course.',
+      'Lấy mức độ nắm vững kỹ năng của learner trong course. Chỉ tính bài đánh giá có quizType GRADED đã chấm xong; loại trừ PRACTICE kể cả khi câu hỏi có gắn kỹ năng.',
     response: 'MasteryData',
     success: 200,
   },
@@ -1053,7 +1053,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/learning/courses/{id}/mastery/history',
     access: 'ENROLLED',
     description:
-      'Lấy các mốc mastery của học viên đã ghi danh từ kết quả quiz đã đồng bộ, mốc mới nhất trước.',
+      'Lấy các mốc mastery của học viên đã ghi danh từ bài đánh giá có quizType GRADED đã chấm và đồng bộ, mốc mới nhất trước; không tính PRACTICE.',
     query: 'PageQuery',
     response: 'MasteryHistoryPoint',
     list: true,
