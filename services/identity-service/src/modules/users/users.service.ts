@@ -584,20 +584,19 @@ async adminUpdateUserRole(
     return this.toUserSummary(user);
   }
 
- async getInternalUserAccessStatus(userId: string) {
+  async getInternalUserAccessStatus(userId: string) {
     const user = await this.findById(userId);
     if (!user) {
-      return {
-        userId,
-        exists: false,
-        isActive: false,
-      };
+      throw new NotFoundException({
+        code: 'NOT_FOUND',
+        message: 'User not found',
+      });
     }
 
     return {
       userId: user.id,
-      exists: true,
-      isActive: user.status === UserStatus.ACTIVE,
+      status: user.status,
+      role: user.role,
     };
   }
 }
