@@ -1,6 +1,6 @@
 import type { GradedAssessmentSummary } from '../internal/integration';
 import type { Uuid } from '../http/common';
-//thiết kế chính cho outbox_event 
+//thiết kế chính cho outbox_event
 export const ATTEMPT_GRADED_V2_EVENT = 'quiz.attempt.graded' as const;
 export const ATTEMPT_GRADED_V2_ROUTING_KEY = 'quiz.attempt.graded.v2' as const;
 /** New version rather than silently changing the v1 payload required by Learning. */

@@ -47,7 +47,8 @@ export interface QuestionDeliveryDTO {
   choices: ChoiceData[];
   points: number;
 }
-export interface QuestionAuthoringDTO extends QuestionDeliveryDTO {  //câu hỏi giảng viên soạn
+export interface QuestionAuthoringDTO extends QuestionDeliveryDTO {
+  //câu hỏi giảng viên soạn
   /** PRACTICE may use []; existing skill mappings remain readable and do not contribute to mastery. */
   skillIds: Uuid[]; //gắn bộ kỹ năng
   correctChoiceIds: Uuid[]; //ds đáp án đúng
