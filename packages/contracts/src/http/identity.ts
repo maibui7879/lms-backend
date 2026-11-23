@@ -6,16 +6,42 @@ export interface UserSummary extends AuthUser {
   displayName: string;
   status: AccountStatus;
 }
+export type UserGender = 'MALE' | 'FEMALE' | 'OTHER';
+export interface ProfileSecurity {
+  activeSessionsCount: number;
+  passwordChangedAt: string | null;
+}
 export interface UserProfile extends UserSummary {
+  emailVerified: boolean;
+  firstName: string | null;
+  lastName: string | null;
+  phoneNumber: string | null;
+  dateOfBirth: string | null;
+  gender: UserGender | null;
+  githubUrl: string | null;
+  linkedinUrl: string | null;
+  security: ProfileSecurity;
+  updatedAt: string;
   avatarUrl: string | null;
   bio: string | null;
   createdAt: string;
   version: number;
 }
 export interface UpdateProfileRequest extends VersionRequest {
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string | null;
+  dateOfBirth?: string | null;
+  gender?: UserGender | null;
+  githubUrl?: string | null;
+  linkedinUrl?: string | null;
   displayName?: string;
   avatarUrl?: string | null;
   bio?: string | null;
+}
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 export interface RefreshSessionRequest {
   refreshToken: string;

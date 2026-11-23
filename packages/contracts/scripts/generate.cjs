@@ -192,6 +192,25 @@ const definitions = Object.fromEntries(
 );
 definitions.Uuid.format = 'uuid';
 definitions.IsoDateTime.format = 'date-time';
+Object.assign(definitions.ChangePasswordRequest.properties.currentPassword, {
+  minLength: 8,
+  maxLength: 128,
+});
+Object.assign(definitions.ChangePasswordRequest.properties.newPassword, {
+  minLength: 12,
+  maxLength: 128,
+});
+Object.assign(definitions.ProfileSecurity.properties.activeSessionsCount, {
+  type: 'integer',
+  minimum: 0,
+});
+for (const field of ['firstName', 'lastName']) {
+  Object.assign(definitions.UpdateProfileRequest.properties[field], {
+    minLength: 1,
+    maxLength: 100,
+    pattern: '\\S',
+  });
+}
 for (const name of [
   'CourseMetadata',
   'CourseData',

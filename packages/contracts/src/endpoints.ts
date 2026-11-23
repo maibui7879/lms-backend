@@ -29,6 +29,61 @@ export interface EndpointContract {
 
 export const ENDPOINTS: readonly EndpointContract[] = [
   {
+    operationId: 'getDetailedProfile',
+    service: 'identity',
+    method: 'get',
+    path: '/api/v1/users/me/profile',
+    access: 'AUTHENTICATED',
+    description:
+      'Lấy hồ sơ chi tiết của tài khoản hiện tại, gồm thông tin cá nhân và bảo mật; tương đương GET /users/me.',
+    response: 'UserProfile',
+    success: 200,
+  },
+  {
+    operationId: 'updateDetailedProfile',
+    service: 'identity',
+    method: 'patch',
+    path: '/api/v1/users/me/profile',
+    access: 'AUTHENTICATED',
+    description:
+      'Cập nhật các trường hồ sơ được gửi lên; kiểm tra expectedVersion, giữ nguyên trường không gửi. Tương đương PATCH /users/me.',
+    request: 'UpdateProfileRequest',
+    response: 'UserProfile',
+    success: 200,
+  },
+  {
+    operationId: 'clearOptionalProfile',
+    service: 'identity',
+    method: 'delete',
+    path: '/api/v1/users/me/profile',
+    access: 'AUTHENTICATED',
+    description:
+      'Xóa điện thoại, ngày sinh, giới tính, giới thiệu, ảnh đại diện và liên kết mạng xã hội. Giữ họ tên, email, role và trạng thái tài khoản. Tăng version; hiện không nhận expectedVersion.',
+    response: 'UserProfile',
+    success: 200,
+  },
+  {
+    operationId: 'deactivateMyAccount',
+    service: 'identity',
+    method: 'delete',
+    path: '/api/v1/users/me',
+    access: 'AUTHENTICATED',
+    description:
+      'Vô hiệu hóa tài khoản hiện tại sang INACTIVE, thu hồi refresh token và ghi audit trong transaction; không xóa dữ liệu vật lý. Không cho vô hiệu hóa admin ACTIVE cuối cùng.',
+    success: 204,
+  },
+  {
+    operationId: 'changeMyPassword',
+    service: 'identity',
+    method: 'post',
+    path: '/api/v1/users/me/password',
+    access: 'AUTHENTICATED',
+    description:
+      'Kiểm tra mật khẩu hiện tại, đặt mật khẩu mới, ghi thời điểm đổi và thu hồi mọi refresh token. Không trả response body.',
+    request: 'ChangePasswordRequest',
+    success: 204,
+  },
+  {
     operationId: 'register',
     service: 'identity',
     method: 'post',
