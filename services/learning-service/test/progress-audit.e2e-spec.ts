@@ -1,3 +1,4 @@
+import { bearerFor } from './fixtures/identity-auth';
 import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -144,19 +145,19 @@ describe('PRG boundary cases through the NestJS APIs', () => {
   function completeItem(id: string) {
     return request(app.getHttpServer())
       .put(`/api/v1/learning/items/${id}/completion`)
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .send({ completed: true, contentVersion: enrollment.contentVersion });
   }
 
   function completeLesson(id: string) {
     return request(app.getHttpServer())
       .put(`/api/v1/learning/lessons/${id}/completion`)
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .send({ completed: true, contentVersion: enrollment.contentVersion });
   }
 
   function get(path: string, user = 'studentB') {
-    return request(app.getHttpServer()).get(path).set('X-Mock-User', user);
+    return request(app.getHttpServer()).get(path).set('Authorization', bearerFor(user));
   }
 
   function addResult(changes: Partial<GradedAssessmentSummary> = {}) {

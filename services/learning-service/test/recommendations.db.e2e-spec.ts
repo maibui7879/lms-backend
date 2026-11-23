@@ -1,3 +1,4 @@
+import { fixtureActor, bearerFor } from './fixtures/identity-auth';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -133,7 +134,7 @@ suite(
             limit: Number(url.searchParams.get('limit')),
           });
         const items =
-          req.headers['x-mock-user'] === 'studentB'
+          fixtureActor(req) === 'studentB'
             ? [
                 {
                   enrollment: { ...enrollment, status },
@@ -153,11 +154,7 @@ suite(
         });
       }
       if (url.pathname === `/api/v1/courses/${courseId}/reviews`) {
-        if (
-          !['instructorA', 'adminA'].includes(
-            String(req.headers['x-mock-user']),
-          )
-        )
+        if (!['instructorA', 'adminA'].includes(String(fixtureActor(req))))
           return res.writeHead(403).end();
         return send({ items: [], total: 0, page: 1, limit: 1 });
       }
@@ -351,7 +348,7 @@ suite(
       const http = request(app!.getHttpServer())
         .get(`/api/v1/learning/me/recommendations${query}`)
         .set('X-Request-Id', 'adp-workflow');
-      return actor ? http.set('X-Mock-User', actor) : http;
+      return actor ? http.set('Authorization', bearerFor(actor)) : http;
     };
     const list = async (query = '', actor = 'studentB') => {
       const res = await get(query, actor)
@@ -446,7 +443,7 @@ suite(
 
       await request(app!.getHttpServer())
         .put(`/api/v1/learning/items/${video.id}/completion`)
-        .set('X-Mock-User', 'studentB')
+        .set('Authorization', bearerFor('studentB'))
         .send({ completed: true, contentVersion })
         .expect(200);
       const nextPage = await list('?page=2&limit=1');
@@ -502,7 +499,7 @@ suite(
 
       await request(app!.getHttpServer())
         .put(`/api/v1/learning/items/${second.items[0].id}/completion`)
-        .set('X-Mock-User', 'studentB')
+        .set('Authorization', bearerFor('studentB'))
         .send({ completed: true, contentVersion })
         .expect(200);
       expect((await list()).items.at(-1)?.learningItemId).toBe(
@@ -561,7 +558,7 @@ suite(
       expect(await record(more)).toBe('SYNCED');
       await request(app!.getHttpServer())
         .put(`/api/v1/learning/items/${video.id}/completion`)
-        .set('X-Mock-User', 'studentB')
+        .set('Authorization', bearerFor('studentB'))
         .send({ completed: true, contentVersion })
         .expect(200);
       const initial = await list();
@@ -613,7 +610,7 @@ suite(
       expect(await record(more)).toBe('SYNCED');
       await request(app!.getHttpServer())
         .put(`/api/v1/learning/items/${video.id}/completion`)
-        .set('X-Mock-User', 'studentB')
+        .set('Authorization', bearerFor('studentB'))
         .send({ completed: true, contentVersion })
         .expect(200);
       const data = await list();
@@ -632,7 +629,7 @@ suite(
       expect(await record(more)).toBe('SYNCED');
       await request(app!.getHttpServer())
         .put(`/api/v1/learning/items/${video.id}/completion`)
-        .set('X-Mock-User', 'studentB')
+        .set('Authorization', bearerFor('studentB'))
         .send({ completed: true, contentVersion })
         .expect(200);
       const current = await list();
@@ -655,7 +652,7 @@ suite(
         expect(await record(more)).toBe('SYNCED');
         await request(app!.getHttpServer())
           .put(`/api/v1/learning/items/${video.id}/completion`)
-          .set('X-Mock-User', 'studentB')
+          .set('Authorization', bearerFor('studentB'))
           .send({ completed: true, contentVersion })
           .expect(200);
         snapshotCase = scenario;
@@ -675,11 +672,13 @@ suite(
     it('ADP-06 validates graph writes and replaces dependent recommendations with their prerequisites', async () => {
       const path = `/api/v1/learning/courses/${courseId}/skill-prerequisites`;
       const read = (actor = 'instructorA') =>
-        request(app!.getHttpServer()).get(path).set('X-Mock-User', actor);
+        request(app!.getHttpServer())
+          .get(path)
+          .set('Authorization', bearerFor(actor));
       const save = (body: unknown, actor = 'instructorA') =>
         request(app!.getHttpServer())
           .put(path)
-          .set('X-Mock-User', actor)
+          .set('Authorization', bearerFor(actor))
           .send(body as object);
       const edge = { skillId, prerequisiteSkillId: secondSkillId };
       await read('studentB').expect(403);
@@ -826,7 +825,7 @@ suite(
       );
       const mastery = await request(app!.getHttpServer())
         .get(`/api/v1/learning/courses/${courseId}/mastery`)
-        .set('X-Mock-User', 'studentB')
+        .set('Authorization', bearerFor('studentB'))
         .expect(200);
       expect(parseContract('MasteryData', mastery.body.data).skills).toEqual(
         expect.arrayContaining([

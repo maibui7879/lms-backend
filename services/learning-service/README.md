@@ -4,7 +4,7 @@ Owner: chưa chốt tên. Workspace `@lms/learning-service`, port mặc định 
 
 ## Trạng thái và phạm vi
 
-Learning có API ghi nhận hoàn thành item, đọc tiến độ khóa, xem trạng thái từng chương, lưu vị trí học tiếp và đọc dashboard với PostgreSQL và xác thực mock cho local/test. Consumer nhận kết quả chấm quiz để áp dụng policy của chương và khóa. Học viên có thể xem trạng thái đồng bộ kết quả quiz (`PRG-06`). Lộ trình tiếp theo bao gồm mastery và certificate. MongoDB Atlas dự kiến phục vụ activity và read model.
+Learning có các nhóm Progress, Mastery, Recommendations, Certificates và Instructor Reports với PostgreSQL. Các API cần đăng nhập xác thực access token RS256 do Identity cấp và đọc trạng thái tài khoản hiện tại qua API nội bộ của Identity. Consumer nhận kết quả chấm quiz để áp dụng policy của chương và khóa. MongoDB Atlas dự kiến phục vụ activity và read model.
 
 Course sở hữu cấu trúc/requirements/enrollment; Quiz sở hữu câu hỏi và kết quả chấm. Learning không tự tạo danh sách required lessons hoặc chấm lại quiz.
 
@@ -316,12 +316,11 @@ Invoke-RestMethod http://127.0.0.1:3004/api/v1/certificates/verify/aaaaaaaaaaaaa
 
 ### Chạy API tiến độ
 
-Dùng PostgreSQL của Learning và một bản Course có API ghi danh cùng API internal trả cấu trúc theo phiên bản. Bật mock auth cho API học viên ở chế độ development. Learning lấy snapshot bằng credential service và `contentVersion` thuộc enrollment của học viên.
+Dùng PostgreSQL của Learning, Identity và Course có API ghi danh cùng API internal trả cấu trúc theo phiên bản. Learning lấy snapshot bằng credential service và `contentVersion` thuộc enrollment của học viên.
 
 ```powershell
 npm.cmd run build -w @lms/contracts -w @lms/auth -w @lms/learning-service
 $env:NODE_ENV='development'
-$env:MOCK_AUTH='true'
 $env:DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/learning'
 $env:COURSE_URL='http://127.0.0.1:3002'
 $env:COURSE_SERVICE_TOKEN='TOKEN_NOI_BO_DO_COURSE_CAP'
@@ -329,7 +328,29 @@ npm.cmd run migration:run -w @lms/learning-service
 npm.cmd run start:dev -w @lms/learning-service
 ```
 
-Thay `DATABASE_URL` bằng kết nối PostgreSQL của Learning trước khi chạy migration. Gửi `X-Mock-User` với tên học viên đã ghi danh.
+Thay `DATABASE_URL` bằng kết nối PostgreSQL của Learning trước khi chạy migration. Mỗi yêu cầu đăng nhập gửi `Authorization: Bearer <accessToken>` lấy từ Identity.
+
+### Xác thực và kết nối Identity
+
+Điền `IDENTITY_URL`, `JWT_ISSUER`, `JWT_PUBLIC_KEY` và `IDENTITY_INTERNAL_JWT_PRIVATE_KEY` trong `.env` của Learning. `JWT_PUBLIC_KEY` là khóa công khai xác minh access token người dùng do Identity ký. Khóa riêng service dùng để ký JWT có `sub=learning-service`, `aud=identity-service`, thời hạn 240 giây và scope tương ứng với `getUserAccess` hoặc `getUserSummary`. Identity phải tin khóa công khai tương ứng qua `INTERNAL_JWT_PUBLIC_KEY`.
+
+Learning kiểm tra chữ ký RS256, issuer, thời điểm phát hành và hạn token, sau đó gọi `GET /api/v1/internal/users/{id}/access` để lấy vai trò và trạng thái hiện tại. Token hết hạn hoặc sai chữ ký trả `401`. Tài khoản bị khóa hoặc đổi vai trò kể từ lúc cấp token trả `403`. Identity lỗi hoặc cấu hình xác thực thiếu trả `503`. API lấy tên người nhận PDF gọi `GET /api/v1/internal/users/{id}` với scope `getUserSummary`.
+
+Các API Course theo người dùng nhận cùng Bearer token đã xác thực. API snapshot nội bộ dùng `COURSE_SERVICE_TOKEN` khi Course chạy development/test; staging/production dùng JWT ký từ `COURSE_INTERNAL_JWT_PRIVATE_KEY`, được Course tin qua `INTERNAL_JWT_PUBLIC_KEY`.
+
+Ví dụ đăng nhập và gọi Learning từ PowerShell.
+
+```powershell
+$login = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:3001/api/v1/auth/login' -ContentType 'application/json' -Body (@{ email = 'EMAIL_DA_DANG_KY'; password = 'MAT_KHAU' } | ConvertTo-Json)
+$headers = @{ Authorization = "Bearer $($login.data.accessToken)" }
+Invoke-RestMethod 'http://127.0.0.1:3004/api/v1/learning/me/certificates' -Headers $headers
+```
+
+Ví dụ học viên đăng nhập, sau đó Admin khóa tài khoản trên Identity. Dù token vẫn còn hạn, lần gọi Learning tiếp theo trả `403`. Khi Admin đổi vai trò, người dùng đăng nhập lại để nhận token khớp vai trò mới. Trang xác minh QR tiếp tục là API công khai.
+
+Môi trường local đã cấu hình Identity ở cổng `3001` với PostgreSQL riêng trong container `lms-identity-local-pg`, volume `lms-identity-local-data`. Thông tin tài khoản Admin có trong `ADMIN_EMAIL` và `ADMIN_PASSWORD` của `services/identity-service/.env`. Khóa riêng và mật khẩu được lưu trong các file `.env` đã được Git bỏ qua. Migration `1795392000000-AlignUserAuthenticationColumns` bổ sung schema User đang được Identity sử dụng.
+
+Khi khởi động lại máy, bật Docker Desktop và chạy `docker start lms-identity-local-pg`. Từ thư mục gốc repo, chạy `npm.cmd run start:dev -w @lms/identity-service` và `npm.cmd run start:dev -w @lms/learning-service` ở hai terminal. Learning kết nối PostgreSQL Supabase theo `.env` của mình.
 
 | Method | Path | Dữ liệu gửi |
 | --- | --- | --- |

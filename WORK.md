@@ -4,6 +4,31 @@ Cập nhật ngày **15/11/2026** theo code trên nhánh `feat/learning/progress
 
 Thứ tự triển khai và điều kiện hoàn thành của từng chức năng nằm trong [PLAN.md](PLAN.md).
 
+## Xác thực Identity cho PRG, MST, ADP, CERT và INS
+
+**Cập nhật ngày 23/11/2026.** Các controller NestJS của Learning dùng access token RS256 do Identity cấp. Cấu hình kết nối nằm trong `.env` của Learning và được mô tả trong [README](services/learning-service/README.md#xác-thực-và-kết-nối-identity).
+
+| Vị trí | Công dụng |
+| --- | --- |
+| `services/learning-service/src/common/auth/learning-auth.guard.ts` | Xác minh Bearer token, hạn dùng, issuer và kiểm tra tài khoản hiện tại ở Identity. |
+| `services/learning-service/src/common/auth/learning-auth.module.ts` | Đăng ký guard và Identity client để các module nghiệp vụ cùng sử dụng. |
+| `services/learning-service/src/common/auth/service-token.ts` | Ký JWT nội bộ ngắn hạn cho từng thao tác gọi Identity hoặc Course ở staging/production. |
+| `services/learning-service/src/integrations/identity.client.ts` | Đọc trạng thái/quyền tài khoản và lấy tên tiếng Việt để tạo PDF chứng chỉ. |
+| `services/learning-service/src/integrations/course.client.ts` | Truyền access token khi đọc dữ liệu Course theo người dùng và dùng credential nội bộ khi lấy snapshot. |
+| `services/learning-service/test/fixtures/identity-auth.ts` | Tạo token RSA phục vụ kiểm thử và mô phỏng API Identity với guard nội bộ thật. |
+| `services/learning-service/test/learning-auth.e2e-spec.ts` | Kiểm thử token, trạng thái tài khoản, đổi vai trò và lỗi Identity. |
+| `services/learning-service/test/identity-integration.db.e2e-spec.ts` | Chạy Identity thật với PostgreSQL test, đăng nhập và dùng access token gọi Learning. |
+
+**Luồng API.** Người dùng đăng nhập qua `POST /api/v1/auth/login` của Identity và nhận `data.accessToken`. Khi gọi ví dụ `GET /api/v1/learning/me/certificates`, họ gửi `Authorization: Bearer <accessToken>`. Learning xác minh token rồi gọi `GET /api/v1/internal/users/{id}/access` bằng JWT service có scope `getUserAccess`. Khi tài khoản còn hoạt động và vai trò khớp, controller mới chạy. Các kiểm tra Student, chủ khóa và Admin trong từng chức năng tiếp tục quyết định quyền thao tác.
+
+**Ví dụ dễ hiểu.** An đăng nhập và nhận token còn hạn 15 phút. Sau 5 phút, Admin khóa tài khoản An. Lần gọi API Learning tiếp theo trả `403` vì Identity báo tài khoản đã ngừng hoạt động. Nếu An sửa chữ ký token hoặc dùng token đã hết hạn, Learning trả `401`.
+
+**PDF chứng chỉ.** Khi tạo tài liệu, Learning dùng JWT service với scope `getUserSummary` để đọc tên người nhận từ Identity. API xác minh QR công khai tiếp tục trả tình trạng chứng chỉ. Các ví dụ `X-Mock-User` ở những mục mock bên dưới áp dụng cho mock server riêng tại cổng `3104`.
+
+**Trạng thái hoàn thành.** Hoàn thành xác thực Identity cho API NestJS của Learning. Kiểm thử đạt 127/127 E2E, 37/37 unit, 22/22 mock HTTP và 11/11 contract. Năm ca E2E chạy với Identity thật trên PostgreSQL test, gồm đăng nhập, tên chứng chỉ tiếng Việt, khóa tài khoản và đổi vai trò. Đã xác nhận thêm token từ Identity local cổng 3001 gọi Learning cổng 3004 và truy vấn Supabase thành công.
+
+**Bổ sung ở Identity.** Migration `services/identity-service/src/database/migrations/1795392000000-AlignUserAuthenticationColumns.ts` thêm các cột OAuth đang được entity sử dụng, cho phép tài khoản OAuth có mật khẩu rỗng và đặt mặc định `version=1`. Môi trường mới phải chạy migration này. Database Identity local dùng container `lms-identity-local-pg` với volume lưu dữ liệu riêng; tài khoản Admin khởi tạo và mật khẩu nằm trong `services/identity-service/.env`.
+
 **Cập nhật ngày 14/11/2026 — chốt sau kiểm thử bởi hai agent.** Learning đọc cấu trúc trực tiếp từ API internal theo phiên bản đã ghi danh. Bộ đầy đủ đạt **56/56 E2E**, gồm PostgreSQL và RabbitMQ thật; mock API đạt **10/10**. Agent thứ hai tự chạy **32/32 E2E** trong ba suite và **10/10 mock**, rồi đối chiếu logic và bản sửa. 32 ca này nằm trong bộ 56 ca, không cộng thành số test mới. Lần xác nhận trước đối chiếu 59/59 request HTTP trực tiếp. **Hoàn thành PRG-01 đến PRG-08 trong phạm vi Learning với mock/provider giả, có thể chuyển sang nhóm tiếp theo.** Xem [quy tắc snapshot](#đọc-snapshot-course-theo-lượt-ghi-danh) và [báo cáo kiểm thử](services/learning-service/test/TEST_REPORT.md).
 
 | Mã | Chức năng | Trạng thái |

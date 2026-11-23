@@ -11,10 +11,11 @@ import type {
   PageQuery,
 } from '@lms/contracts';
 import { apiError } from '../common/api-error';
+import { createServiceToken } from '../common/auth/service-token';
 import { validateCourseStructure } from './course-learning-structure';
 
 export interface CourseRequestContext {
-  mockUser: string;
+  authorization: string;
   userId: string;
   requestId: string;
 }
@@ -25,10 +26,10 @@ export class CourseClient {
     revisionId: string,
     requestId: string,
   ): Promise<CourseItemMigrationContext> {
-    const token = this.serviceToken();
+    const token = this.serviceToken('getCourseItemMigrationContext');
     const data = await this.get(
       `/api/v1/internal/course-revisions/${revisionId}/item-migration-context`,
-      { mockUser: '', userId: '', requestId },
+      { authorization: '', userId: '', requestId },
       token,
     );
     return this.parse(() => parseContract('CourseItemMigrationContext', data));
@@ -218,7 +219,7 @@ export class CourseClient {
     const data = await this.get(
       `/api/v1/internal/courses/${enrollment.courseId}/structure?contentVersion=${enrollment.contentVersion}`,
       context,
-      this.serviceToken(),
+      this.serviceToken('getLearningStructure'),
     );
     const structure = this.parse(() =>
       parseContract('CourseLearningStructure', data),
@@ -244,7 +245,12 @@ export class CourseClient {
     return validateCourseStructure(structure, enrollment);
   }
 
-  private serviceToken(): string {
+  private serviceToken(
+    scope: 'getLearningStructure' | 'getCourseItemMigrationContext',
+  ): string {
+    if (!['development', 'test'].includes(process.env.NODE_ENV ?? '')) {
+      return createServiceToken('course', scope);
+    }
     const token = process.env.COURSE_SERVICE_TOKEN?.trim();
     if (!token)
       throw apiError(
@@ -269,7 +275,7 @@ export class CourseClient {
         headers: {
           ...(serviceToken
             ? { Authorization: `Bearer ${serviceToken}` }
-            : { 'X-Mock-User': context.mockUser }),
+            : { Authorization: context.authorization }),
           'X-Request-Id': context.requestId,
         },
         signal: AbortSignal.timeout(3000),

@@ -1,5 +1,24 @@
 # Báo cáo kiểm thử luồng Learning
 
+## Tích hợp Identity và bỏ xác thực mock trên NestJS — 23/11/2026
+
+**Kết quả.** Đạt **127/127 E2E** trên 12 suite, gồm 106 ca hồi quy nghiệp vụ, 16 ca xác thực JWT và 5 ca chạy Identity thật với PostgreSQL riêng. Đạt thêm **37/37 unit**, **22/22 HTTP mock** và **11/11 contract**. Monorepo build thành công. Lượt hồi quy có render PDF và giải mã QR bằng Poppler.
+
+| Kiểm thử | Kết quả |
+| --- | --- |
+| User JWT | Access token RS256 hợp lệ được chấp nhận sau khi Identity xác nhận tài khoản hiện tại. Token hết hạn, sai issuer, sai chữ ký, sai thuật toán hoặc role ngoài contract trả 401. |
+| Trạng thái tài khoản | Tài khoản ngừng hoạt động và vai trò đã đổi trả 403. User đã bị xóa trả 401. Identity lỗi hoặc cấu hình khóa thiếu/sai trả 503. |
+| Header giả | `X-Mock-User` và `X-User-Role` không cấp quyền cho API NestJS. Bearer token xác định tài khoản và vai trò thật. |
+| Credential nội bộ | Mỗi lần hỏi Identity dùng JWT mới, có `sub=learning-service`, `aud=identity-service`, scope đúng thao tác và thời hạn 240 giây. Các test giả lập access endpoint dùng guard nội bộ thật của Identity. |
+| Identity thật | Chạy migration trên PostgreSQL test mới, đăng nhập qua API thật, dùng token trả về gọi Learning, lấy tên tiếng Việt và kiểm tra khóa/đổi quyền sau khi token đã được cấp. |
+| Hồi quy Learning | Các API PRG, MST, ADP, CERT và INS dùng token RSA trong E2E. Course và Quiz được giả lập qua HTTP; các ca PostgreSQL và RabbitMQ dùng container test riêng. |
+
+**Lỗi tìm thấy ở Identity và cách sửa.** Entity User đọc `oauth_provider` và `oauth_provider_id` nhưng các migration trước đó chưa tạo hai cột này. Schema cũ cũng thiếu default `version` và buộc mọi tài khoản có `password_hash`. Đã bổ sung migration `1795392000000-AlignUserAuthenticationColumns` để database mới chạy được đăng nhập/seed đúng entity. Lượt tích hợp thật áp dụng đủ migration này trước khi đăng nhập.
+
+**Xác nhận trên máy người dùng.** Identity local chạy ở cổng 3001 với PostgreSQL riêng trong container `lms-identity-local-pg` và volume `lms-identity-local-data`. Learning cổng 3004 đọc database Supabase. Đăng nhập Admin local trả 200, token nhận được gọi `GET /api/v1/learning/me/certificates` trả 200. Gọi bằng header mock đơn lẻ trả 401. Xác minh mã chứng chỉ chưa được cấp trả 200 với `valid=false`. Khóa và mật khẩu nằm trong `.env` được Git bỏ qua.
+
+**Phạm vi xác nhận.** Đã ghép Identity thật với Learning. Các luồng Course và Quiz trong bộ hồi quy dùng HTTP provider giả lập.
+
 ## Rà soát toàn nhánh Learning sau thay đổi ghi danh lại
 
 Đối chiếu **PRG-01–08, MST-01–07, ADP-01–07, CERT-01–07 và INS-03/06/07/09** trên NestJS với PostgreSQL, RabbitMQ và các nguồn dữ liệu giả lập. Hai lượt rà độc lập dùng PostgreSQL tách riêng.
