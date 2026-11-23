@@ -1,4 +1,5 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
+
 export class Notifications1795478400000 implements MigrationInterface {
   async up(runner: QueryRunner): Promise<void> {
     await runner.query('CREATE SCHEMA IF NOT EXISTS notification');
@@ -19,6 +20,7 @@ export class Notifications1795478400000 implements MigrationInterface {
       'CREATE INDEX "IDX_notifications_pending" ON notification.notifications ("createdAt") WHERE "emittedAt" IS NULL',
     );
   }
+
   async down(runner: QueryRunner): Promise<void> {
     await runner.query('DROP TABLE notification.notifications');
   }

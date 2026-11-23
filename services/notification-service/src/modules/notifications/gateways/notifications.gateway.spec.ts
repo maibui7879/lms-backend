@@ -1,6 +1,6 @@
 import type { Socket } from 'socket.io';
 import { NotificationsGateway } from './notifications.gateway';
-import { NotificationAuthGuard } from '../../common/notification-auth.guard';
+import { NotificationAuthGuard } from '../../../auth/notification-auth.guard';
 import type { CourseNotificationData } from '@lms/contracts';
 
 describe('Notification gateway connection lifecycle', () => {
@@ -13,7 +13,7 @@ describe('Notification gateway connection lifecycle', () => {
       handshake: { auth: { accessToken }, headers: { origin }, query: {} },
       emit: jest.fn(),
       disconnect: jest.fn(),
-    } as unknown as Socket;
+    } as unknown as Socket & { emit: jest.Mock; disconnect: jest.Mock };
   }
   const token = `e30.${Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 2 })).toString('base64url')}.sig`;
   beforeEach(() => {

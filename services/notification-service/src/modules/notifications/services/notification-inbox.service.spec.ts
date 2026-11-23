@@ -1,10 +1,11 @@
 import { NotificationInboxService } from './notification-inbox.service';
-import { NotificationEventsConsumer } from './notification-events.consumer';
+import { NotificationEventsConsumer } from '../consumers/notification-events.consumer';
 import type { ConsumeMessage, ConfirmChannel } from 'amqplib';
 import type { NotificationInboxService as Inbox } from './notification-inbox.service';
 import { ContractValidationError } from '@lms/contracts';
 
 const id = '11111111-1111-4111-8111-111111111111';
+
 const event = {
   eventId: id,
   eventType: 'course.review.decided',
@@ -42,7 +43,7 @@ it('deduplicates enroll notifications by enrollmentId even if eventId changes', 
   const persisted = new Map<string, unknown[]>();
   const database = {
     query: jest.fn(async (_sql: string, values: unknown[]) => {
-      const key = values[5] as string;
+      const key = values[7] as string;
       if (!persisted.has(key)) persisted.set(key, values);
       return [];
     }),
@@ -68,7 +69,7 @@ it('deduplicates enroll notifications by enrollmentId even if eventId changes', 
     eventId: '22222222-2222-4222-8222-222222222222',
   });
   expect(persisted.size).toBe(1);
-  expect([...persisted.values()][0][4]).toContain('Lập trình');
+  expect([...persisted.values()][0][6]).toContain('Lập trình');
   expect([...persisted.values()][0][1]).toBe(id);
   expect(database.query.mock.calls[0][0]).toContain(
     'ON CONFLICT ("eventKey") DO NOTHING',

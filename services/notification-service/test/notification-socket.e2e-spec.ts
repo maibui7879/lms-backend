@@ -3,8 +3,8 @@ import type { INestApplication } from '@nestjs/common';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
-import { NotificationAuthGuard } from '../src/common/notification-auth.guard';
-import { NotificationsGateway } from '../src/modules/notifications/notifications.gateway';
+import { NotificationAuthGuard } from '../src/auth/notification-auth.guard';
+import { NotificationsGateway } from '../src/modules/notifications/gateways/notifications.gateway';
 import type { CourseNotificationData } from '@lms/contracts';
 
 describe('Standalone notification Socket.IO transport', () => {
@@ -61,7 +61,9 @@ describe('Standalone notification Socket.IO transport', () => {
           ok: true,
           json: async () => ({
             data: {
-              userId: new URL(String(input)).pathname.split('/')[5],
+              userId: new URL(
+                input instanceof Request ? input.url : input,
+              ).pathname.split('/')[5],
               role: 'STUDENT',
               status: 'ACTIVE',
             },

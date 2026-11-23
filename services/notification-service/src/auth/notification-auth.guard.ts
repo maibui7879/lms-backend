@@ -17,10 +17,12 @@ export class NotificationAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     delete request.user;
+
     const authorization = request.headers.authorization;
     request.user = await this.authenticate(
       typeof authorization === 'string' ? authorization : '',
     );
+
     return true;
   }
 
@@ -32,14 +34,17 @@ export class NotificationAuthGuard implements CanActivate {
       !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)
     )
       throw new UnauthorizedException('Bearer token required');
+
     const publicKey = process.env.JWT_PUBLIC_KEY?.replace(/\\n/g, '\n');
     const identityUrl = process.env.IDENTITY_URL;
     if (!publicKey || !identityUrl)
       throw new ServiceUnavailableException(
         'Identity authentication is not configured',
       );
+
     const [header, payload, signature] = token.slice(7).split('.');
     let claims;
+
     try {
       const metadata = JSON.parse(
         Buffer.from(header, 'base64url').toString(),
@@ -71,8 +76,10 @@ export class NotificationAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Invalid or expired access token');
     }
+
     let access;
     const credential = createIdentityServiceToken();
+
     try {
       const response = await fetch(
         new URL(`/api/v1/internal/users/${claims.sub}/access`, identityUrl),
@@ -91,10 +98,12 @@ export class NotificationAuthGuard implements CanActivate {
         'Identity access check unavailable',
       );
     }
+
     if (access.status !== 'ACTIVE' || access.role !== claims.role)
       throw new ForbiddenException(
         'Account is inactive or token permissions have changed',
       );
+
     return {
       id: claims.sub,
       email: claims.email,

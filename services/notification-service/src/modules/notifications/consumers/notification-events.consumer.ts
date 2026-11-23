@@ -10,10 +10,12 @@ import {
   COURSE_REVIEW_NOTIFICATION_ROUTING_KEY,
   ENROLLMENT_CREATED_V2_ROUTING_KEY,
 } from '@lms/contracts';
-import { NotificationInboxService } from './notification-inbox.service';
+import { NotificationInboxService } from '../services/notification-inbox.service';
 
 const QUEUE = 'notification.course-review.v1';
+
 const DLQ = `${QUEUE}.dead`;
+
 const RETRY = `${QUEUE}.retry`;
 
 @Injectable()
@@ -21,12 +23,19 @@ export class NotificationEventsConsumer
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
   private readonly logger = new Logger(NotificationEventsConsumer.name);
+
   private connection?: ChannelModel;
+
   private channel?: Channel;
+
   private consumerTag?: string;
+
   private timer?: ReturnType<typeof setTimeout>;
+
   private stopped = false;
+
   private connecting?: Promise<void>;
+
   private readonly pending = new Set<Promise<void>>();
 
   constructor(private readonly inbox: NotificationInboxService) {}
