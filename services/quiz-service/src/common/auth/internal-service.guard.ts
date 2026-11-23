@@ -76,7 +76,9 @@ export class InternalServiceGuard implements CanActivate {
       !internalOperations.has(operationId) ||
       !allowedCallers[operationId]
     )
-      throw new ForbiddenException('Internal operation scope is not configured');
+      throw new ForbiddenException(
+        'Internal operation scope is not configured',
+      );
 
     let claims: InternalJwtClaims;
     try {

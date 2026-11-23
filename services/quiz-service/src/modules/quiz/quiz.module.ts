@@ -7,10 +7,7 @@ import { QuizController } from './quiz.controller';
 import { QuizService } from './quiz.service';
 
 @Module({
-  imports: [
-    QuizAuthModule,
-    TypeOrmModule.forFeature([Quiz, IdempotencyKey]),
-  ],
+  imports: [QuizAuthModule, TypeOrmModule.forFeature([Quiz, IdempotencyKey])],
   controllers: [QuizController],
   providers: [QuizService],
 })

@@ -5,6 +5,6 @@ import { QuizService } from './quiz.service';
 @Controller('quizzes')
 @UseGuards(QuizAuthGuard)
 export class QuizController {
-    //tiêm DI giúp controller có thể sử dụng các phương thức của service
-    constructor(private readonly quizService: QuizService) {}
+  //tiêm DI giúp controller có thể sử dụng các phương thức của service
+  constructor(private readonly quizService: QuizService) {}
 }

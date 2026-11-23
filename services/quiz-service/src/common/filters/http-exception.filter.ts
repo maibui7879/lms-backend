@@ -16,10 +16,7 @@ const defaultCodes: Partial<Record<number, DomainErrorCode>> = {
 };
 
 function isDomainErrorCode(value: unknown): value is DomainErrorCode {
-  return (
-    typeof value === 'string' &&
-    Object.hasOwn(ERROR_HTTP_STATUS, value)
-  );
+  return typeof value === 'string' && Object.hasOwn(ERROR_HTTP_STATUS, value);
 }
 
 @Catch()

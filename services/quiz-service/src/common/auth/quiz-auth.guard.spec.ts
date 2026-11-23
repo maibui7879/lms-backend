@@ -20,10 +20,7 @@ describe('QuizAuthGuard', () => {
   const fetchMock = jest.fn();
   const originalFetch = global.fetch;
 
-  function token(
-    overrides: Record<string, unknown> = {},
-    algorithm = 'RS256',
-  ) {
+  function token(overrides: Record<string, unknown> = {}, algorithm = 'RS256') {
     const now = Math.floor(Date.now() / 1000);
     const header = Buffer.from(JSON.stringify({ alg: algorithm })).toString(
       'base64url',

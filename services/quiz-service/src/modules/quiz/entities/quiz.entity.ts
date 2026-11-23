@@ -5,11 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import type {
-  QuizPlacement,
-  QuizPolicy,
-  QuizStatus,
-} from '@lms/contracts';
+import type { QuizPlacement, QuizPolicy, QuizStatus } from '@lms/contracts';
 
 @Entity({ name: 'quizzes' })
 export class Quiz {
