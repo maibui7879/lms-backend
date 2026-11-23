@@ -155,7 +155,9 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
   });
 
   function get(url: string) {
-    return request(app.getHttpServer()).get(url).set('Authorization', bearerFor('studentB'));
+    return request(app.getHttpServer())
+      .get(url)
+      .set('Authorization', bearerFor('studentB'));
   }
 
   function completeItem(id = video.id) {
