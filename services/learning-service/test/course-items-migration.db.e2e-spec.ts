@@ -1,3 +1,4 @@
+import { bearerFor } from './fixtures/identity-auth';
 import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -154,20 +155,20 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
   });
 
   function get(url: string) {
-    return request(app.getHttpServer()).get(url).set('X-Mock-User', 'studentB');
+    return request(app.getHttpServer()).get(url).set('Authorization', bearerFor('studentB'));
   }
 
   function completeItem(id = video.id) {
     return request(app.getHttpServer())
       .put(`/api/v1/learning/items/${id}/completion`)
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .send({ completed: true, contentVersion: 1 });
   }
 
   function completeLesson(id = first.id) {
     return request(app.getHttpServer())
       .put(`/api/v1/learning/lessons/${id}/completion`)
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .send({ completed: true, contentVersion: 1 });
   }
 
@@ -445,7 +446,7 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
   it('rejects user credentials, wrong ownership and unpublished or NORMAL revisions', async () => {
     await request(app.getHttpServer())
       .post(migrationPath)
-      .set('X-Mock-User', 'adminA')
+      .set('Authorization', bearerFor('adminA'))
       .send({})
       .expect(401);
     await request(app.getHttpServer())
@@ -474,7 +475,7 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
       const save = (positionSeconds: number) =>
         request(app.getHttpServer())
           .put(`${path}/resume`)
-          .set('X-Mock-User', 'studentB')
+          .set('Authorization', bearerFor('studentB'))
           .send({
             lessonId: first.id,
             learningItemId: video.id,
@@ -510,7 +511,7 @@ suite('Critical item migration with PostgreSQL and fake Course', () => {
     const save = (positionSeconds: number, expectedRevision: number) =>
       request(app.getHttpServer())
         .put(`${path}/resume`)
-        .set('X-Mock-User', 'studentB')
+        .set('Authorization', bearerFor('studentB'))
         .send({
           lessonId: first.id,
           learningItemId: video.id,
