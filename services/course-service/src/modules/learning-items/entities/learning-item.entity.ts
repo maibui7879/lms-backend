@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { LearningItemAttachment } from '@lms/contracts';
 
 @Entity('learning_items')
 export class LearningItem {
@@ -34,6 +35,12 @@ export class LearningItem {
 
   @Column({ type: 'text', nullable: true })
   body!: string | null;
+
+  @Column({ type: 'varchar', length: 20, default: 'PLAIN_TEXT' })
+  bodyFormat!: 'PLAIN_TEXT' | 'HTML';
+
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
+  attachments!: LearningItemAttachment[];
 
   @Column({ type: 'uuid', nullable: true })
   quizId!: string | null;

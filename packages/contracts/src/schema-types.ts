@@ -43,6 +43,8 @@ export interface SchemaTypes {
   CourseItemMigrationContext: Contracts.CourseItemMigrationContext;
   CourseLearnerData: Contracts.CourseLearnerData;
   CourseLearningStructure: Contracts.CourseLearningStructure;
+  CourseLevel: Contracts.CourseLevel;
+  CourseMetadata: Contracts.CourseMetadata;
   CourseOutlineData: Contracts.CourseOutlineData;
   CoursePatchNoticeData: Contracts.CoursePatchNoticeData;
   CourseProgressData: Contracts.CourseProgressData;
@@ -100,6 +102,7 @@ export interface SchemaTypes {
   LearningAnalyticsQuery: Contracts.LearningAnalyticsQuery;
   LearningDashboardCourse: Contracts.LearningDashboardCourse;
   LearningDashboardData: Contracts.LearningDashboardData;
+  LearningItemAttachment: Contracts.LearningItemAttachment;
   LearningItemContent: Contracts.LearningItemContent;
   LearningItemData: Contracts.LearningItemData;
   LearningNextStep: Contracts.LearningNextStep;

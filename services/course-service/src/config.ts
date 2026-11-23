@@ -7,6 +7,7 @@ import { RevisionMetadataDiscussions1795132801000 } from './database/migrations/
 import { CourseContractAlignment1795132800001 } from './database/migrations/1795132800001-course-contract-alignment';
 import { CourseMigrationDispatch } from './modules/outbox/course-migration-dispatch';
 import { CourseMigrationDispatch1795132802000 } from './database/migrations/1795132802000-course-migration-dispatch';
+import { CourseAuthoring1795132803000 } from './database/migrations/1795132803000-course-authoring';
 import { Chapter } from './modules/chapters/entities/chapter.entity';
 import { Lesson } from './modules/lessons/entities/lesson.entity';
 import { LearningItem } from './modules/learning-items/entities/learning-item.entity';
@@ -98,6 +99,7 @@ export function databaseOptions(
       CourseContractAlignment1795132800001,
       RevisionMetadataDiscussions1795132801000,
       CourseMigrationDispatch1795132802000,
+      CourseAuthoring1795132803000,
     ],
     retryAttempts: 1,
     // Keep TLS parameters from the provider URL; never disable certificate verification here.

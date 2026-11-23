@@ -6693,6 +6693,100 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "subtitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "\\S"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "targetAudience": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "learningOutcomes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "descriptionFormat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PLAIN_TEXT"
+              },
+              {
+                "type": "string",
+                "const": "HTML"
+              }
+            ]
           }
         },
         "required": [
@@ -6736,6 +6830,12 @@
                         "durationSeconds": {
                           "type": "integer",
                           "minimum": 1
+                        },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/LearningItemAttachment"
+                          }
                         },
                         "revisionId": {
                           "type": "string",
@@ -6799,6 +6899,18 @@
                         "body": {
                           "type": "string",
                           "minLength": 1
+                        },
+                        "bodyFormat": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "PLAIN_TEXT"
+                            },
+                            {
+                              "type": "string",
+                              "const": "HTML"
+                            }
+                          ]
                         },
                         "revisionId": {
                           "type": "string",
@@ -6939,6 +7051,12 @@
                             "type": "integer",
                             "minimum": 1
                           },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/LearningItemAttachment"
+                            }
+                          },
                           "revisionId": {
                             "type": "string",
                             "format": "uuid"
@@ -7001,6 +7119,18 @@
                           "body": {
                             "type": "string",
                             "minLength": 1
+                          },
+                          "bodyFormat": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "PLAIN_TEXT"
+                              },
+                              {
+                                "type": "string",
+                                "const": "HTML"
+                              }
+                            ]
                           },
                           "revisionId": {
                             "type": "string",
@@ -7191,6 +7321,126 @@
           "outline",
           "completionPolicy"
         ],
+        "additionalProperties": false
+      },
+      "CourseLevel": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "BEGINNER"
+          },
+          {
+            "type": "string",
+            "const": "INTERMEDIATE"
+          },
+          {
+            "type": "string",
+            "const": "ADVANCED"
+          },
+          {
+            "type": "string",
+            "const": "ALL_LEVELS"
+          }
+        ]
+      },
+      "CourseMetadata": {
+        "type": "object",
+        "properties": {
+          "subtitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "\\S"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "targetAudience": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "learningOutcomes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "descriptionFormat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PLAIN_TEXT"
+              },
+              {
+                "type": "string",
+                "const": "HTML"
+              }
+            ]
+          }
+        },
         "additionalProperties": false
       },
       "CourseOutlineData": {
@@ -7574,6 +7824,35 @@
           "instructorId": {
             "type": "string",
             "format": "uuid"
+          },
+          "category": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string"
           },
           "sort": {
             "anyOf": [
@@ -8139,6 +8418,100 @@
                 "format": "uri"
               }
             ]
+          },
+          "subtitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "\\S"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "targetAudience": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "learningOutcomes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "descriptionFormat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PLAIN_TEXT"
+              },
+              {
+                "type": "string",
+                "const": "HTML"
+              }
+            ]
           }
         },
         "required": [
@@ -8268,6 +8641,12 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LearningItemAttachment"
+                }
+              },
               "revisionId": {
                 "type": "string",
                 "format": "uuid"
@@ -8300,6 +8679,18 @@
               "body": {
                 "type": "string",
                 "minLength": 1
+              },
+              "bodyFormat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "PLAIN_TEXT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "HTML"
+                  }
+                ]
               },
               "revisionId": {
                 "type": "string",
@@ -9495,6 +9886,35 @@
             "type": "string",
             "format": "uuid"
           },
+          "category": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string"
+          },
           "sort": {
             "anyOf": [
               {
@@ -10159,6 +10579,38 @@
         ],
         "additionalProperties": false
       },
+      "LearningItemAttachment": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "\\S"
+          },
+          "fileUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "mimeType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "\\S"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "fileName",
+          "fileUrl",
+          "mimeType",
+          "sizeBytes"
+        ],
+        "additionalProperties": false
+      },
       "LearningItemContent": {
         "anyOf": [
           {
@@ -10175,6 +10627,12 @@
               "durationSeconds": {
                 "type": "integer",
                 "minimum": 1
+              },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LearningItemAttachment"
+                }
               }
             },
             "required": [
@@ -10194,6 +10652,18 @@
               "body": {
                 "type": "string",
                 "minLength": 1
+              },
+              "bodyFormat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "PLAIN_TEXT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "HTML"
+                  }
+                ]
               }
             },
             "required": [
@@ -10243,6 +10713,12 @@
               "durationSeconds": {
                 "type": "integer",
                 "minimum": 1
+              },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LearningItemAttachment"
+                }
               },
               "revisionId": {
                 "type": "string",
@@ -10306,6 +10782,18 @@
               "body": {
                 "type": "string",
                 "minLength": 1
+              },
+              "bodyFormat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "PLAIN_TEXT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "HTML"
+                  }
+                ]
               },
               "revisionId": {
                 "type": "string",
@@ -10922,6 +11410,12 @@
                       "type": "integer",
                       "minimum": 1
                     },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LearningItemAttachment"
+                      }
+                    },
                     "revisionId": {
                       "type": "string",
                       "format": "uuid"
@@ -10984,6 +11478,18 @@
                     "body": {
                       "type": "string",
                       "minLength": 1
+                    },
+                    "bodyFormat": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "PLAIN_TEXT"
+                        },
+                        {
+                          "type": "string",
+                          "const": "HTML"
+                        }
+                      ]
                     },
                     "revisionId": {
                       "type": "string",
@@ -13621,6 +14127,100 @@
               }
             ]
           },
+          "subtitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "\\S"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "targetAudience": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "learningOutcomes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "descriptionFormat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PLAIN_TEXT"
+              },
+              {
+                "type": "string",
+                "const": "HTML"
+              }
+            ]
+          },
           "expectedVersion": {
             "type": "integer",
             "minimum": 1
@@ -13704,6 +14304,12 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LearningItemAttachment"
+                }
+              },
               "revisionId": {
                 "type": "string",
                 "format": "uuid"
@@ -13741,6 +14347,18 @@
               "body": {
                 "type": "string",
                 "minLength": 1
+              },
+              "bodyFormat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "PLAIN_TEXT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "HTML"
+                  }
+                ]
               },
               "revisionId": {
                 "type": "string",
