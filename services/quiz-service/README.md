@@ -139,6 +139,14 @@ Tách AttemptStatus, GradingStatus và ProgressSyncStatus. Result đang chờ ch
 
 Consume Course enrollment/access/reference; dependency failure trả 503/504, không bypass enrollment. Publish/start phải xác minh course/lesson/quiz reference và version đúng. Identity cấp user JWT; service authentication dùng credential riêng.
 
+Public controller dùng `QuizAuthGuard`: guard xác minh user JWT RS256 bằng `JWT_PUBLIC_KEY`, sau đó gọi Identity `GET /api/v1/internal/users/{id}/access` để kiểm tra trạng thái/role hiện tại. Cấu hình `IDENTITY_URL` và `IDENTITY_SERVICE_TOKEN`; token nội bộ phải có scope `getUserAccess`, caller `quiz-service`, audience `identity-service` và TTL tối đa 5 phút. Identity không gọi được thì request bị từ chối bằng 503.
+
+Local/test có thể đặt `MOCK_AUTH=true` và gửi `x-mock-user: instructorA` để dùng fixture từ `@lms/auth`; mock guard tự từ chối ngoài `development`/`test` và không fallback sang mock khi JWT thật sai. Mock auth chỉ thay xác thực danh tính, không thay kiểm tra role theo operation hoặc quyền sở hữu course.
+
+Success response của API nghiệp vụ dùng `ApiResponse<T>` từ contracts: `{ data, meta: { requestId } }`, tạo qua helper `apiResponse`. Exception toàn cục trả `ApiErrorResponse` theo contracts; request middleware giữ hoặc tạo `X-Request-Id`.
+
+Internal controller phải áp dụng `InternalServiceGuard` và gắn `@InternalScope(operationId)` đúng tên trong `ENDPOINTS`. Guard luôn yêu cầu service JWT RS256 hợp lệ (kể cả development/test), issuer `lms-internal`, audience `quiz-service`, scope đúng operation, caller được phép và TTL tối đa 5 phút. Không có token hoặc token sai thì request bị từ chối; mock user không được dùng cho API nội bộ.
+
 Provide Learning: internal graded summary có policy/version/skillScores và attempt access có owner/eventId; publish quiz.attempt.graded.v2 qua outbox. Consumer mới không subscribe đồng thời v1/v2 cho cùng kết quả. Không đưa answer keys vào events. Fake Course adapter trong test phải theo contracts; không coi đó là integration thật.
 
 ## Chạy local và cấu hình
@@ -154,7 +162,7 @@ npm.cmd run start:dev -w @lms/quiz-service
 
 Terminal khác: `Invoke-RestMethod http://127.0.0.1:3003/` để kiểm tra hello scaffold.
 
-[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, RABBITMQ_URL, COURSE_URL, JWT_PUBLIC_KEY/JWT_ISSUER. Chỉ PORT đang được đọc. Owner bổ sung config loader, service credential và worker settings khi triển khai; không commit secret hoặc cho rằng env example đã kết nối DB/broker. Mock authentication theo [hướng dẫn](../../packages/auth/README.md), không tự bật trong production.
+[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, RABBITMQ_URL, COURSE_URL, JWT_PUBLIC_KEY/JWT_ISSUER, IDENTITY_URL, IDENTITY_SERVICE_TOKEN và INTERNAL_JWT_PUBLIC_KEY. Guard dùng các biến auth khi có request; `.env.example` chỉ là mẫu, không chứa credential hợp lệ. Không commit secret. Mock authentication theo [hướng dẫn](../../packages/auth/README.md), không tự bật trong production.
 
 ## Kiểm tra và nghiệm thu
 

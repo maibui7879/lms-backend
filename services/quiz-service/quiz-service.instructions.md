@@ -24,12 +24,12 @@ Khi triển khai, phải tuân thủ các nguyên tắc:
 9. Chỉ triển khai chức năng được giao, không tự động triển khai các chức năng liên quan.
 10. Tuân thủ kiến trúc Module – Controller – Service của nhóm.
 
-Mức ưu tiên:
-- P0: Chức năng ưu tiên cao nhất.
-- P1: Chức năng ưu tiên tiếp theo.
-- P2: Chức năng ưu tiên thấp hơn.
-
-Mức ưu tiên không đồng nghĩa với việc được phép tự động triển khai toàn bộ chức năng cùng mức.
+Cần kiểm tra	Vì sao quan trọng với Quiz Service?
+1. Internal API contracts	Quiz có thể cần hỏi Course Service xem khóa học, chương học hoặc bài học có tồn tại không
+2. Enrollment	Khi sinh viên bắt đầu làm Quiz (ATT-01), phải kiểm tra họ có quyền tham gia khóa học không
+3. Instructor ownership	Khi giảng viên tạo Quiz (QUIZ-05), phải xác định họ có quyền quản lý khóa học đó không
+4. Authentication context	Cần biết userId, role đến từ JWT, Gateway hay một cơ chế nội bộ đã thống nhất
+5. Request/response và lỗi	Quiz Service phải gửi đúng dữ liệu mà service khác chấp nhận và xử lý được các trường hợp lỗi
 
 ## 2. Cấu trúc Module đã thống nhất
 
