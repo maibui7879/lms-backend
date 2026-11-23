@@ -5,6 +5,10 @@ import type {
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { connect } from 'amqplib';
+import {
+  COURSE_REVIEW_NOTIFICATION_ROUTING_KEY,
+  ENROLLMENT_CREATED_V2_ROUTING_KEY,
+} from '@lms/contracts';
 import { EnrollmentOutboxEvent } from './enrollment-outbox.entity';
 
 /** At-least-once delivery: a crash after confirmation can replay the same eventId. */
@@ -66,6 +70,36 @@ export class EnrollmentOutboxPublisher
           this.logger.warn('Enrollment outbox channel error'),
         );
         await channel.assertExchange('lms.events', 'topic', { durable: true });
+        // Establish durable routing even before notification-service first starts.
+        if (
+          rows.some((row) =>
+            [
+              COURSE_REVIEW_NOTIFICATION_ROUTING_KEY,
+              ENROLLMENT_CREATED_V2_ROUTING_KEY,
+            ].includes(row.routingKey),
+          )
+        ) {
+          const queue = 'notification.course-review.v1';
+          const deadQueue = `${queue}.dead`;
+          await channel.assertQueue(deadQueue, { durable: true });
+          await channel.assertQueue(queue, {
+            durable: true,
+            arguments: {
+              'x-dead-letter-exchange': '',
+              'x-dead-letter-routing-key': deadQueue,
+            },
+          });
+          await channel.bindQueue(
+            queue,
+            'lms.events',
+            COURSE_REVIEW_NOTIFICATION_ROUTING_KEY,
+          );
+          await channel.bindQueue(
+            queue,
+            'lms.events',
+            ENROLLMENT_CREATED_V2_ROUTING_KEY,
+          );
+        }
         for (const row of rows) {
           await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(

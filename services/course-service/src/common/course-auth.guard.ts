@@ -8,6 +8,7 @@ import type { CanActivate, ExecutionContext } from '@nestjs/common';
 import { MockAuthGuard } from '@lms/auth';
 import type { AuthenticatedRequest } from '@lms/auth';
 import { parseContract } from '@lms/contracts';
+import type { AuthUser } from '@lms/contracts';
 import { createPublicKey, verify } from 'node:crypto';
 import { createIdentityServiceToken } from './identity-service-token';
 
@@ -19,7 +20,16 @@ export class CourseAuthGuard implements CanActivate {
       return new MockAuthGuard().canActivate(context);
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     delete request.user;
-    const token = request.headers.authorization;
+    const authorization = request.headers.authorization;
+    request.user = await this.authenticate(
+      typeof authorization === 'string' ? authorization : '',
+    );
+    return true;
+  }
+
+  /** Always verifies Identity, regardless of the HTTP-only MOCK_AUTH setting. */
+  async authenticate(authorization: string): Promise<AuthUser> {
+    const token = authorization;
     if (
       typeof token !== 'string' ||
       !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)
@@ -88,12 +98,11 @@ export class CourseAuthGuard implements CanActivate {
       throw new ForbiddenException(
         'Account is inactive or token permissions have changed',
       );
-    request.user = {
+    return {
       id: claims.sub,
       email: claims.email,
       role: access.role,
       status: access.status,
     };
-    return true;
   }
 }

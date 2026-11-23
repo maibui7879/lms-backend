@@ -19,6 +19,7 @@ export class EnrollmentOutboxService {
     manager: EntityManager,
     payload: EnrollmentSnapshotData,
     correlationId: string,
+    courseTitle?: string,
   ) {
     const event = parseContract('EnrollmentCreatedV2Event', {
       eventId: randomUUID(),
@@ -27,6 +28,7 @@ export class EnrollmentOutboxService {
       occurredAt: payload.enrolledAt,
       producer: 'course-service',
       correlationId,
+      ...(courseTitle ? { courseTitle } : {}),
       payload,
     });
     return this.save(manager, ENROLLMENT_CREATED_V2_ROUTING_KEY, event);
