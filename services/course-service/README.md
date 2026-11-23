@@ -268,3 +268,22 @@ PR bàn giao cho Quiz/Learning phải nêu provider routes đã chạy, policy s
 Course IN_REVIEW bị khóa chỉnh sửa. Instructor phải chờ Admin REJECT để sửa lại. Course PUBLISHED chỉ được thay đổi qua CourseRevision; enrollment cũ tiếp tục dùng contentVersion đã pin.
 
 Revision NORMAL chỉ áp dụng cho learner mới. Revision CRITICAL có thể tạo patch notice và gọi Learning migration theo item. Item không thay đổi giữ COMPLETED; item bị ảnh hưởng có thể thành OUTDATED hoặc RESET. Không tự động reset toàn bộ course và không xóa attempt quiz cũ.
+## Chạy Course bằng Compose từ root repository
+
+Compose chung tại [docker-compose.yml](../../docker-compose.yml), Dockerfile riêng tại [Dockerfile](./Dockerfile). Hiện Compose chỉ khai báo Course; chưa container hóa Identity, Learning, Quiz, Gateway hay DB. PostgreSQL/Supabase tiếp tục dùng `DATABASE_URL` trong env Course, không tạo container DB và không tự chạy migration trên DB ngoài.
+
+Chuẩn bị Docker Desktop với Linux containers và env Course hợp lệ. Identity phải chạy trên máy host cổng 3001; cấu hình cặp khóa nội bộ như phần xác thực phía trên. Không copy private key đăng nhập sang Course. Compose đọc env theo cú pháp env-file: giá trị chứa `$` cần đặt trong dấu nháy đơn để không bị nội suy; PEM có thể dùng dấu nháy kép với `\n`. Env chỉ được đưa vào container lúc chạy, không copy vào image. Người có quyền Docker vẫn có thể đọc env container, nên cấu hình này dành cho local; deployment thật nên dùng secret manager.
+
+Từ root repository:
+
+```sh
+docker compose up --build -d course
+docker compose ps
+docker compose logs --tail=100 course
+```
+
+Sau build đầu, `docker compose up -d` khởi động các service hiện có trong Compose. Truy cập Course tại `http://localhost:3002`, Swagger tại `/docs`, JSON tại `/docs-json`. Chỉ bind cổng loopback trong bản thử này. Dừng Course chạy bằng npm trước để tránh trùng cổng, hoặc đặt `COURSE_HOST_PORT=3102` trong môi trường shell để dùng cổng 3102. Không dùng `docker compose config` không có `--quiet` khi chia sẻ log vì có thể lộ secrets sau khi resolve env.
+
+Identity/Learning trên host được gọi qua `host.docker.internal`; có thể override bằng `COURSE_IDENTITY_URL` và `COURSE_LEARNING_URL`. Khi bổ sung container Identity/Learning vào Compose, đổi sang tên service tương ứng. Nếu DB hoặc RabbitMQ nằm trên máy host thì URL bên trong container cũng phải dùng `host.docker.internal`, không phải `localhost`; Supabase remote giữ nguyên URL. Compose không override `RABBITMQ_URL`.
+
+Container luôn dùng `MOCK_AUTH=false`, `DB_SYNC=false`, `NODE_ENV=production`. API internal của Course vì vậy yêu cầu JWT nội bộ đúng scope, không nhận token tĩnh development. Healthcheck hiện chỉ kiểm tra HTTP `GET /`, không phải ping DB liên tục. Để dừng container Course: `docker compose stop course`.

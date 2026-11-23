@@ -1,0 +1,40 @@
+name: lms-backend
+
+services:
+  course:
+    image: lms-course:local
+    build:
+      context: .
+      dockerfile: services/course-service/Dockerfile
+    init: true
+    env_file:
+      - ./services/course-service/.env
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      MOCK_AUTH: "false"
+      DB_SYNC: "false"
+      # Pilot setup: Identity/Learning run on the host, not in Compose yet.
+      IDENTITY_URL: ${COURSE_IDENTITY_URL:-http://host.docker.internal:3001}
+      LEARNING_URL: ${COURSE_LEARNING_URL:-http://host.docker.internal:3004}
+    ports:
+      - "127.0.0.1:${COURSE_HOST_PORT:-3002}:3002"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      # Liveness only. This does not replace a dependency readiness endpoint.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3002/', {signal: AbortSignal.timeout(3000)}).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    stop_grace_period: 15s
+    networks:
+      - lms
+
+networks:
+  lms:

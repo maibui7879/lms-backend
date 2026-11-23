@@ -105,7 +105,7 @@ export class CoursesService {
 
   async create(dto: CreateCourseRequest, user: AuthUser): Promise<CourseData> {
     // Bước 1: dto đã qua validation tại controller; user do auth guard xác minh.
-    // Bản mẫu dùng MockAuthGuard. Chỉ Instructor ACTIVE được tạo khóa học.
+    // CourseAuthGuard xác minh danh tính; chỉ Instructor ACTIVE được tạo khóa học.
     if (user.role !== 'INSTRUCTOR' || user.status !== 'ACTIVE')
       throw new ForbiddenException('Active instructor account required');
     // Bước 2: Tạo entity trong bộ nhớ; repository.create chưa ghi vào PostgreSQL.

@@ -8,7 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@lms/auth';
-import { CourseAuthGuard as MockAuthGuard } from '../../common/course-auth.guard';
+import { CourseAuthGuard } from '../../common/course-auth.guard';
 import type {
   ApiResponse,
   AuthUser,
@@ -21,7 +21,7 @@ import { CompletionPolicyService } from './completion-policy.service';
 import { UpdateCompletionPolicyPipe } from './dto/completion-policy-request.pipe';
 
 @Controller('api/v1/courses')
-@UseGuards(MockAuthGuard)
+@UseGuards(CourseAuthGuard)
 export class CompletionPolicyController {
   constructor(private readonly policies: CompletionPolicyService) {}
 
