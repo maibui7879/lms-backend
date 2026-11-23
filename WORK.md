@@ -4,6 +4,20 @@ Cập nhật ngày **15/11/2026** theo code trên nhánh `feat/learning/progress
 
 Thứ tự triển khai và điều kiện hoàn thành của từng chức năng nằm trong [PLAN.md](PLAN.md).
 
+## Đóng gói Learning bằng Docker
+
+**Cập nhật ngày 24/11/2026.** Hoàn thành image `lms-learning:local` cho các module PRG, MST, ADP, CERT và INS. Build từ thư mục gốc monorepo bằng `docker build -f services/learning-service/Dockerfile -t lms-learning:local .`.
+
+| Vị trí | Công dụng |
+| --- | --- |
+| `services/learning-service/Dockerfile` | Build Contracts, Auth và Learning với Node.js 24, giữ dependency production trong image chạy, dùng user `node` và healthcheck HTTP. |
+| `services/learning-service/Dockerfile.dockerignore` | Giới hạn build context theo service và hai package dùng chung, loại file cấu hình bí mật và dữ liệu build local. |
+| `services/learning-service/README.md` | Lệnh build, gắn `.env` ở thời điểm chạy, gọi Identity trên Windows và chạy migration bằng cùng image. |
+
+**Ví dụ chạy.** `.env` chứa kết nối Supabase và khóa JWT được gắn vào container dưới dạng file chỉ đọc. Learning trong container dùng `http://host.docker.internal:3001` để gọi Identity đang chạy trên máy Windows. Người dùng đăng nhập Identity và gửi Bearer token để gọi API Learning qua cổng được Docker ánh xạ.
+
+**Kiểm thử.** Image build thành công; API trong container nhận token Identity thật và đọc danh sách chứng chỉ trên Supabase với HTTP 200. Header mock đơn lẻ trả 401. Xác minh mã chưa cấp trả `valid=false`. Lệnh migration trong image chạy đủ 15 migration và tạo 13 bảng trên PostgreSQL test riêng. Render chứng chỉ có font tiếng Việt và QR trong container thành công.
+
 ## Xác thực Identity cho PRG, MST, ADP, CERT và INS
 
 **Cập nhật ngày 23/11/2026.** Các controller NestJS của Learning dùng access token RS256 do Identity cấp. Cấu hình kết nối nằm trong `.env` của Learning và được mô tả trong [README](services/learning-service/README.md#xác-thực-và-kết-nối-identity).

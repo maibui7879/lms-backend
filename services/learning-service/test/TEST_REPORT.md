@@ -1,5 +1,21 @@
 # Báo cáo kiểm thử luồng Learning
 
+## Image Docker của Learning — 24/11/2026
+
+Build image `lms-learning:local` từ monorepo bằng Dockerfile của Learning. Kiểm thử các thành phần được đóng gói và API chạy trong container.
+
+| Kiểm thử | Kết quả |
+| --- | --- |
+| Build và dependency workspace | Build Contracts, Auth và Learning thành công; các import runtime hoạt động sau khi prune dependency dev. |
+| Runtime | Container dùng user `node`, UID 1000. Image chạy chứa font PDF và các fixture ID mà package Auth đang import. |
+| Healthcheck | Container đạt trạng thái `healthy` qua probe HTTP của image. |
+| Cấu hình | Image gốc không có `.env` hoặc `AGENTS.md` của Learning. File `.env` thật được gắn chỉ đọc khi chạy test API. |
+| Migration | Dùng `npm run migration:run --workspace @lms/learning-service` trong image tạo đủ 13 bảng và áp dụng 15 migration trên PostgreSQL test mới. |
+| PDF | Render được PDF chứng chỉ 21.457 byte có tên người nhận/khóa học tiếng Việt và QR bằng dependency trong image. |
+| API với service thật | Đăng nhập Identity local lấy token, gọi danh sách chứng chỉ của Learning trong container trả 200 và đọc PostgreSQL Supabase. Header mock riêng trả 401. Mã chứng chỉ chưa cấp trả 200 với `valid=false`. |
+
+Các container và network dành riêng cho kiểm thử được dọn sau lượt chạy. Hướng dẫn build, chạy, healthcheck và migration nằm trong README của Learning.
+
 ## Tích hợp Identity và bỏ xác thực mock trên NestJS — 23/11/2026
 
 **Kết quả.** Đạt **127/127 E2E** trên 12 suite, gồm 106 ca hồi quy nghiệp vụ, 16 ca xác thực JWT và 5 ca chạy Identity thật với PostgreSQL riêng. Đạt thêm **37/37 unit**, **22/22 HTTP mock** và **11/11 contract**. Monorepo build thành công. Lượt hồi quy có render PDF và giải mã QR bằng Poppler.

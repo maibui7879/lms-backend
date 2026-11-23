@@ -1,0 +1,26 @@
+# Paths are relative to the monorepo root used as build context.
+**
+!package.json
+!package-lock.json
+!packages/
+!packages/contracts/
+!packages/contracts/**
+!packages/auth/
+!packages/auth/**
+!services/
+!services/learning-service/
+!services/learning-service/**
+
+**/node_modules
+**/dist
+**/test
+**/tests
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+**/*.tsbuildinfo
+**/AGENTS.md
+**/CLAUDE.md
+**/.cache

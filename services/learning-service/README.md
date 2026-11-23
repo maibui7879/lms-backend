@@ -285,6 +285,43 @@ npm.cmd run start:dev -w @lms/learning-service
 
 Terminal khác: `Invoke-RestMethod http://127.0.0.1:3004/` chỉ smoke check scaffold.
 
+### Chạy Learning bằng Docker
+
+Build từ thư mục gốc monorepo để Docker có cả `@lms/contracts` và `@lms/auth`.
+
+```powershell
+docker build -f services/learning-service/Dockerfile -t lms-learning:local .
+```
+
+Dockerfile dùng Node.js 24, build ba workspace cần thiết rồi tạo image chạy với dependency production và user `node`. File `Dockerfile.dockerignore` giới hạn build context cho Learning và hai package dùng chung. Cấu hình `.env` được gắn vào container ở thời điểm chạy để NestJS đọc đúng khóa PEM có nhiều dòng.
+
+Với Identity/Course/Quiz chạy trên Windows, dùng `host.docker.internal` để gọi dịch vụ trên máy. Giải phóng cổng `3004` trước khi chạy lệnh sau. Image mặc định `NODE_ENV=production`; ví dụ local dùng `development` để khớp cách Course local nhận credential nội bộ. Các API Learning cần đăng nhập sử dụng access token Identity.
+
+```powershell
+$learningEnvFile = (Resolve-Path services/learning-service/.env).Path
+docker run --rm --init --name lms-learning -p 127.0.0.1:3004:3004 `
+  --mount "type=bind,source=$learningEnvFile,target=/app/services/learning-service/.env,readonly" `
+  --env NODE_ENV=development `
+  --env IDENTITY_URL=http://host.docker.internal:3001 `
+  --env COURSE_URL=http://host.docker.internal:3002 `
+  --env QUIZ_URL=http://host.docker.internal:3003 `
+  --env LEARNING_PUBLIC_URL=http://localhost:3004 `
+  lms-learning:local
+```
+
+Trong môi trường production, cấu hình `COURSE_INTERNAL_JWT_PRIVATE_KEY` và giữ `NODE_ENV=production`. Nếu các service chạy cùng Docker network, dùng tên service trong các URL. `LEARNING_PUBLIC_URL` là địa chỉ người dùng mở để xác minh QR. Healthcheck của image kiểm tra HTTP `GET /` của NestJS.
+
+Migration dùng cùng image và database trong cấu hình được gắn vào.
+
+```powershell
+$learningEnvFile = (Resolve-Path services/learning-service/.env).Path
+docker run --rm `
+  --mount "type=bind,source=$learningEnvFile,target=/app/services/learning-service/.env,readonly" `
+  lms-learning:local npm run migration:run --workspace @lms/learning-service
+```
+
+Kiểm tra trạng thái bằng `docker inspect --format '{{.State.Health.Status}}' lms-learning`. Dừng bằng `docker stop lms-learning`.
+
 ### Kết nối Supabase cho Learning
 
 Trong Dashboard của project Supabase, mở **Connect**, chọn kiểu **URI** và lấy chuỗi PostgreSQL. Dùng **Session pooler** (cổng `5432`) nếu mạng chỉ có IPv4. Dùng **Direct connection** nếu máy kết nối được endpoint direct. Giữ nguyên host, user và tên database trong URI. Thay `[YOUR-PASSWORD]` bằng mật khẩu database của project và mã hóa ký tự đặc biệt trong mật khẩu theo URL. Bật TLS với `sslmode=require` nếu URI chưa có tham số `sslmode`. [Hướng dẫn kết nối Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres)
