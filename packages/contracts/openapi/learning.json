@@ -5946,6 +5946,26 @@
         ],
         "additionalProperties": false
       },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "additionalProperties": false
+      },
       "ChapterAccessData": {
         "type": "object",
         "properties": {
@@ -12015,6 +12035,31 @@
         ],
         "additionalProperties": false
       },
+      "ProfileSecurity": {
+        "type": "object",
+        "properties": {
+          "activeSessionsCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "passwordChangedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          }
+        },
+        "required": [
+          "activeSessionsCount",
+          "passwordChangedAt"
+        ],
+        "additionalProperties": false
+      },
       "ProgressSyncData": {
         "type": "object",
         "properties": {
@@ -14456,6 +14501,79 @@
       "UpdateProfileRequest": {
         "type": "object",
         "properties": {
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "phoneNumber": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "dateOfBirth": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "MALE"
+              },
+              {
+                "type": "string",
+                "const": "FEMALE"
+              },
+              {
+                "type": "string",
+                "const": "OTHER"
+              }
+            ]
+          },
+          "githubUrl": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uri"
+              }
+            ]
+          },
+          "linkedinUrl": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uri"
+              }
+            ]
+          },
           "displayName": {
             "type": "string",
             "minLength": 1,
@@ -14712,9 +14830,116 @@
         ],
         "additionalProperties": false
       },
+      "UserGender": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "MALE"
+          },
+          {
+            "type": "string",
+            "const": "FEMALE"
+          },
+          {
+            "type": "string",
+            "const": "OTHER"
+          }
+        ]
+      },
       "UserProfile": {
         "type": "object",
         "properties": {
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "lastName": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "phoneNumber": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "dateOfBirth": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "MALE"
+              },
+              {
+                "type": "string",
+                "const": "FEMALE"
+              },
+              {
+                "type": "string",
+                "const": "OTHER"
+              }
+            ]
+          },
+          "githubUrl": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uri"
+              }
+            ]
+          },
+          "linkedinUrl": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uri"
+              }
+            ]
+          },
+          "security": {
+            "$ref": "#/components/schemas/ProfileSecurity"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "avatarUrl": {
             "anyOf": [
               {
@@ -14788,6 +15013,16 @@
           }
         },
         "required": [
+          "emailVerified",
+          "firstName",
+          "lastName",
+          "phoneNumber",
+          "dateOfBirth",
+          "gender",
+          "githubUrl",
+          "linkedinUrl",
+          "security",
+          "updatedAt",
           "avatarUrl",
           "bio",
           "createdAt",
