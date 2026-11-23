@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -29,6 +30,12 @@ export class UsersController {
     return this.usersService.getProfile(user.sub);
   }
 
+  @Get('me/profile')
+  @ApiOperation({ summary: 'Get current user detailed profile' })
+  getMyProfile(@CurrentUser() user: JwtAccessPayload) {
+    return this.usersService.getProfile(user.sub);
+  }
+
   @Patch('me')
   @ApiOperation({
     summary: 'Update current user profile with optimistic locking',
@@ -38,6 +45,34 @@ export class UsersController {
     @Body() dto: UpdateProfileDto,
   ) {
     return this.usersService.updateProfile(user.sub, dto);
+  }
+
+  @Patch('me/profile')
+  @ApiOperation({
+    summary: 'Create or update current user profile with optimistic locking',
+  })
+  updateMyProfile(
+    @CurrentUser() user: JwtAccessPayload,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.usersService.updateProfile(user.sub, dto);
+  }
+
+  @Delete('me/profile')
+  @ApiOperation({
+    summary: 'Clear optional profile fields while keeping account active',
+  })
+  clearMyProfile(@CurrentUser() user: JwtAccessPayload) {
+    return this.usersService.clearOptionalProfile(user.sub);
+  }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Deactivate current user account and revoke all active sessions',
+  })
+  async deactivateMe(@CurrentUser() user: JwtAccessPayload) {
+    await this.usersService.deactivateMyAccount(user.sub);
   }
 
   @Post('me/password')

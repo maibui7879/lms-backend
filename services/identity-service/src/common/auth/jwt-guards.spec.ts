@@ -167,7 +167,9 @@ describe('JwtStrategy + JwtAuthGuard + RolesGuard (Protected Controllers)', () =
       AuthController.prototype,
     ).find((name) => {
       if (name === 'constructor') return false;
-      const fn = (AuthController.prototype as unknown as Record<string, unknown>)[name];
+      const fn = (
+        AuthController.prototype as unknown as Record<string, unknown>
+      )[name];
       if (typeof fn !== 'function') return false;
       return Reflect.getMetadataKeys(fn).some(
         (key) => Reflect.getMetadata(key, fn) === true,
@@ -188,9 +190,7 @@ describe('JwtStrategy + JwtAuthGuard + RolesGuard (Protected Controllers)', () =
     ).rejects.toThrow(UnauthorizedException);
 
     await expect(
-      jwtAuthGuard.canActivate(
-        makeContext(AdminUsersController, 'listUsers'),
-      ),
+      jwtAuthGuard.canActivate(makeContext(AdminUsersController, 'listUsers')),
     ).rejects.toThrow(UnauthorizedException);
   });
 
