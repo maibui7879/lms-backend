@@ -7,7 +7,7 @@ import type { OnModuleDestroy } from '@nestjs/common';
 import type { AuthUser, CourseNotificationData } from '@lms/contracts';
 import { randomUUID } from 'node:crypto';
 import type { Namespace, Socket } from 'socket.io';
-import { NotificationAuthGuard } from '../../common/notification-auth.guard';
+import { NotificationAuthGuard } from '../../../auth/notification-auth.guard';
 
 function allowedOrigin(origin: string | undefined): boolean {
   return (
@@ -22,6 +22,7 @@ function allowedOrigin(origin: string | undefined): boolean {
       .includes(origin)
   );
 }
+
 @WebSocketGateway({
   namespace: '/notifications',
   cors: { origin: (origin, callback) => callback(null, allowedOrigin(origin)) },
@@ -31,7 +32,9 @@ function allowedOrigin(origin: string | undefined): boolean {
 export class NotificationsGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy
 {
-  @WebSocketServer() server: Namespace;
+  @WebSocketServer()
+  server: Namespace;
+
   private readonly identities = new Map<
     Socket,
     {
@@ -41,7 +44,9 @@ export class NotificationsGateway
       timer: ReturnType<typeof setTimeout>;
     }
   >();
+
   constructor(private readonly auth: NotificationAuthGuard) {}
+
   async handleConnection(client: Socket): Promise<void> {
     try {
       if (!allowedOrigin(client.handshake.headers.origin))
@@ -89,17 +94,20 @@ export class NotificationsGateway
       client.disconnect(true);
     }
   }
+
   handleDisconnect(client: Socket): void {
     const identity = this.identities.get(client);
     if (identity) clearTimeout(identity.timer);
     this.identities.delete(client);
   }
+
   onModuleDestroy(): void {
     for (const client of this.identities.keys()) {
       this.handleDisconnect(client);
       client.disconnect(true);
     }
   }
+
   async publish(
     data: CourseNotificationData,
     recipientId: string,

@@ -1,4 +1,5 @@
 import database from './data-source';
+
 async function migrate(): Promise<void> {
   await database.initialize();
   try {
@@ -9,6 +10,7 @@ async function migrate(): Promise<void> {
     await database.destroy();
   }
 }
+
 void migrate().catch(() => {
   console.error(
     'Notification migration failed; check database configuration and availability.',

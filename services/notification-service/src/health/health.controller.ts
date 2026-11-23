@@ -1,15 +1,19 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { NotificationEventsConsumer } from './modules/notifications/notification-events.consumer';
+import { NotificationEventsConsumer } from '../modules/notifications/consumers/notification-events.consumer';
+
 @Controller('health')
 export class HealthController {
   constructor(
     private readonly database: DataSource,
     private readonly broker: NotificationEventsConsumer,
   ) {}
-  @Get('live') live() {
+
+  @Get('live')
+  live() {
     return { status: 'ok', service: 'notification-service' };
   }
+
   @Get()
   async readiness() {
     try {

@@ -12,8 +12,8 @@ import { CurrentUser } from '@lms/auth';
 import { ContractValidationError, parseContract } from '@lms/contracts';
 import type { AuthUser, NotificationQuery } from '@lms/contracts';
 import type { Request } from 'express';
-import { NotificationAuthGuard } from '../../common/notification-auth.guard';
-import { NotificationsService } from './notifications.service';
+import { NotificationAuthGuard } from '../../../auth/notification-auth.guard';
+import { NotificationsService } from '../services/notifications.service';
 
 function queryFor(value: Record<string, unknown>): NotificationQuery {
   const input = { ...value };
@@ -34,10 +34,12 @@ function queryFor(value: Record<string, unknown>): NotificationQuery {
     throw error;
   }
 }
+
 @Controller('api/v1/notifications')
 @UseGuards(NotificationAuthGuard)
 export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
+
   @Get()
   async list(
     @CurrentUser() user: AuthUser,
@@ -49,6 +51,7 @@ export class NotificationsController {
       meta: { requestId: String(request.headers['x-request-id']) },
     };
   }
+
   @Get('unread-count')
   async count(@CurrentUser() user: AuthUser, @Req() request: Request) {
     return {
@@ -56,6 +59,7 @@ export class NotificationsController {
       meta: { requestId: String(request.headers['x-request-id']) },
     };
   }
+
   @Put(':id/read')
   async read(
     @Param('id') id: string,

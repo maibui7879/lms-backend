@@ -3,11 +3,12 @@ import type { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import request from 'supertest';
-import { NotificationAuthGuard } from '../src/common/notification-auth.guard';
-import { NotificationsController } from '../src/modules/notifications/notifications.controller';
-import { NotificationsService } from '../src/modules/notifications/notifications.service';
-import { NotificationsGateway } from '../src/modules/notifications/notifications.gateway';
-import { Notification } from '../src/modules/notifications/notification.entity';
+import { NotificationAuthGuard } from '../src/auth/notification-auth.guard';
+import { NotificationsController } from '../src/modules/notifications/controllers/notifications.controller';
+import { NotificationsService } from '../src/modules/notifications/services/notifications.service';
+import { NotificationDispatcherService } from '../src/modules/notifications/services/notification-dispatcher.service';
+import { NotificationsGateway } from '../src/modules/notifications/gateways/notifications.gateway';
+import { Notification } from '../src/modules/notifications/entities/notification.entity';
 import { requestContext } from '../src/common/request-context';
 import { HttpExceptionFilter } from '../src/common/http-exception.filter';
 
@@ -59,6 +60,7 @@ describe('Standalone inbox with signed HTTP authentication', () => {
       providers: [
         NotificationAuthGuard,
         NotificationsService,
+        NotificationDispatcherService,
         { provide: getRepositoryToken(Notification), useValue: repo },
         { provide: NotificationsGateway, useValue: gateway },
       ],
@@ -67,7 +69,7 @@ describe('Standalone inbox with signed HTTP authentication', () => {
     app.use(requestContext);
     app.useGlobalFilters(new HttpExceptionFilter());
     await app.init();
-    app.get(NotificationsService).onModuleDestroy();
+    app.get(NotificationDispatcherService).onModuleDestroy();
   });
   beforeEach(() => {
     jest.clearAllMocks();
@@ -77,7 +79,9 @@ describe('Standalone inbox with signed HTTP authentication', () => {
           ok: true,
           json: async () => ({
             data: {
-              userId: new URL(String(input)).pathname.split('/')[5],
+              userId: new URL(
+                input instanceof Request ? input.url : input,
+              ).pathname.split('/')[5],
               role: 'INSTRUCTOR',
               status: 'ACTIVE',
             },
@@ -203,11 +207,11 @@ describe('Standalone inbox with signed HTTP authentication', () => {
   });
   it('retries persisted rows after delivery failure', async () => {
     gateway.publish.mockRejectedValueOnce(new Error('unavailable'));
-    await app.get(NotificationsService).dispatch();
+    await app.get(NotificationDispatcherService).dispatch();
     expect(row.emittedAt).toBeNull();
-    await app.get(NotificationsService).dispatch();
+    await app.get(NotificationDispatcherService).dispatch();
     expect(row.emittedAt).toBeInstanceOf(Date);
-    await app.get(NotificationsService).dispatch();
+    await app.get(NotificationDispatcherService).dispatch();
     expect(gateway.publish).toHaveBeenCalledTimes(2);
   });
 });

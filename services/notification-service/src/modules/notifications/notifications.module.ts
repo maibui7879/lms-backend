@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { NotificationAuthGuard } from '../../common/notification-auth.guard';
-import { Notification } from './notification.entity';
-import { NotificationsController } from './notifications.controller';
-import { NotificationsGateway } from './notifications.gateway';
-import { NotificationsService } from './notifications.service';
-import { NotificationEventsConsumer } from './notification-events.consumer';
-import { NotificationInboxService } from './notification-inbox.service';
+import { NotificationAuthGuard } from '../../auth/notification-auth.guard';
+import { Notification } from './entities/notification.entity';
+import { NotificationsController } from './controllers/notifications.controller';
+import { NotificationsGateway } from './gateways/notifications.gateway';
+import { NotificationsService } from './services/notifications.service';
+import { NotificationEventsConsumer } from './consumers/notification-events.consumer';
+import { NotificationInboxService } from './services/notification-inbox.service';
+import { NotificationDispatcherService } from './services/notification-dispatcher.service';
+
 @Module({
   imports: [TypeOrmModule.forFeature([Notification])],
   controllers: [NotificationsController],
@@ -14,6 +16,7 @@ import { NotificationInboxService } from './notification-inbox.service';
     NotificationAuthGuard,
     NotificationsGateway,
     NotificationsService,
+    NotificationDispatcherService,
     NotificationEventsConsumer,
     NotificationInboxService,
   ],

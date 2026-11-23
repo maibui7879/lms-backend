@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
 import type { OpenAPIObject } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const document = JSON.parse(
@@ -22,6 +23,7 @@ async function bootstrap() {
   app.enableShutdownHooks();
   await app.listen(Number(process.env.PORT ?? 3005), '0.0.0.0');
 }
+
 void bootstrap().catch((error: unknown) => {
   console.error(error);
   process.exitCode = 1;

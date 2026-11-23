@@ -7,7 +7,8 @@ import { databaseOptions, envFiles, validateEnvironment } from './config';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { requestContext } from './common/request-context';
 import { NotificationsModule } from './modules/notifications/notifications.module';
-import { HealthController } from './health.controller';
+import { HealthController } from './health/health.controller';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
