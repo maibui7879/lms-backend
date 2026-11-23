@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LearningAuthModule } from '../../common/auth/learning-auth.module';
 import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { requestContext } from '../../common/request-context';
 import { LearningDatabaseModule } from '../../database/learning-database.module';
@@ -9,7 +10,7 @@ import { ProgressSyncService } from './progress-sync.service';
 import { AssessmentAttemptsRepository } from './repositories/assessment-attempts.repository';
 
 @Module({
-  imports: [LearningDatabaseModule],
+  imports: [LearningDatabaseModule, LearningAuthModule],
   controllers: [ProgressSyncController],
   providers: [
     ProgressSyncService,

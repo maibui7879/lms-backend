@@ -12,7 +12,8 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { LearningAuthGuard } from '../../common/auth/learning-auth.guard';
 import type { AuthUser } from '@lms/contracts';
 import type { Response } from 'express';
 import { apiError, ApiExceptionFilter } from '../../common/api-error';
@@ -23,7 +24,7 @@ import { CertificatesService } from './certificates.service';
 
 @Controller('api/v1/learning')
 @UseFilters(ApiExceptionFilter)
-@UseGuards(MockAuthGuard)
+@UseGuards(LearningAuthGuard)
 export class CertificatesController {
   constructor(private readonly certificates: CertificatesService) {}
 
@@ -33,7 +34,7 @@ export class CertificatesController {
     @Body() body: unknown,
     @Headers('idempotency-key') key: string | undefined,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ) {
     if (user.role !== 'STUDENT' || user.status !== 'ACTIVE')
@@ -60,7 +61,7 @@ export class CertificatesController {
       key,
       {
         userId: user.id,
-        mockUser,
+        authorization,
         requestId: request,
       },
     );
@@ -83,7 +84,7 @@ export class CertificatesController {
   async download(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ): Promise<StreamableFile> {
     if (user.status !== 'ACTIVE')
@@ -91,7 +92,7 @@ export class CertificatesController {
     const certificateId = validateRequest('Uuid', id).toLowerCase();
     const pdf = await this.certificates.download(certificateId, {
       userId: user.id,
-      mockUser,
+      authorization,
       requestId: requestId(response),
     });
     response.setHeader('Cache-Control', 'private, no-store');
@@ -104,7 +105,7 @@ export class CertificatesController {
 
 @Controller('api/v1/admin/certificates')
 @UseFilters(ApiExceptionFilter)
-@UseGuards(MockAuthGuard)
+@UseGuards(LearningAuthGuard)
 export class AdminCertificatesController {
   constructor(private readonly certificates: CertificatesService) {}
 
