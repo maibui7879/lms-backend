@@ -7,7 +7,23 @@ import type {
 import type { EnrollmentSnapshotData } from './enrollment';
 
 export type CourseStatus = 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED' | 'REJECTED';
-export interface CourseData {
+export type CourseLevel =
+  'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ALL_LEVELS';
+/** Thông tin bổ sung tùy chọn để tương thích với khóa học đã tồn tại. */
+export interface CourseMetadata {
+  subtitle?: string;
+  category?: string;
+  tags?: string[];
+  level?: CourseLevel;
+  /** Mã ngôn ngữ BCP 47, ví dụ vi hoặc en-US. */
+  language?: string;
+  prerequisites?: string[];
+  targetAudience?: string[];
+  learningOutcomes?: string[];
+  /** Không truyền thì description được hiểu là văn bản thuần. */
+  descriptionFormat?: 'PLAIN_TEXT' | 'HTML';
+}
+export interface CourseData extends CourseMetadata {
   id: Uuid;
   instructorId: Uuid;
   title: string;
@@ -86,7 +102,7 @@ export interface RevisionReorderRequest extends ReorderRequest {
   /** Chỉ bắt buộc khi reorder nội dung thuộc một CourseRevision cụ thể. */
   revisionId?: Uuid;
 }
-export interface CreateCourseRequest {
+export interface CreateCourseRequest extends CourseMetadata {
   title: string;
   description: string;
   thumbnailUrl?: string | null;
@@ -95,6 +111,10 @@ export type UpdateCourseRequest = Partial<CreateCourseRequest> & VersionRequest;
 export interface CourseQuery extends PageQuery {
   search?: string;
   instructorId?: Uuid;
+  category?: string;
+  tag?: string;
+  level?: CourseLevel;
+  language?: string;
   sort?: 'createdAt' | 'title';
   direction?: 'asc' | 'desc';
 }
@@ -151,9 +171,26 @@ export interface CreateLessonRequest {
   title: string;
 }
 export type UpdateLessonRequest = CreateLessonRequest & RevisionVersionRequest;
+/** Tệp đã upload; không gửi dữ liệu nhị phân/base64 vào request tạo bài học. */
+export interface LearningItemAttachment {
+  fileName: string;
+  fileUrl: string;
+  mimeType: string;
+  sizeBytes: number;
+}
 export type LearningItemContent =
-  | { type: 'VIDEO'; videoUrl: string; durationSeconds: number }
-  | { type: 'READING'; body: string }
+  | {
+      type: 'VIDEO';
+      videoUrl: string;
+      durationSeconds: number;
+      attachments?: LearningItemAttachment[];
+    }
+  | {
+      type: 'READING';
+      body: string;
+      /** Mặc định PLAIN_TEXT cho nội dung cũ; HTML hỗ trợ ảnh qua URL. */
+      bodyFormat?: 'PLAIN_TEXT' | 'HTML';
+    }
   | { type: 'QUIZ'; quizId: Uuid; assessmentVersion: number };
 export type CreateLearningItemRequest = LearningItemContent & {
   revisionId?: Uuid;

@@ -232,3 +232,9 @@ CourseRevisionChangeData ghi lại entity được thêm, sửa hoặc xóa. Cou
 Learning triển khai `migrateCourseItems` với `REQUIRE_RECOMPLETION` hoặc `NOTIFY_ONLY`. Khi học lại, chỉ `COMPLETED` được tính và metadata invalidation được trả trong `ItemProgressData`. Phiên bản ghi danh giữ nguyên. Quy tắc reset/reopen trong phần baseline ở trên được mở rộng bởi [hướng dẫn migration](docs/learning-migration-guide.md).
 
 Contract bổ sung `getCourseItemMigrationContext` cho API nội bộ Course. `CourseItemMigrationContext` trả metadata revision đã xuất bản, item mới, các item nguồn trong những phiên bản cũ và yêu cầu assessment mới. Course cần kiểm tra scope credential và cung cấp liên hệ nguồn–đích tin cậy. Các API metadata dành cho chủ khóa dùng quyền của chủ khóa. Learning dùng context nội bộ để xác minh migration và áp dụng đúng mục của enrollment cũ.
+
+## Bổ sung thông tin và soạn thảo khóa học
+
+Xem [hướng dẫn contract Course và nội dung bài học](docs/course-authoring.md)
+cho metadata, bộ lọc, tài liệu video và bài đọc HTML có ảnh. Các API upload chưa
+được bổ sung trong đợt thay đổi này.

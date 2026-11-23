@@ -193,6 +193,45 @@ const definitions = Object.fromEntries(
 definitions.Uuid.format = 'uuid';
 definitions.IsoDateTime.format = 'date-time';
 for (const name of [
+  'CourseMetadata',
+  'CourseData',
+  'CreateCourseRequest',
+  'UpdateCourseRequest',
+]) {
+  const properties = definitions[name].properties;
+  for (const field of ['subtitle', 'category', 'language']) {
+    Object.assign(properties[field], {
+      minLength: 1,
+      maxLength: field === 'subtitle' ? 300 : 100,
+      pattern: '\\S',
+    });
+  }
+  for (const field of [
+    'tags',
+    'prerequisites',
+    'targetAudience',
+    'learningOutcomes',
+  ]) {
+    Object.assign(properties[field], { maxItems: 50, uniqueItems: true });
+    Object.assign(properties[field].items, {
+      minLength: 1,
+      maxLength: 500,
+      pattern: '\\S',
+    });
+  }
+}
+Object.assign(definitions.LearningItemAttachment.properties.sizeBytes, {
+  type: 'integer',
+  minimum: 1,
+});
+for (const field of ['fileName', 'mimeType']) {
+  Object.assign(definitions.LearningItemAttachment.properties[field], {
+    minLength: 1,
+    maxLength: 255,
+    pattern: '\\S',
+  });
+}
+for (const name of [
   'CreateCourseSkillRequest',
   'UpdateCourseSkillRequest',
   'CourseSkillData',

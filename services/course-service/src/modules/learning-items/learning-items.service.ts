@@ -21,6 +21,7 @@ import { CourseRevision } from '../course-revisions/entities/course-revision.ent
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Lesson } from '../lessons/entities/lesson.entity';
 import { LearningItem } from './entities/learning-item.entity';
+import { sanitizeRichText } from '../../common/rich-text';
 
 export function learningItemData(item: LearningItem): LearningItemData {
   const base = {
@@ -40,9 +41,15 @@ export function learningItemData(item: LearningItem): LearningItemData {
       type: 'VIDEO',
       videoUrl: item.videoUrl!,
       durationSeconds: item.durationSeconds!,
+      attachments: item.attachments ?? [],
     };
   if (item.type === 'READING')
-    return { ...base, type: 'READING', body: item.body! };
+    return {
+      ...base,
+      type: 'READING',
+      body: item.body!,
+      bodyFormat: item.bodyFormat ?? 'PLAIN_TEXT',
+    };
   return {
     ...base,
     type: 'QUIZ',
@@ -217,7 +224,18 @@ export class LearningItemsService {
       type: dto.type,
       videoUrl: dto.type === 'VIDEO' ? dto.videoUrl : null,
       durationSeconds: dto.type === 'VIDEO' ? dto.durationSeconds : null,
-      body: dto.type === 'READING' ? dto.body : null,
+      body:
+        dto.type === 'READING'
+          ? dto.bodyFormat === 'HTML'
+            ? sanitizeRichText(dto.body)
+            : dto.body
+          : null,
+      bodyFormat:
+        dto.type === 'READING'
+          ? (dto.bodyFormat ?? 'PLAIN_TEXT')
+          : 'PLAIN_TEXT',
+      attachments:
+        dto.type === 'VIDEO' ? structuredClone(dto.attachments ?? []) : [],
       quizId: dto.type === 'QUIZ' ? dto.quizId : null,
       assessmentVersion: dto.type === 'QUIZ' ? dto.assessmentVersion : null,
     };
