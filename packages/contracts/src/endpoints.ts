@@ -2,7 +2,7 @@
  * public Gateway prefix; Gateway forwards the path unchanged to its service. */
 export interface EndpointContract {
   operationId: string;
-  service: 'identity' | 'course' | 'quiz' | 'learning';
+  service: 'identity' | 'course' | 'quiz' | 'learning' | 'notification';
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
   path: string;
   description?: string;
@@ -28,6 +28,40 @@ export interface EndpointContract {
 }
 
 export const ENDPOINTS: readonly EndpointContract[] = [
+  {
+    operationId: 'listNotifications',
+    service: 'notification',
+    method: 'get',
+    path: '/api/v1/notifications',
+    access: 'AUTHENTICATED',
+    description:
+      "List only the authenticated user's notifications, with pagination and optional unread filtering.",
+    query: 'NotificationQuery',
+    response: 'CourseNotificationData',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'getUnreadNotificationCount',
+    service: 'notification',
+    method: 'get',
+    path: '/api/v1/notifications/unread-count',
+    access: 'AUTHENTICATED',
+    description: "Count only the authenticated user's unread notifications.",
+    response: 'UnreadNotificationCount',
+    success: 200,
+  },
+  {
+    operationId: 'markNotificationRead',
+    service: 'notification',
+    method: 'put',
+    path: '/api/v1/notifications/{id}/read',
+    access: 'AUTHENTICATED',
+    description:
+      "Mark an owned notification read. Repeated calls return 200 with the same readAt; no Idempotency-Key is required. Return NOT_FOUND for missing or other users' notifications.",
+    response: 'CourseNotificationData',
+    success: 200,
+  },
   {
     operationId: 'getDetailedProfile',
     service: 'identity',

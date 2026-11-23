@@ -192,6 +192,8 @@ const definitions = Object.fromEntries(
 );
 definitions.Uuid.format = 'uuid';
 definitions.IsoDateTime.format = 'date-time';
+definitions.CourseReviewNotificationEvent.properties.correlationId.format =
+  'uuid';
 Object.assign(definitions.ChangePasswordRequest.properties.currentPassword, {
   minLength: 8,
   maxLength: 128,
@@ -481,7 +483,13 @@ output(
     '\n}\n',
 );
 output('openapi.json', JSON.stringify(api, null, 2) + '\n');
-for (const service of ['identity', 'course', 'quiz', 'learning'])
+for (const service of [
+  'identity',
+  'course',
+  'quiz',
+  'learning',
+  'notification',
+])
   output(
     `openapi/${service}.json`,
     JSON.stringify(

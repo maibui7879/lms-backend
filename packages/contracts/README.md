@@ -238,3 +238,14 @@ Contract bổ sung `getCourseItemMigrationContext` cho API nội bộ Course. `C
 Xem [hướng dẫn contract Course và nội dung bài học](docs/course-authoring.md)
 cho metadata, bộ lọc, tài liệu video và bài đọc HTML có ảnh. Các API upload chưa
 được bổ sung trong đợt thay đổi này.
+
+## Notification service
+
+The standalone `notification-service` runs on port `3005`, owns PostgreSQL schema
+`notification` (the same PostgreSQL connection may be shared), and uses contract
+service name `notification`. See [Notification contracts](docs/notifications.md)
+for REST ownership, read semantics, and Socket.IO authentication and delivery.
+Course review events use RabbitMQ exchange `lms.events`, routing key
+`course.review.decided.v1`, and queue `notification.course-review.v1`. Consumers
+deduplicate by `eventId`, send invalid events to the DLQ, and retry transient
+failures before the DLQ. Notification creation has no public API.

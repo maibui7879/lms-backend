@@ -27,6 +27,7 @@ import { Lesson } from '../lessons/entities/lesson.entity';
 import { LearningItem } from '../learning-items/entities/learning-item.entity';
 import { DataSource, In, IsNull } from 'typeorm';
 import { CompletionPolicy } from '../completion-policy/entities/completion-policy.entity';
+import { persistReviewNotification } from '../notifications/persist-review-notification';
 import { recordRevisionPublication } from '../revision-metadata/record-revision-publication';
 
 @Injectable()
@@ -290,6 +291,7 @@ export class CourseRevisionsService {
   ): Promise<CourseRevisionData> {
     this.requireAdmin(user);
     const revision = await this.findRevision(id);
+    const course = await this.findCourse(revision.courseId);
     if (revision.version !== dto.expectedVersion)
       throw this.versionConflict(dto.expectedVersion, revision.version);
     if (revision.status !== 'IN_REVIEW')
@@ -405,6 +407,14 @@ export class CourseRevisionsService {
           await manager.findOneByOrFail(CourseRevision, { id }),
         );
       }
+      await persistReviewNotification(manager, {
+        recipientId: course.instructorId,
+        courseId: revision.courseId,
+        revisionId: id,
+        decision: dto.decision,
+        reason: dto.reason,
+        version: dto.expectedVersion + 1,
+      });
     });
     return revisionData(await this.revisions.findOneByOrFail({ id }));
   }
@@ -462,31 +472,42 @@ export class CourseRevisionsService {
 
     const nextVersion = course.version + 1;
     const status = dto.decision === 'APPROVE' ? 'PUBLISHED' : 'REJECTED';
-    const result = await this.courses.update(
-      { id, version: dto.expectedVersion, status: 'IN_REVIEW' },
-      {
-        status,
-        version: nextVersion,
-        ...(status === 'PUBLISHED'
-          ? {
-              initialPublishedContentVersion: course.contentVersion,
-            }
-          : {}),
-      },
-    );
-    if (!result.affected)
-      throw this.versionConflict(dto.expectedVersion, nextVersion);
-    const saved = await this.reviews.save(
-      this.reviews.create({
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const result = await manager.update(
+        Course,
+        { id, version: dto.expectedVersion, status: 'IN_REVIEW' },
+        {
+          status,
+          version: nextVersion,
+          ...(status === 'PUBLISHED'
+            ? { initialPublishedContentVersion: course.contentVersion }
+            : {}),
+        },
+      );
+      if (!result.affected)
+        throw this.versionConflict(dto.expectedVersion, nextVersion);
+      const review = await manager.save(
+        CourseReview,
+        manager.create(CourseReview, {
+          courseId: id,
+          decision: dto.decision,
+          status,
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+          rejectionReason: dto.decision === 'REJECT' ? dto.reason : null,
+          version: nextVersion,
+        }),
+      );
+      await persistReviewNotification(manager, {
+        recipientId: course.instructorId,
         courseId: id,
+        revisionId: null,
         decision: dto.decision,
-        status,
-        reviewedBy: user.id,
-        reviewedAt: new Date(),
-        rejectionReason: dto.decision === 'REJECT' ? dto.reason : null,
+        reason: dto.reason,
         version: nextVersion,
-      }),
-    );
+      });
+      return review;
+    });
     return reviewData(saved);
   }
 

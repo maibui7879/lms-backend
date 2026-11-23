@@ -10,4 +10,6 @@ export interface EnrollmentCreatedV2Event extends EventEnvelope<
   2
 > {
   producer: 'course-service';
+  /** Optional presentation metadata; does not change the enrollment snapshot. */
+  courseTitle?: string;
 }

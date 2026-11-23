@@ -105,6 +105,21 @@ describe('InternalApiGuard - Service-to-Service RS256 JWT & Strict Operation Sco
     expect(guard.canActivate(context)).toBe(true);
   });
 
+  it('allows notification-service to get user access', () => {
+    const token = signInternalJwt({ sub: 'notification-service' });
+    const { context, guard } = makeContext(`Bearer ${token}`, 'getUserAccess');
+    expect(guard.canActivate(context)).toBe(true);
+  });
+
+  it('denies notification-service access to user summaries', () => {
+    const token = signInternalJwt({
+      sub: 'notification-service',
+      scope: 'getUserSummary',
+    });
+    const { context, guard } = makeContext(`Bearer ${token}`, 'getUserSummary');
+    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+  });
+
   it('rejects wildcard scopes (*, internal, internal:users) with ForbiddenException', () => {
     for (const badScope of ['*', 'internal', 'internal:users']) {
       const token = signInternalJwt({ scope: badScope });
