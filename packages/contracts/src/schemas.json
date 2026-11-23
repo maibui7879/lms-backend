@@ -353,10 +353,6 @@
           "anyOf": [
             {
               "type": "string",
-              "const": "PENDING_REVIEW"
-            },
-            {
-              "type": "string",
               "const": "GRADED"
             },
             {
@@ -2478,11 +2474,11 @@
           "anyOf": [
             {
               "type": "string",
-              "const": "createdAt"
+              "const": "title"
             },
             {
               "type": "string",
-              "const": "title"
+              "const": "createdAt"
             }
           ]
         },
@@ -4356,10 +4352,6 @@
       "anyOf": [
         {
           "type": "string",
-          "const": "PENDING_REVIEW"
-        },
-        {
-          "type": "string",
           "const": "GRADED"
         },
         {
@@ -4402,11 +4394,11 @@
           "anyOf": [
             {
               "type": "string",
-              "const": "createdAt"
+              "const": "title"
             },
             {
               "type": "string",
-              "const": "title"
+              "const": "createdAt"
             }
           ]
         },
@@ -6789,10 +6781,6 @@
           "anyOf": [
             {
               "type": "string",
-              "const": "PENDING_REVIEW"
-            },
-            {
-              "type": "string",
               "const": "GRADED"
             },
             {
@@ -6857,10 +6845,6 @@
         {
           "type": "string",
           "const": "SUBMITTED"
-        },
-        {
-          "type": "string",
-          "const": "PENDING_REVIEW"
         }
       ]
     },
@@ -7240,10 +7224,6 @@
             {
               "type": "string",
               "const": "SUBMITTED"
-            },
-            {
-              "type": "string",
-              "const": "PENDING_REVIEW"
             }
           ]
         },
@@ -7397,16 +7377,8 @@
               ]
             },
             "gradingStatus": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "const": "PENDING_REVIEW"
-                },
-                {
-                  "type": "string",
-                  "const": "NOT_GRADED"
-                }
-              ]
+              "type": "string",
+              "const": "NOT_GRADED"
             },
             "score": {
               "type": "null"
@@ -7558,16 +7530,8 @@
                   ]
                 },
                 "gradingStatus": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "const": "PENDING_REVIEW"
-                    },
-                    {
-                      "type": "string",
-                      "const": "NOT_GRADED"
-                    }
-                  ]
+                  "type": "string",
+                  "const": "NOT_GRADED"
                 },
                 "score": {
                   "type": "null"
@@ -8345,10 +8309,6 @@
           "anyOf": [
             {
               "type": "string",
-              "const": "PENDING_REVIEW"
-            },
-            {
-              "type": "string",
               "const": "GRADED"
             },
             {
@@ -8460,6 +8420,10 @@
     "UpdateChapterRequest": {
       "type": "object",
       "properties": {
+        "revisionId": {
+          "type": "string",
+          "format": "uuid"
+        },
         "title": {
           "type": "string",
           "minLength": 1,
@@ -8474,10 +8438,6 @@
               "$ref": "#/definitions/SectionEndQuizRef"
             }
           ]
-        },
-        "revisionId": {
-          "type": "string",
-          "format": "uuid"
         },
         "expectedVersion": {
           "type": "integer",
@@ -8750,14 +8710,14 @@
     "UpdateLessonRequest": {
       "type": "object",
       "properties": {
+        "revisionId": {
+          "type": "string",
+          "format": "uuid"
+        },
         "title": {
           "type": "string",
           "minLength": 1,
           "maxLength": 200
-        },
-        "revisionId": {
-          "type": "string",
-          "format": "uuid"
         },
         "expectedVersion": {
           "type": "integer",

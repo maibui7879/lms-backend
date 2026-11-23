@@ -2273,7 +2273,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: ENROLLED. Lấy dữ liệu mastery hoặc mức độ nắm vững của learner trong course.",
+        "description": "Role sử dụng: ENROLLED. Lấy mức độ nắm vững kỹ năng của learner trong course. Chỉ tính bài đánh giá có quizType GRADED đã chấm xong; loại trừ PRACTICE kể cả khi câu hỏi có gắn kỹ năng.",
         "x-access-policy": "ENROLLED",
         "security": [
           {
@@ -2414,7 +2414,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Role sử dụng: ENROLLED. Lấy các mốc mastery của học viên đã ghi danh từ kết quả quiz đã đồng bộ, mốc mới nhất trước.",
+        "description": "Role sử dụng: ENROLLED. Lấy các mốc mastery của học viên đã ghi danh từ bài đánh giá có quizType GRADED đã chấm và đồng bộ, mốc mới nhất trước; không tính PRACTICE.",
         "x-access-policy": "ENROLLED",
         "security": [
           {
@@ -5458,10 +5458,6 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "PENDING_REVIEW"
-              },
-              {
-                "type": "string",
                 "const": "GRADED"
               },
               {
@@ -7583,11 +7579,11 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "createdAt"
+                "const": "title"
               },
               {
                 "type": "string",
-                "const": "title"
+                "const": "createdAt"
               }
             ]
           },
@@ -9461,10 +9457,6 @@
         "anyOf": [
           {
             "type": "string",
-            "const": "PENDING_REVIEW"
-          },
-          {
-            "type": "string",
             "const": "GRADED"
           },
           {
@@ -9507,11 +9499,11 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "createdAt"
+                "const": "title"
               },
               {
                 "type": "string",
-                "const": "title"
+                "const": "createdAt"
               }
             ]
           },
@@ -11894,10 +11886,6 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "PENDING_REVIEW"
-              },
-              {
-                "type": "string",
                 "const": "GRADED"
               },
               {
@@ -11962,10 +11950,6 @@
           {
             "type": "string",
             "const": "SUBMITTED"
-          },
-          {
-            "type": "string",
-            "const": "PENDING_REVIEW"
           }
         ]
       },
@@ -12345,10 +12329,6 @@
               {
                 "type": "string",
                 "const": "SUBMITTED"
-              },
-              {
-                "type": "string",
-                "const": "PENDING_REVIEW"
               }
             ]
           },
@@ -12502,16 +12482,8 @@
                 ]
               },
               "gradingStatus": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "const": "PENDING_REVIEW"
-                  },
-                  {
-                    "type": "string",
-                    "const": "NOT_GRADED"
-                  }
-                ]
+                "type": "string",
+                "const": "NOT_GRADED"
               },
               "score": {
                 "type": "null"
@@ -12663,16 +12635,8 @@
                     ]
                   },
                   "gradingStatus": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "const": "PENDING_REVIEW"
-                      },
-                      {
-                        "type": "string",
-                        "const": "NOT_GRADED"
-                      }
-                    ]
+                    "type": "string",
+                    "const": "NOT_GRADED"
                   },
                   "score": {
                     "type": "null"
@@ -13450,10 +13414,6 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "PENDING_REVIEW"
-              },
-              {
-                "type": "string",
                 "const": "GRADED"
               },
               {
@@ -13565,6 +13525,10 @@
       "UpdateChapterRequest": {
         "type": "object",
         "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string",
             "minLength": 1,
@@ -13579,10 +13543,6 @@
                 "$ref": "#/components/schemas/SectionEndQuizRef"
               }
             ]
-          },
-          "revisionId": {
-            "type": "string",
-            "format": "uuid"
           },
           "expectedVersion": {
             "type": "integer",
@@ -13855,14 +13815,14 @@
       "UpdateLessonRequest": {
         "type": "object",
         "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200
-          },
-          "revisionId": {
-            "type": "string",
-            "format": "uuid"
           },
           "expectedVersion": {
             "type": "integer",

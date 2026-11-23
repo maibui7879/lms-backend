@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@lms/auth';
-import { CourseAuthGuard as MockAuthGuard } from '../../common/course-auth.guard';
+import { CourseAuthGuard } from '../../common/course-auth.guard';
 import type {
   ApiResponse,
   AuthUser,
@@ -43,7 +43,7 @@ import {
 export class CoursesController {
   constructor(private readonly courses: CoursesService) {}
   @Post()
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async create(
     @Body(CreateCoursePipe) body: CreateCourseRequest,
     @CurrentUser() user: AuthUser,
@@ -67,7 +67,7 @@ export class CoursesController {
   }
 
   @Get(':id/outline')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async outline(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
@@ -80,7 +80,7 @@ export class CoursesController {
   }
 
   @Get(':id/learners')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async learners(
     @Param('id') id: string,
     @Query(new CourseQueryPipe()) query: PageQuery,
@@ -105,7 +105,7 @@ export class CoursesController {
   }
 
   @Patch(':id')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async update(
     @Param('id') id: string,
     @Body(new UpdateCoursePipe()) body: UpdateCourseRequest,
@@ -119,7 +119,7 @@ export class CoursesController {
   }
 
   @Delete(':id')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @Param('id') id: string,
@@ -135,7 +135,7 @@ export class InstructorCoursesController {
   constructor(private readonly courses: CoursesService) {}
 
   @Get('courses')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async list(
     @Query(new InstructorCourseQueryPipe()) query: InstructorCourseQuery,
     @CurrentUser() user: AuthUser,

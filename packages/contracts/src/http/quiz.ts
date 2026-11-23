@@ -2,6 +2,7 @@ import type { Uuid } from './common';
 import type { PageQuery, VersionRequest } from '../common/pagination';
 
 export type QuizType = 'PRACTICE' | 'GRADED';
+/** Chỉ DRAFT được sửa; PUBLISHED và ARCHIVED không được sửa nội dung hoặc policy. */
 export type QuizStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 export interface QuizPolicy {
   quizType: QuizType;
@@ -23,10 +24,11 @@ export interface CreateQuizRequestBase {
   policy: QuizPolicy;
 }
 export type CreateQuizRequest = CreateQuizRequestBase & QuizPlacement;
-export interface UpdateQuizRequest extends VersionRequest {
-  title?: string;
-  policy?: QuizPolicy;
-}
+/** Chỉ áp dụng khi trạng thái quiz trong DB là DRAFT; version khớp không thay thế kiểm tra trạng thái. */
+export type UpdateQuizRequest = Partial<
+  Pick<CreateQuizRequestBase, 'title' | 'policy'>
+> &
+  VersionRequest;
 export type QuizData = CreateQuizRequest & {
   id: Uuid;
   instructorId: Uuid;
@@ -46,12 +48,15 @@ export interface QuestionDeliveryDTO {
   points: number;
 }
 export interface QuestionAuthoringDTO extends QuestionDeliveryDTO {
+  /** PRACTICE may use []; existing skill mappings remain readable and do not contribute to mastery. */
   skillIds: Uuid[];
   correctChoiceIds: Uuid[];
   explanation: string | null;
   version: number;
 }
+/** Chỉ thêm câu hỏi khi quiz cha còn DRAFT. */
 export interface CreateQuestionRequest {
+  /** PRACTICE does not require skills: send []; Quiz resolves the type from the parent quiz. */
   skillIds: Uuid[];
   type: QuestionDeliveryDTO['type'];
   prompt: string;
@@ -60,9 +65,11 @@ export interface CreateQuestionRequest {
   correctChoiceIds: Uuid[];
   explanation: string | null;
 }
+/** Chỉ sửa câu hỏi khi quiz cha còn DRAFT, kể cả khi expectedVersion khớp. */
 export type UpdateQuestionRequest = CreateQuestionRequest & VersionRequest;
 export type AttemptStatus = 'IN_PROGRESS' | 'SUBMITTED' | 'EXPIRED';
-export type GradingStatus = 'NOT_GRADED' | 'PENDING_REVIEW' | 'GRADED';
+/** MVP quizzes are graded automatically; there is no manual-review state. */
+export type GradingStatus = 'NOT_GRADED' | 'GRADED';
 export type ProgressSyncStatus = 'PENDING' | 'SYNCED' | 'FAILED';
 export interface QuizAnswer {
   questionId: Uuid;

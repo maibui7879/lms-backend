@@ -2,7 +2,7 @@ import type { ApiResponse, Uuid } from './common';
 import type { AttemptStatus, GradingStatus } from './quiz';
 
 /** @deprecated Use AttemptStatus and GradingStatus separately. */
-export type QuizAttemptStatus = 'IN_PROGRESS' | 'SUBMITTED' | 'PENDING_REVIEW';
+export type QuizAttemptStatus = 'IN_PROGRESS' | 'SUBMITTED';
 
 export interface QuizResultData {
   attemptId: Uuid;

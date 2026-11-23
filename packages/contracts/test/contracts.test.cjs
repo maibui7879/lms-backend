@@ -106,6 +106,31 @@ test('student delivery rejects answer keys and explanations; authoring validates
   });
   invalid('QuestionAuthoringDTO', { ...authoring, points: 0 });
 });
+test('practice questions accept empty skills and retain existing skill mappings', () => {
+  parseContract('QuizPolicy', {
+    ...policy,
+    quizType: 'PRACTICE',
+    requiredForCompletion: false,
+  });
+  const request = {
+    type: question.type,
+    prompt: question.prompt,
+    choices: question.choices,
+    points: question.points,
+    skillIds: [],
+    correctChoiceIds: [id],
+    explanation: null,
+  };
+  parseContract('CreateQuestionRequest', request);
+  parseContract('UpdateQuestionRequest', { ...request, expectedVersion: 1 });
+  parseContract('QuestionAuthoringDTO', {
+    ...request,
+    id,
+    skillIds: [id2],
+    version: 1,
+  });
+});
+
 test('policy rejects invalid thresholds, durations, attempts and practice requirements', () => {
   parseContract('QuizPolicy', policy);
   for (const bad of [
@@ -168,7 +193,7 @@ test('answers, concurrency and course rejection have strict request shapes', () 
   });
   invalid('PageQuery', { page: 0, limit: 101 });
 });
-test('pending results use null scores; sync cannot invent successful receipts', () => {
+test('ungraded results use null scores; sync cannot invent successful receipts', () => {
   const result = {
     attemptId: id,
     quizId: id,
@@ -176,13 +201,16 @@ test('pending results use null scores; sync cannot invent successful receipts', 
     userId: id,
     assessmentVersion: 1,
     attemptStatus: 'SUBMITTED',
-    gradingStatus: 'PENDING_REVIEW',
+    gradingStatus: 'NOT_GRADED',
     score: null,
     maxScore: null,
     passed: null,
     gradedAt: null,
   };
   parseContract('QuizResultV2Data', result);
+  invalid('QuizResultV2Data', { ...result, gradingStatus: 'PENDING_REVIEW' });
+  invalid('GradingStatus', 'PENDING_REVIEW');
+  invalid('QuizAttemptStatus', 'PENDING_REVIEW');
   invalid('QuizResultV2Data', { ...result, score: 0 });
   invalid('QuizResultV2Data', { ...result, gradingStatus: 'GRADED' });
   parseContract('QuizResultV2Data', {

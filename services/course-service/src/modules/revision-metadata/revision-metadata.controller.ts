@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@lms/auth';
-import { CourseAuthGuard as MockAuthGuard } from '../../common/course-auth.guard';
+import { CourseAuthGuard } from '../../common/course-auth.guard';
 import type { AuthUser, PageQuery } from '@lms/contracts';
 import type { Request } from 'express';
 import { validateCourseId } from '../courses/dto/course-request.pipe';
@@ -22,7 +22,7 @@ export class RevisionMetadataController {
   constructor(private readonly metadata: RevisionMetadataService) {}
 
   @Get('course-revisions/:id/changes')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async changes(
     @Param('id') id: string,
     @Query(new PageQueryPipe()) query: PageQuery,
@@ -36,7 +36,7 @@ export class RevisionMetadataController {
   }
 
   @Get('courses/:id/patch-notices')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async notices(
     @Param('id') id: string,
     @Query(new PageQueryPipe()) query: PageQuery,
@@ -51,7 +51,7 @@ export class RevisionMetadataController {
 
   @Post('patch-notices/:id/read')
   @HttpCode(204)
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async read(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     await this.metadata.read(validateCourseId(id), user);
   }
