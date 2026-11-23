@@ -157,7 +157,9 @@ describe('PRG boundary cases through the NestJS APIs', () => {
   }
 
   function get(path: string, user = 'studentB') {
-    return request(app.getHttpServer()).get(path).set('Authorization', bearerFor(user));
+    return request(app.getHttpServer())
+      .get(path)
+      .set('Authorization', bearerFor(user));
   }
 
   function addResult(changes: Partial<GradedAssessmentSummary> = {}) {
