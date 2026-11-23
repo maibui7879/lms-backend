@@ -70,6 +70,57 @@ describe('Learning item endpoints', () => {
     version,
   });
 
+  it('stores and returns video attachments', async () => {
+    const attachments = [
+      {
+        fileName: 'notes.pdf',
+        fileUrl: 'https://example.com/notes.pdf',
+        mimeType: 'application/pdf',
+        sizeBytes: 1024,
+      },
+    ];
+    itemRepository.save.mockImplementationOnce(async (value) => ({
+      ...value,
+      id: itemA,
+    }));
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/lessons/${lessonId}/items`)
+      .set('x-mock-user', 'instructorA')
+      .send({
+        title: 'Video',
+        type: 'VIDEO',
+        videoUrl: 'https://example.com/video.mp4',
+        durationSeconds: 60,
+        required: true,
+        attachments,
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.data.attachments).toEqual(attachments);
+    parseContract('LearningItemData', res.body.data);
+  });
+
+  it('sanitizes rich reading HTML before saving', async () => {
+    itemRepository.save.mockImplementationOnce(async (value) => ({
+      ...value,
+      id: itemA,
+    }));
+    const res = await request(app.getHttpServer())
+      .post(`/api/v1/lessons/${lessonId}/items`)
+      .set('x-mock-user', 'instructorA')
+      .send({
+        title: 'Reading',
+        type: 'READING',
+        bodyFormat: 'HTML',
+        body: '<p>Before</p><img src="https://example.com/a.png" onerror="evil()"><p>After</p><script>evil()</script>',
+        required: true,
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.data.bodyFormat).toBe('HTML');
+    expect(res.body.data.body).toContain('https://example.com/a.png');
+    expect(res.body.data.body).not.toMatch(/onerror|script|evil/);
+    expect(itemRepository.save.mock.calls[0][0].body).toBe(res.body.data.body);
+  });
+
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
     process.env.MOCK_AUTH = 'true';

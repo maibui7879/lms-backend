@@ -20,6 +20,7 @@ export interface SchemaTypes {
   CertificateRevocationData: Contracts.CertificateRevocationData;
   CertificateStatus: Contracts.CertificateStatus;
   CertificateVerificationData: Contracts.CertificateVerificationData;
+  ChangePasswordRequest: Contracts.ChangePasswordRequest;
   ChapterAccessData: Contracts.ChapterAccessData;
   ChapterAccessReason: Contracts.ChapterAccessReason;
   ChapterAccessStatus: Contracts.ChapterAccessStatus;
@@ -43,6 +44,8 @@ export interface SchemaTypes {
   CourseItemMigrationContext: Contracts.CourseItemMigrationContext;
   CourseLearnerData: Contracts.CourseLearnerData;
   CourseLearningStructure: Contracts.CourseLearningStructure;
+  CourseLevel: Contracts.CourseLevel;
+  CourseMetadata: Contracts.CourseMetadata;
   CourseOutlineData: Contracts.CourseOutlineData;
   CoursePatchNoticeData: Contracts.CoursePatchNoticeData;
   CourseProgressData: Contracts.CourseProgressData;
@@ -100,6 +103,7 @@ export interface SchemaTypes {
   LearningAnalyticsQuery: Contracts.LearningAnalyticsQuery;
   LearningDashboardCourse: Contracts.LearningDashboardCourse;
   LearningDashboardData: Contracts.LearningDashboardData;
+  LearningItemAttachment: Contracts.LearningItemAttachment;
   LearningItemContent: Contracts.LearningItemContent;
   LearningItemData: Contracts.LearningItemData;
   LearningNextStep: Contracts.LearningNextStep;
@@ -127,6 +131,7 @@ export interface SchemaTypes {
   PageQuery: Contracts.PageQuery;
   Permission: Contracts.Permission;
   PinDiscussionRequest: Contracts.PinDiscussionRequest;
+  ProfileSecurity: Contracts.ProfileSecurity;
   ProgressSyncData: Contracts.ProgressSyncData;
   ProgressSyncStatus: Contracts.ProgressSyncStatus;
   QuestionAuthoringDTO: Contracts.QuestionAuthoringDTO;
@@ -188,6 +193,7 @@ export interface SchemaTypes {
   UpdateUserRoleRequest: Contracts.UpdateUserRoleRequest;
   UserAccessStatus: Contracts.UserAccessStatus;
   UserAuditData: Contracts.UserAuditData;
+  UserGender: Contracts.UserGender;
   UserProfile: Contracts.UserProfile;
   UserRole: Contracts.UserRole;
   UserSummary: Contracts.UserSummary;

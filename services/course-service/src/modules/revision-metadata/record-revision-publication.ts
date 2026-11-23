@@ -56,6 +56,8 @@ export async function recordRevisionPublication(
         'videoUrl',
         'durationSeconds',
         'body',
+        'bodyFormat',
+        'attachments',
         'quizId',
         'assessmentVersion',
         'required',

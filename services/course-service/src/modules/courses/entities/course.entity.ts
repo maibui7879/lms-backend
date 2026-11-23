@@ -5,7 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import type { CourseStatus } from '@lms/contracts';
+import type { CourseMetadata, CourseStatus } from '@lms/contracts';
 
 @Entity('courses')
 export class Course {
@@ -20,6 +20,9 @@ export class Course {
 
   @Column({ type: 'text' })
   description!: string;
+
+  @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
+  metadata!: CourseMetadata;
 
   @Column({ type: 'text', nullable: true })
   thumbnailUrl!: string | null;
