@@ -38,6 +38,7 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
 
   let refreshTokenRepoMock: {
     update: jest.Mock;
+    count: jest.Mock;
   };
 
   const makeTransactionMock = () =>
@@ -56,6 +57,7 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
   beforeEach(async () => {
     refreshTokenRepoMock = {
       update: jest.fn().mockResolvedValue({ affected: 2 }),
+      count: jest.fn().mockResolvedValue(2),
     };
 
     auditRepoMock = {
@@ -101,6 +103,157 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
     service = module.get<UsersService>(UsersService);
   });
 
+  describe('Profile CRUD (getProfile, updateProfile, clearOptionalProfile, deactivateMyAccount)', () => {
+    it('returns full profile fields including security metadata', async () => {
+      const now = new Date();
+      userRepoMock.findOne.mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'linhchi.nguyen@lumina.edu.vn',
+        emailVerifiedAt: now,
+        lastName: 'Nguyễn',
+        firstName: 'Linh Chi',
+        displayName: 'Nguyễn Linh Chi',
+        phoneNumber: '+84 987 654 321',
+        dateOfBirth: '2000-08-15',
+        gender: 'FEMALE',
+        role: 'STUDENT',
+        status: UserStatus.ACTIVE,
+        avatarUrl: null,
+        bio: 'Sinh viên năm cuối ngành CNTT',
+        githubUrl: 'https://github.com/linhchi-dev',
+        linkedinUrl: 'https://linkedin.com/in/linhchi-nguyen',
+        passwordChangedAt: now,
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+      });
+
+      const profile = await service.getProfile('user-1');
+
+      expect(profile.lastName).toBe('Nguyễn');
+      expect(profile.firstName).toBe('Linh Chi');
+      expect(profile.displayName).toBe('Nguyễn Linh Chi');
+      expect(profile.phoneNumber).toBe('+84 987 654 321');
+      expect(profile.dateOfBirth).toBe('2000-08-15');
+      expect(profile.gender).toBe('FEMALE');
+      expect(profile.githubUrl).toBe('https://github.com/linhchi-dev');
+      expect(profile.linkedinUrl).toBe(
+        'https://linkedin.com/in/linhchi-nguyen',
+      );
+      expect(profile.security.activeSessionsCount).toBe(2);
+      expect(profile.security.passwordChangedAt).toBe(now.toISOString());
+    });
+
+    it('updates profile fields and increments version', async () => {
+      const now = new Date();
+      userRepoMock.update.mockResolvedValueOnce({ affected: 1 });
+      userRepoMock.findOne.mockResolvedValueOnce({
+        id: 'user-1',
+        email: 'linhchi.nguyen@lumina.edu.vn',
+        emailVerifiedAt: now,
+        lastName: 'Nguyễn',
+        firstName: 'Linh Chi',
+        displayName: 'Nguyễn Linh Chi',
+        phoneNumber: '+84 987 654 321',
+        dateOfBirth: '2000-08-15',
+        gender: 'FEMALE',
+        role: 'STUDENT',
+        status: UserStatus.ACTIVE,
+        avatarUrl: null,
+        bio: 'Updated bio',
+        githubUrl: 'https://github.com/linhchi-dev',
+        linkedinUrl: 'https://linkedin.com/in/linhchi-nguyen',
+        passwordChangedAt: null,
+        createdAt: now,
+        updatedAt: now,
+        version: 2,
+      });
+
+      const updated = await service.updateProfile('user-1', {
+        expectedVersion: 1,
+        lastName: 'Nguyễn',
+        firstName: 'Linh Chi',
+        displayName: 'Nguyễn Linh Chi',
+        phoneNumber: '+84 987 654 321',
+        dateOfBirth: '2000-08-15',
+        gender: 'FEMALE',
+        bio: 'Updated bio',
+        githubUrl: 'https://github.com/linhchi-dev',
+        linkedinUrl: 'https://linkedin.com/in/linhchi-nguyen',
+      });
+
+      expect(userRepoMock.update).toHaveBeenCalledWith(
+        { id: 'user-1', version: 1 },
+        expect.objectContaining({
+          lastName: 'Nguyễn',
+          firstName: 'Linh Chi',
+          displayName: 'Nguyễn Linh Chi',
+          version: 2,
+        }),
+      );
+      expect(updated.version).toBe(2);
+    });
+
+    it('clears optional profile fields while keeping account active', async () => {
+      const now = new Date();
+      userRepoMock.findOne
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          version: 2,
+        })
+        .mockResolvedValueOnce({
+          id: 'user-1',
+          email: 'linhchi.nguyen@lumina.edu.vn',
+          emailVerifiedAt: now,
+          lastName: 'Nguyễn',
+          firstName: 'Linh Chi',
+          displayName: 'Nguyễn Linh Chi',
+          phoneNumber: null,
+          dateOfBirth: null,
+          gender: null,
+          role: 'STUDENT',
+          status: UserStatus.ACTIVE,
+          avatarUrl: null,
+          bio: null,
+          githubUrl: null,
+          linkedinUrl: null,
+          passwordChangedAt: null,
+          createdAt: now,
+          updatedAt: now,
+          version: 3,
+        });
+      userRepoMock.update.mockResolvedValueOnce({ affected: 1 });
+
+      const cleared = await service.clearOptionalProfile('user-1');
+
+      expect(cleared.phoneNumber).toBeNull();
+      expect(cleared.githubUrl).toBeNull();
+      expect(cleared.status).toBe(UserStatus.ACTIVE);
+      expect(cleared.version).toBe(3);
+    });
+
+    it('deactivates user account and revokes all active sessions', async () => {
+      userRepoMock.findOne.mockResolvedValueOnce({
+        id: 'user-1',
+        role: 'STUDENT',
+        status: UserStatus.ACTIVE,
+        version: 1,
+      });
+      userRepoMock.update.mockResolvedValueOnce({ affected: 1 });
+
+      await service.deactivateMyAccount('user-1');
+
+      expect(userRepoMock.update).toHaveBeenCalledWith(
+        { id: 'user-1' },
+        { status: UserStatus.INACTIVE, version: 2 },
+      );
+      expect(refreshTokenRepoMock.update).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-1' }),
+        expect.objectContaining({ revokedAt: expect.any(Date) }),
+      );
+    });
+  });
+
   describe('Optimistic Locking (Version Conflict)', () => {
     it('throws 409 ConflictException when updateProfile receives stale expectedVersion', async () => {
       userRepoMock.update.mockResolvedValueOnce({ affected: 0 });
@@ -134,7 +287,6 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
         }),
       ).rejects.toThrow(ConflictException);
 
-      // Không được revoke session nếu update thất bại do version conflict
       expect(refreshTokenRepoMock.update).not.toHaveBeenCalled();
     });
 
@@ -173,7 +325,10 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
 
       expect(userRepoMock.update).toHaveBeenCalledWith(
         { id: 'user-1' },
-        { passwordHash: expect.any(String) },
+        {
+          passwordHash: expect.any(String),
+          passwordChangedAt: expect.any(Date),
+        },
       );
       expect(refreshTokenRepoMock.update).toHaveBeenCalledWith(
         expect.objectContaining({ userId: 'user-1' }),
@@ -199,13 +354,15 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
     });
 
     it('revokes all active refresh tokens and writes audit log when admin updates user role', async () => {
+      const now = new Date();
       userRepoMock.findOne
         .mockResolvedValueOnce({
           id: 'user-1',
           role: 'STUDENT',
           status: UserStatus.ACTIVE,
           version: 1,
-          createdAt: new Date(),
+          createdAt: now,
+          updatedAt: now,
         })
         .mockResolvedValueOnce({
           id: 'user-1',
@@ -214,7 +371,8 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
           role: 'INSTRUCTOR',
           status: UserStatus.ACTIVE,
           version: 2,
-          createdAt: new Date(),
+          createdAt: now,
+          updatedAt: now,
         });
       userRepoMock.update.mockResolvedValueOnce({ affected: 1 });
 
@@ -240,13 +398,15 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
     });
 
     it('revokes all active refresh tokens when admin disables user status', async () => {
+      const now = new Date();
       userRepoMock.findOne
         .mockResolvedValueOnce({
           id: 'user-1',
           role: 'STUDENT',
           status: UserStatus.ACTIVE,
           version: 1,
-          createdAt: new Date(),
+          createdAt: now,
+          updatedAt: now,
         })
         .mockResolvedValueOnce({
           id: 'user-1',
@@ -255,7 +415,8 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
           role: 'STUDENT',
           status: UserStatus.INACTIVE,
           version: 2,
-          createdAt: new Date(),
+          createdAt: now,
+          updatedAt: now,
         });
       userRepoMock.update.mockResolvedValueOnce({ affected: 1 });
 
@@ -289,7 +450,6 @@ describe('UsersService - Optimistic Locking, Session Revocation & Role Workflow'
       expect(createdReq.status).toBe(RoleRequestStatus.PENDING);
       expect(createdReq.requestedRole).toBe(Role.INSTRUCTOR);
 
-      // Admin duyệt đơn
       roleRequestRepoMock.findOne.mockResolvedValueOnce({
         id: 'req-1',
         userId: 'student-1',
