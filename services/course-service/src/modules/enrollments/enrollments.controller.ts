@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@lms/auth';
-import { CourseAuthGuard as MockAuthGuard } from '../../common/course-auth.guard';
+import { CourseAuthGuard } from '../../common/course-auth.guard';
 import type {
   ApiResponse,
   AuthUser,
@@ -31,7 +31,7 @@ export class EnrollmentsController {
   constructor(private readonly enrollments: EnrollmentsService) {}
 
   @Post('courses/:id/enrollments')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async create(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
@@ -44,7 +44,7 @@ export class EnrollmentsController {
   }
 
   @Get('enrollments/me')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async listMine(
     @Query(new EnrollmentQueryPipe()) query: PageQuery,
     @CurrentUser() user: AuthUser,
@@ -57,7 +57,7 @@ export class EnrollmentsController {
   }
 
   @Delete('enrollments/:id')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async cancel(
     @Param('id') id: string,

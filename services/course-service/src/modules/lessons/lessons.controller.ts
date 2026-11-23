@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '@lms/auth';
-import { CourseAuthGuard as MockAuthGuard } from '../../common/course-auth.guard';
+import { CourseAuthGuard } from '../../common/course-auth.guard';
 import type {
   ApiResponse,
   AuthUser,
@@ -35,7 +35,7 @@ import {
 } from './dto/lesson-request.pipe';
 
 @Controller('api/v1')
-@UseGuards(MockAuthGuard)
+@UseGuards(CourseAuthGuard)
 export class LessonsController {
   constructor(private readonly lessons: LessonsService) {}
 
