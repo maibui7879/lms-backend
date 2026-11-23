@@ -17,7 +17,9 @@ npm.cmd run migration:run -w @lms/course-service
 
 Các migration hiện tại là bản nâng cấp schema cũ, không phải migration khởi tạo một database trống. Không chạy migration nâng cấp trên database đã được synchronize sang schema mới mà chưa đối chiếu migration history. Không tự suy đoán lineage cho revision được tạo trước bản sửa; cần đối chiếu dữ liệu gốc trước khi dùng chúng để migrate tiến độ.
 
-- `MOCK_AUTH=true` chỉ dành development/test. Khi tắt mock, Course xác minh JWT RS256 với `JWT_PUBLIC_KEY`, issuer `identity-service`, rồi gọi Identity qua `IDENTITY_URL` và `IDENTITY_SERVICE_TOKEN` để kiểm tra trạng thái/role hiện tại. Identity thiếu API access thì Course trả 503, không tự chấp nhận người dùng.
+- `MOCK_AUTH=true` chỉ dành development/test. Khi tắt mock, Course xác minh JWT RS256 với `JWT_PUBLIC_KEY`, issuer `identity-service`, rồi gọi Identity qua `IDENTITY_URL` để kiểm tra trạng thái/role hiện tại. Mỗi request tạo service JWT mới, thời hạn 240 giây, từ `IDENTITY_INTERNAL_JWT_PRIVATE_KEY`, với issuer `lms-internal`, subject `course-service`, audience `identity-service` và scope `getUserAccess`. Không dùng `IDENTITY_SERVICE_TOKEN` cố định nữa. Thiếu cấu hình hoặc Identity không truy cập được thì trả 503, không tự chấp nhận người dùng.
+
+  Cấu hình tích hợp thật: đặt `MOCK_AUTH=false`; đưa public key đăng nhập của Identity vào `JWT_PUBLIC_KEY` của Course; đặt `IDENTITY_URL` trỏ tới Identity. Cấp riêng cặp khóa RSA nội bộ: private key qua secret `IDENTITY_INTERNAL_JWT_PRIVATE_KEY` ở Course, public key tương ứng qua `INTERNAL_JWT_PUBLIC_KEY` ở Identity. Không dùng lại private key đăng nhập của Identity, không commit khóa vào Git. Cặp khóa nội bộ phải do deployment quản lý và chỉ cấp cho caller được tin cậy; đây không phải API cấp token login. Cấu hình này không thay thế cơ chế inbound `COURSE_SERVICE_TOKEN`/`INTERNAL_JWT_PUBLIC_KEY` của Course. Sau khi Admin duyệt Instructor, người dùng cần login/refresh lấy token có role mới; Course vẫn kiểm tra owner/enrollment tại service nghiệp vụ.
 - Internal development/test dùng `COURSE_SERVICE_TOKEN`. Staging/production dùng `INTERNAL_JWT_PUBLIC_KEY`, JWT issuer `lms-internal`, audience `course-service`, subject là service được phép, scope theo operationId và TTL không quá 5 phút.
 - Enrollment create/cancel ghi outbox cùng transaction. `RABBITMQ_URL` bật publisher confirm trên exchange `lms.events`; sự cố broker giữ nguyên event để retry, cùng eventId.
 - Revision CRITICAL với `MIGRATE_AFFECTED_ITEMS` tạo job bền vững cho item thêm/sửa. Dispatcher gọi Learning bằng `LEARNING_URL` và `LEARNING_SERVICE_TOKEN`, giữ nguyên payload/revisionId khi retry. Thiếu cấu hình thì job chưa được gửi. Không tự reset toàn bộ khóa hay đổi contentVersion enrollment.
@@ -246,7 +248,7 @@ npm.cmd run start:dev -w @lms/course-service
 
 Smoke check ở terminal khác: `Invoke-RestMethod http://127.0.0.1:3002/` chỉ trả hello scaffold.
 
-[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, DB_SYNC đang được dùng cho bản mẫu create-course. RABBITMQ_URL, IDENTITY_URL, JWT_PUBLIC_KEY/JWT_ISSUER vẫn là placeholder cho task sau. Khi triển khai adapter Learning, bổ sung LEARNING_URL và service credentials vào config/env example. Config loader hiện nạp env của service; mock auth xem [package auth](../../packages/auth/README.md).
+[Env example](.env.example) mô tả cấu hình DB, auth và tích hợp service. `IDENTITY_URL`, `JWT_PUBLIC_KEY` và `IDENTITY_INTERNAL_JWT_PRIVATE_KEY` được dùng cho xác thực thật như hướng dẫn phía trên; issuer access token được kiểm tra cố định là `identity-service`. Config loader nạp env của service; mock auth xem [package auth](../../packages/auth/README.md).
 
 ## Kiểm tra và bàn giao
 

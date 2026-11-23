@@ -9,6 +9,7 @@ import { MockAuthGuard } from '@lms/auth';
 import type { AuthenticatedRequest } from '@lms/auth';
 import { parseContract } from '@lms/contracts';
 import { createPublicKey, verify } from 'node:crypto';
+import { createIdentityServiceToken } from './identity-service-token';
 
 /** Mock identities are accepted only when explicitly enabled for local/test. */
 @Injectable()
@@ -26,8 +27,7 @@ export class CourseAuthGuard implements CanActivate {
       throw new UnauthorizedException('Bearer token required');
     const publicKey = process.env.JWT_PUBLIC_KEY?.replace(/\\n/g, '\n');
     const identityUrl = process.env.IDENTITY_URL;
-    const credential = process.env.IDENTITY_SERVICE_TOKEN;
-    if (!publicKey || !identityUrl || !credential)
+    if (!publicKey || !identityUrl)
       throw new ServiceUnavailableException(
         'Identity authentication is not configured',
       );
@@ -65,6 +65,7 @@ export class CourseAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid or expired access token');
     }
     let access;
+    const credential = createIdentityServiceToken();
     try {
       const response = await fetch(
         new URL(`/api/v1/internal/users/${claims.sub}/access`, identityUrl),
