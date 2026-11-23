@@ -4,7 +4,9 @@ Owner: chưa chốt tên. Workspace `@lms/quiz-service`, port mặc định 3003
 
 ## Trạng thái và phạm vi
 
-Hiện chỉ có scaffold `GET /` → `Hello World!`; chưa có quiz API, DB, deadline worker hoặc publisher. Quiz sở hữu cấu hình quiz, câu hỏi/đáp án đúng, immutable attempt snapshots, answers, grading result và outbox trong PostgreSQL riêng. Không sở hữu enrollment hoặc tiến độ khóa học.
+Quiz Service đã có cấu hình PostgreSQL/TypeORM (`synchronize: false`) và Entity ánh xạ các bảng Quiz. `POST /api/v1/quizzes` (`createQuiz`) đã được triển khai theo Shared Contract: xác thực user qua Identity, chỉ nhận Instructor ACTIVE, xác minh course ownership và chapter/lesson relation qua Course Service, rồi lưu Quiz ở trạng thái `DRAFT`. Các API nghiệp vụ khác, deadline worker và outbox publisher chưa được triển khai. Quiz sở hữu cấu hình quiz, câu hỏi/đáp án đúng, immutable attempt snapshots, answers, grading result và outbox trong PostgreSQL riêng. Không sở hữu enrollment hoặc tiến độ khóa học.
+
+Create Quiz chuyển tiếp user JWT đã xác thực đến Course Service để kiểm tra quyền quản lý và đọc course outline. `MOCK_AUTH` chỉ được dùng development/test; request Course tương ứng dùng mock fixture đã được Quiz guard xác thực.
 
 ## Contracts phải đọc
 
@@ -17,7 +19,7 @@ Hiện chỉ có scaffold `GET /` → `Hello World!`; chưa có quiz API, DB, de
 | [Quiz OpenAPI](../../packages/contracts/openapi/quiz.json)                  | Method/path, request/response, quyền và idempotency            |
 | [Baseline](../../packages/contracts/README.md)                              | Grading, deadline, retention/retry, migration v1/v2            |
 
-API cần triển khai: quiz draft/publish/archive; question CRUD; start/get attempt; save answers/submit/result/review/history; owner statistics/learner summaries; internal graded summary/attempt access. Lấy operationId từ [catalog](../../packages/contracts/src/endpoints.ts), không tự đổi route hoặc quay về legacy result.status.
+API `createQuiz` đã hoàn thành. Còn cần triển khai: quiz update/publish/archive; question CRUD; start/get attempt; save answers/submit/result/review/history; owner statistics/learner summaries; internal graded summary/attempt access. Lấy operationId từ [catalog](../../packages/contracts/src/endpoints.ts), không tự đổi route hoặc quay về legacy result.status.
 
 ## Mục tiêu và cách thực hiện
 
