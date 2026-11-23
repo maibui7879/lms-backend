@@ -17,6 +17,7 @@ import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
 import { CompletionPolicyModule } from './modules/completion-policy/completion-policy.module';
 import { DiscussionsModule } from './modules/discussions/discussions.module';
 import { InternalModule } from './modules/internal/internal.module';
+import { RevisionMetadataModule } from './modules/revision-metadata/revision-metadata.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { InternalModule } from './modules/internal/internal.module';
     CompletionPolicyModule,
     DiscussionsModule,
     InternalModule,
+    RevisionMetadataModule,
   ],
   controllers: [AppController],
   providers: [

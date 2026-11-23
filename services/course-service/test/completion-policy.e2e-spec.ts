@@ -25,6 +25,16 @@ describe('Completion policy endpoints', () => {
   const courseRepository = { findOneBy: jest.fn(), update: jest.fn() };
   const revisionRepository = { findOneBy: jest.fn() };
   const policyRepository = {
+    manager: {
+      findOneBy: jest.fn().mockResolvedValue(null),
+      transaction: async (callback: (manager: unknown) => unknown) =>
+        callback({
+          update: (...args: unknown[]) =>
+            courseRepository.update(...args.slice(1)),
+          save: (_entity: unknown, value: unknown) =>
+            policyRepository.save(value),
+        }),
+    },
     findOneBy: jest.fn(),
     findOne: jest.fn(),
     create: jest.fn((value: unknown) => value),
@@ -100,6 +110,20 @@ describe('Completion policy endpoints', () => {
   });
 
   afterAll(async () => app?.close());
+
+  it('does not expose a published policy to an unenrolled student', async () => {
+    courseRepository.findOneBy.mockResolvedValue({
+      id: courseId,
+      instructorId: owner.id,
+      status: 'PUBLISHED',
+      version: 1,
+      contentVersion: 1,
+    });
+    await request(app.getHttpServer())
+      .get(`/api/v1/courses/${courseId}/completion-policy`)
+      .set('x-mock-user', 'studentA')
+      .expect(403);
+  });
 
   it('returns the default policy and computes requiredItemIds from learning items', async () => {
     const result = await request(app.getHttpServer())

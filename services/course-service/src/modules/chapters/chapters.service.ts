@@ -27,7 +27,7 @@ export function chapterData(chapter: Chapter): ChapterData {
     title: chapter.title,
     order: chapter.order,
     version: chapter.version,
-    endSectionQuiz: null,
+    endSectionQuiz: chapter.endSectionQuiz ?? null,
   };
 }
 
@@ -60,6 +60,7 @@ export class ChaptersService {
         courseId,
         revisionId: revision?.id ?? null,
         title: dto.title,
+        endSectionQuiz: dto.endSectionQuiz ?? null,
         order: (last?.order ?? 0) + 1,
         version: 1,
       }),
@@ -87,7 +88,13 @@ export class ChaptersService {
         version: dto.expectedVersion,
         revisionId: revision?.id ?? IsNull(),
       },
-      { title: dto.title, version: dto.expectedVersion + 1 },
+      {
+        title: dto.title,
+        ...(dto.endSectionQuiz !== undefined
+          ? { endSectionQuiz: dto.endSectionQuiz }
+          : {}),
+        version: dto.expectedVersion + 1,
+      },
     );
     if (!result.affected)
       throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);

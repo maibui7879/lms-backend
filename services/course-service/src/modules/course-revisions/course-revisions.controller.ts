@@ -10,7 +10,8 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { CourseAuthGuard } from '../../common/course-auth.guard';
 import type {
   ApiResponse,
   AuthUser,
@@ -43,7 +44,7 @@ export class CourseRevisionsController {
   constructor(private readonly revisions: CourseRevisionsService) {}
 
   @Post('courses/:id/revisions')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async createRevision(
     @Param('id') id: string,
     @Body(CreateCourseRevisionPipe) body: CreateCourseRevisionRequest,
@@ -61,7 +62,7 @@ export class CourseRevisionsController {
   }
 
   @Get('courses/:id/revisions')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async listRevisions(
     @Param('id') id: string,
     @Query(new ReviewQueueQueryPipe()) query: PageQuery,
@@ -79,7 +80,7 @@ export class CourseRevisionsController {
   }
 
   @Get('course-revisions/:id')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async getRevision(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
@@ -93,7 +94,7 @@ export class CourseRevisionsController {
 
   @Post('course-revisions/:id/submit-review')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async submitRevision(
     @Param('id') id: string,
     @Body(RevisionVersionPipe) body: VersionRequest,
@@ -108,7 +109,7 @@ export class CourseRevisionsController {
 
   @Post('admin/course-revisions/:id/review')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async reviewRevision(
     @Param('id') id: string,
     @Body(ReviewCourseRevisionPipe) body: ReviewCourseRevisionRequest,
@@ -123,7 +124,7 @@ export class CourseRevisionsController {
 
   @Post('courses/:id/submit-review')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async submit(
     @Param('id') id: string,
     @Body(new VersionRequestPipe()) body: VersionRequest,
@@ -137,7 +138,7 @@ export class CourseRevisionsController {
   }
 
   @Get('admin/courses/review-queue')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async reviewQueue(
     @Query(new ReviewQueueQueryPipe()) query: PageQuery,
     @CurrentUser() user: AuthUser,
@@ -151,7 +152,7 @@ export class CourseRevisionsController {
 
   @Post('admin/courses/:id/review')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async review(
     @Param('id') id: string,
     @Body(new CourseReviewRequestPipe()) body: ReviewCourseRequest,
@@ -165,7 +166,7 @@ export class CourseRevisionsController {
   }
 
   @Get('courses/:id/reviews')
-  @UseGuards(MockAuthGuard)
+  @UseGuards(CourseAuthGuard)
   async listReviews(
     @Param('id') id: string,
     @Query(new ReviewQueueQueryPipe()) query: PageQuery,

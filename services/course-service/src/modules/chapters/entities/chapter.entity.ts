@@ -5,6 +5,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { ChapterData } from '@lms/contracts';
 
 @Entity('chapters')
 export class Chapter {
@@ -19,6 +20,9 @@ export class Chapter {
 
   @Column({ type: 'varchar', length: 200 })
   title!: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  endSectionQuiz!: ChapterData['endSectionQuiz'];
 
   @Column({ type: 'integer' })
   order!: number;

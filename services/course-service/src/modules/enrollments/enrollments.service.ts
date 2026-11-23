@@ -8,13 +8,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type {
   AuthUser,
   EnrollmentCheckData,
-  EnrollmentData,
   EnrollmentSnapshotData,
   EnrolledCourseData,
   PageData,
   PageQuery,
 } from '@lms/contracts';
-import { In, Repository } from 'typeorm';
+import { In, QueryFailedError, Repository } from 'typeorm';
+import { randomUUID } from 'node:crypto';
+import { EnrollmentOutboxService } from '../outbox/enrollment-outbox.service';
 import { Course } from '../courses/entities/course.entity';
 import { courseData } from '../courses/courses.service';
 import { Enrollment } from './entities/enrollment.entity';
@@ -26,43 +27,44 @@ export class EnrollmentsService {
     private readonly enrollments: Repository<Enrollment>,
     @InjectRepository(Course)
     private readonly courses: Repository<Course>,
+    private readonly outbox: EnrollmentOutboxService,
   ) {}
 
   async create(
     courseId: string,
     user: AuthUser,
+    correlationId: string = randomUUID(),
   ): Promise<EnrollmentSnapshotData> {
     this.requireStudent(user);
-    const course = await this.courses.findOneBy({ id: courseId });
-    if (!course) throw new NotFoundException('Course not found');
-    if (course.status !== 'PUBLISHED')
-      throw new ConflictException({
-        code: 'COURSE_NOT_PUBLISHED',
-        message: 'Only published courses can be enrolled in',
-        details: {},
-      });
+    try {
+      return await this.enrollments.manager.transaction(async (manager) => {
+        const enrollments = manager.getRepository(Enrollment);
+        const course = await manager
+          .getRepository(Course)
+          .findOneBy({ id: courseId });
+        if (!course) throw new NotFoundException('Course not found');
+        if (course.status !== 'PUBLISHED')
+          throw new ConflictException({
+            code: 'COURSE_NOT_PUBLISHED',
+            message: 'Only published courses can be enrolled in',
+            details: {},
+          });
 
-    const existing = await this.enrollments.findOneBy({
-      courseId,
-      userId: user.id,
-    });
-    if (existing && existing.status !== 'CANCELLED')
-      throw new ConflictException({
-        code: 'ALREADY_ENROLLED',
-        message: 'User is already enrolled in this course',
-        details: {},
-      });
+        const existing = await enrollments.findOneBy({
+          courseId,
+          userId: user.id,
+          status: In(['ACTIVE', 'COMPLETED']),
+        });
+        if (existing)
+          throw new ConflictException({
+            code: 'ALREADY_ENROLLED',
+            message: 'User is already enrolled in this course',
+            details: {},
+          });
 
-    const now = new Date();
-    const enrollment = existing
-      ? await this.enrollments.save({
-          ...existing,
-          status: 'ACTIVE',
-          enrolledAt: now,
-          contentVersion: course.contentVersion,
-        })
-      : await this.enrollments.save(
-          this.enrollments.create({
+        const now = new Date();
+        const enrollment = await enrollments.save(
+          enrollments.create({
             courseId,
             userId: user.id,
             status: 'ACTIVE',
@@ -70,7 +72,34 @@ export class EnrollmentsService {
             contentVersion: course.contentVersion,
           }),
         );
-    return enrollmentData(enrollment);
+        const snapshot = enrollmentData(enrollment);
+        await this.outbox.created(
+          manager,
+          snapshot,
+          correlationId,
+          course.title,
+        );
+        return snapshot;
+      });
+    } catch (error) {
+      // The partial unique index also closes the concurrent-create race.
+      if (error instanceof QueryFailedError) {
+        const failure = error.driverError as {
+          code?: string;
+          constraint?: string;
+        };
+        if (
+          failure.code === '23505' &&
+          failure.constraint === 'IDX_enrollments_current_pair'
+        )
+          throw new ConflictException({
+            code: 'ALREADY_ENROLLED',
+            message: 'User is already enrolled in this course',
+            details: {},
+          });
+      }
+      throw error;
+    }
   }
 
   async listMine(
@@ -107,23 +136,43 @@ export class EnrollmentsService {
     };
   }
 
-  async cancel(id: string, user: AuthUser): Promise<void> {
-    const enrollment = await this.enrollments.findOneBy({ id });
-    if (!enrollment) throw new NotFoundException('Enrollment not found');
-    if (enrollment.userId !== user.id)
-      throw new ForbiddenException('Enrollment ownership required');
-    if (enrollment.status === 'COMPLETED')
-      throw new ConflictException({
-        code: 'INVALID_ENROLLMENT_TRANSITION',
-        message: 'Completed enrollment cannot be cancelled',
-        details: {},
+  async cancel(
+    id: string,
+    user: AuthUser,
+    correlationId: string = randomUUID(),
+  ): Promise<void> {
+    await this.enrollments.manager.transaction(async (manager) => {
+      const enrollments = manager.getRepository(Enrollment);
+      const enrollment = await enrollments.findOne({
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
       });
-    if (enrollment.status === 'ACTIVE') {
-      await this.enrollments.update(
-        { id, userId: user.id },
-        { status: 'CANCELLED' },
-      );
-    }
+      if (!enrollment) throw new NotFoundException('Enrollment not found');
+      if (enrollment.userId !== user.id)
+        throw new ForbiddenException('Enrollment ownership required');
+      if (enrollment.status === 'COMPLETED')
+        throw new ConflictException({
+          code: 'INVALID_ENROLLMENT_TRANSITION',
+          message: 'Completed enrollment cannot be cancelled',
+          details: {},
+        });
+      if (enrollment.status === 'ACTIVE') {
+        await enrollments.update(
+          { id, userId: user.id },
+          { status: 'CANCELLED' },
+        );
+        await this.outbox.cancelled(
+          manager,
+          {
+            enrollmentId: enrollment.id,
+            courseId: enrollment.courseId,
+            userId: enrollment.userId,
+            cancelledAt: new Date().toISOString(),
+          },
+          correlationId,
+        );
+      }
+    });
   }
 
   async check(userId: string, courseId: string): Promise<EnrollmentCheckData> {

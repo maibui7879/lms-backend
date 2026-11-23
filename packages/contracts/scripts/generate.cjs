@@ -92,9 +92,18 @@ function propertyRules(name, schema) {
         'responses',
         'correctResponses',
         'gradedAttempts',
+        'attemptsRemaining',
         'evidenceCount',
+        'questionCount',
         'enrolledCount',
+        'assessedLearnerCount',
+        'weakLearnerCount',
+        'count',
         'completedCount',
+        'completedLessons',
+        'totalLessons',
+        'completedRequiredLessons',
+        'totalRequiredLessons',
       ].includes(name)
     )
       schema.type = 'integer';
@@ -109,6 +118,7 @@ function propertyRules(name, schema) {
         'baseContentVersion',
         'assessmentVersion',
         'expectedVersion',
+        'questionCount',
       ].includes(name)
     )
       schema.minimum = 1;
@@ -182,6 +192,101 @@ const definitions = Object.fromEntries(
 );
 definitions.Uuid.format = 'uuid';
 definitions.IsoDateTime.format = 'date-time';
+definitions.CourseReviewNotificationEvent.properties.correlationId.format =
+  'uuid';
+Object.assign(definitions.ChangePasswordRequest.properties.currentPassword, {
+  minLength: 8,
+  maxLength: 128,
+});
+Object.assign(definitions.ChangePasswordRequest.properties.newPassword, {
+  minLength: 12,
+  maxLength: 128,
+});
+Object.assign(definitions.ProfileSecurity.properties.activeSessionsCount, {
+  type: 'integer',
+  minimum: 0,
+});
+for (const field of ['firstName', 'lastName']) {
+  Object.assign(definitions.UpdateProfileRequest.properties[field], {
+    minLength: 1,
+    maxLength: 100,
+    pattern: '\\S',
+  });
+}
+for (const name of [
+  'CourseMetadata',
+  'CourseData',
+  'CreateCourseRequest',
+  'UpdateCourseRequest',
+]) {
+  const properties = definitions[name].properties;
+  for (const field of ['subtitle', 'category', 'language']) {
+    Object.assign(properties[field], {
+      minLength: 1,
+      maxLength: field === 'subtitle' ? 300 : 100,
+      pattern: '\\S',
+    });
+  }
+  for (const field of [
+    'tags',
+    'prerequisites',
+    'targetAudience',
+    'learningOutcomes',
+  ]) {
+    Object.assign(properties[field], { maxItems: 50, uniqueItems: true });
+    Object.assign(properties[field].items, {
+      minLength: 1,
+      maxLength: 500,
+      pattern: '\\S',
+    });
+  }
+}
+Object.assign(definitions.LearningItemAttachment.properties.sizeBytes, {
+  type: 'integer',
+  minimum: 1,
+});
+for (const field of ['fileName', 'mimeType']) {
+  Object.assign(definitions.LearningItemAttachment.properties[field], {
+    minLength: 1,
+    maxLength: 255,
+    pattern: '\\S',
+  });
+}
+for (const name of [
+  'CreateCourseSkillRequest',
+  'UpdateCourseSkillRequest',
+  'CourseSkillData',
+]) {
+  Object.assign(definitions[name].properties.name, {
+    minLength: 1,
+    maxLength: 200,
+    pattern: '^(?=[^\\u0000]*\\S)[^\\u0000]+$',
+  });
+  Object.assign(definitions[name].properties.description, {
+    maxLength: 2000,
+    pattern: '^[^\\u0000]*$',
+  });
+}
+definitions.UpdateCourseSkillRequest.minProperties = 2;
+definitions.UpdateCourseSkillRequest.properties.expectedVersion.maximum = 2147483647;
+Object.assign(definitions.ValidateCourseSkillsRequest.properties.skillIds, {
+  minItems: 1,
+  maxItems: 100,
+});
+definitions.CourseSkillPrerequisites.properties.version.minimum = 0;
+Object.assign(
+  definitions.SaveSkillPrerequisitesRequest.properties.expectedVersion,
+  {
+    minimum: 0,
+    maximum: 2147483646,
+  },
+);
+definitions.SaveSkillPrerequisitesRequest.properties.edges.maxItems = 500;
+Object.assign(definitions.RevokeCertificateRequest.properties.reason, {
+  maxLength: 500,
+  pattern: '^(?=[^\\u0000\\uD800-\\uDFFF]*\\S)[^\\u0000\\uD800-\\uDFFF]+$',
+});
+definitions.CertificateRevocationData.properties.revokedBy.format = 'uuid';
 // Contract-specific shape constraints. Cross-record/domain rules live in validation.ts and README.
 for (const name of [
   'CreateQuestionRequest',
@@ -285,6 +390,14 @@ for (const e of ENDPOINTS) {
       description: `Xem quy tắc lỗi dùng chung (${status})`,
       content: { 'application/json': { schema: ref('ApiErrorResponse') } },
     };
+  if (e.binaryResponse) {
+    responses[e.success].content = {
+      [e.binaryResponse]: { schema: { type: 'string', format: 'binary' } },
+    };
+    responses[e.success].headers = {
+      'Content-Disposition': { schema: { type: 'string' } },
+    };
+  }
   paths[e.path] ??= {};
   if (paths[e.path][e.method]) throw new Error(`Duplicate route ${e.path}`);
   paths[e.path][e.method] = {
@@ -370,7 +483,13 @@ output(
     '\n}\n',
 );
 output('openapi.json', JSON.stringify(api, null, 2) + '\n');
-for (const service of ['identity', 'course', 'quiz', 'learning'])
+for (const service of [
+  'identity',
+  'course',
+  'quiz',
+  'learning',
+  'notification',
+])
   output(
     `openapi/${service}.json`,
     JSON.stringify(

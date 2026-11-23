@@ -11,7 +11,8 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { CourseAuthGuard } from '../../common/course-auth.guard';
 import type {
   ApiResponse,
   AuthUser,
@@ -35,7 +36,7 @@ import {
 import { validateCourseId } from '../courses/dto/course-request.pipe';
 
 @Controller('api/v1')
-@UseGuards(MockAuthGuard)
+@UseGuards(CourseAuthGuard)
 export class ChaptersController {
   constructor(private readonly chapters: ChaptersService) {}
 

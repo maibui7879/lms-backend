@@ -26,6 +26,9 @@ import { Chapter } from '../chapters/entities/chapter.entity';
 import { Lesson } from '../lessons/entities/lesson.entity';
 import { LearningItem } from '../learning-items/entities/learning-item.entity';
 import { DataSource, In, IsNull } from 'typeorm';
+import { CompletionPolicy } from '../completion-policy/entities/completion-policy.entity';
+import { persistReviewNotification } from '../notifications/persist-review-notification';
+import { recordRevisionPublication } from '../revision-metadata/record-revision-publication';
 
 @Injectable()
 export class CourseRevisionsService {
@@ -85,6 +88,17 @@ export class CourseRevisionsService {
         }),
       );
       const sourceRevisionId = course.publishedRevisionId ?? IsNull();
+      // Original authoring item versions can differ while the course is draft.
+      // Freeze them to the published course snapshot before recording lineage.
+      if (!course.publishedRevisionId) {
+        await manager.update(
+          LearningItem,
+          { courseId, revisionId: IsNull() },
+          {
+            contentVersion: course.contentVersion,
+          },
+        );
+      }
       const sourceChapters = await manager.find(Chapter, {
         where: { courseId, revisionId: sourceRevisionId },
         order: { order: 'ASC' },
@@ -98,6 +112,7 @@ export class CourseRevisionsService {
             title: source.title,
             order: source.order,
             version: 1,
+            endSectionQuiz: source.endSectionQuiz ?? null,
           }),
         );
         chapterMap.set(source.id, clone.id);
@@ -122,8 +137,9 @@ export class CourseRevisionsService {
       const sourceItems = await manager.find(LearningItem, {
         where: { courseId, revisionId: sourceRevisionId },
       });
+      const itemMap = new Map<string, string>();
       for (const source of sourceItems) {
-        await manager.save(
+        const clone = await manager.save(
           manager.create(LearningItem, {
             courseId,
             revisionId: created.id,
@@ -133,6 +149,8 @@ export class CourseRevisionsService {
             videoUrl: source.videoUrl,
             durationSeconds: source.durationSeconds,
             body: source.body,
+            bodyFormat: source.bodyFormat ?? 'PLAIN_TEXT',
+            attachments: structuredClone(source.attachments ?? []),
             quizId: source.quizId,
             assessmentVersion: source.assessmentVersion,
             required: source.required,
@@ -141,7 +159,68 @@ export class CourseRevisionsService {
             version: 1,
           }),
         );
+        itemMap.set(source.id, clone.id);
       }
+      created.sourceItemIds = Object.fromEntries(
+        [...itemMap].map(([oldId, newId]) => [newId, oldId]),
+      );
+      created.sourceChapterIds = Object.fromEntries(
+        [...chapterMap].map(([oldId, newId]) => [newId, oldId]),
+      );
+      created.sourceLessonIds = Object.fromEntries(
+        [...lessonMap].map(([oldId, newId]) => [newId, oldId]),
+      );
+      const storedPolicy = await manager.findOneBy(CompletionPolicy, {
+        courseId,
+        contentVersion: course.contentVersion,
+      });
+      const sourcePolicy = storedPolicy ?? {
+        requiredItemIds: sourceItems
+          .filter((item) => item.required)
+          .map((item) => item.id),
+        requiredAssessments: [],
+        chapterPolicies: sourceChapters.map((chapter) => ({
+          chapterId: chapter.id,
+          requiredItemIds: sourceItems
+            .filter(
+              (item) =>
+                item.required &&
+                sourceLessons.some(
+                  (lesson) =>
+                    lesson.id === item.lessonId &&
+                    lesson.chapterId === chapter.id,
+                ),
+            )
+            .map((item) => item.id),
+          requiredAssessments: chapter.endSectionQuiz
+            ? [chapter.endSectionQuiz]
+            : [],
+        })),
+        sequence: 'FREE' as const,
+        assessmentRule: 'ANY_PASSED_ATTEMPT_SAME_VERSION' as const,
+        certificateEnabled: false,
+      };
+      if (sourcePolicy) {
+        created.completionPolicy = {
+          courseId,
+          contentVersion: course.contentVersion,
+          requiredItemIds: sourcePolicy.requiredItemIds.map(
+            (id) => itemMap.get(id) ?? id,
+          ),
+          requiredAssessments: sourcePolicy.requiredAssessments,
+          chapterPolicies: sourcePolicy.chapterPolicies.map((policy) => ({
+            ...policy,
+            chapterId: chapterMap.get(policy.chapterId) ?? policy.chapterId,
+            requiredItemIds: policy.requiredItemIds.map(
+              (id) => itemMap.get(id) ?? id,
+            ),
+          })),
+          sequence: sourcePolicy.sequence,
+          assessmentRule: sourcePolicy.assessmentRule,
+          certificateEnabled: sourcePolicy.certificateEnabled,
+        };
+      }
+      await manager.save(CourseRevision, created);
       return created;
     });
     return revisionData(revision);
@@ -152,14 +231,15 @@ export class CourseRevisionsService {
     query: PageQuery,
     user: AuthUser,
   ): Promise<PageData<CourseRevisionData>> {
-    this.requireInstructor(user);
+    if (user.role === 'ADMIN') this.requireAdmin(user);
+    else this.requireInstructor(user);
     const course = await this.findCourse(courseId);
-    this.assertOwner(course, user);
+    if (user.role !== 'ADMIN') this.assertOwner(course, user);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
     const [rows, total] = await this.revisions.findAndCount({
       where: { courseId },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', id: 'ASC' },
       skip: (page - 1) * limit,
       take: limit,
     });
@@ -167,11 +247,12 @@ export class CourseRevisionsService {
   }
 
   async getRevision(id: string, user: AuthUser): Promise<CourseRevisionData> {
-    this.requireInstructor(user);
+    if (user.role === 'ADMIN') this.requireAdmin(user);
+    else this.requireInstructor(user);
     const revision = await this.revisions.findOneBy({ id });
     if (!revision) throw new NotFoundException('Course revision not found');
     const course = await this.findCourse(revision.courseId);
-    this.assertOwner(course, user);
+    if (user.role !== 'ADMIN') this.assertOwner(course, user);
     return revisionData(revision);
   }
 
@@ -210,6 +291,7 @@ export class CourseRevisionsService {
   ): Promise<CourseRevisionData> {
     this.requireAdmin(user);
     const revision = await this.findRevision(id);
+    const course = await this.findCourse(revision.courseId);
     if (revision.version !== dto.expectedVersion)
       throw this.versionConflict(dto.expectedVersion, revision.version);
     if (revision.status !== 'IN_REVIEW')
@@ -218,7 +300,7 @@ export class CourseRevisionsService {
     const nextContentVersion =
       dto.decision === 'APPROVE' ? revision.baseContentVersion + 1 : null;
     await this.dataSource.transaction(async (manager) => {
-      await manager.update(
+      const revisionResult = await manager.update(
         CourseRevision,
         { id, version: dto.expectedVersion, status: 'IN_REVIEW' },
         {
@@ -228,8 +310,81 @@ export class CourseRevisionsService {
           version: dto.expectedVersion + 1,
         },
       );
+      if (!revisionResult.affected)
+        throw this.versionConflict(
+          dto.expectedVersion,
+          dto.expectedVersion + 1,
+        );
       if (dto.decision === 'APPROVE') {
+        const publishedItems = await manager.find(LearningItem, {
+          where: { courseId: revision.courseId, revisionId: revision.id },
+        });
+        const publishedLessons = await manager.find(Lesson, {
+          where: { courseId: revision.courseId, revisionId: revision.id },
+        });
+        const publishedChapters = await manager.find(Chapter, {
+          where: { courseId: revision.courseId, revisionId: revision.id },
+        });
+        const inherited = revision.completionPolicy;
+        const policy = {
+          courseId: revision.courseId,
+          contentVersion: nextContentVersion!,
+          requiredItemIds: publishedItems
+            .filter((item) => item.required)
+            .map((item) => item.id),
+          requiredAssessments: inherited?.requiredAssessments ?? [],
+          chapterPolicies: publishedChapters.map((chapter) => ({
+            chapterId: chapter.id,
+            requiredItemIds: publishedItems
+              .filter(
+                (item) =>
+                  item.required &&
+                  publishedLessons.some(
+                    (lesson) =>
+                      lesson.id === item.lessonId &&
+                      lesson.chapterId === chapter.id,
+                  ),
+              )
+              .map((item) => item.id),
+            requiredAssessments:
+              inherited?.chapterPolicies.find((p) => p.chapterId === chapter.id)
+                ?.requiredAssessments ??
+              (chapter.endSectionQuiz ? [chapter.endSectionQuiz] : []),
+          })),
+          sequence: inherited?.sequence ?? 'FREE',
+          certificateEnabled: inherited?.certificateEnabled ?? false,
+          assessmentRule: 'ANY_PASSED_ATTEMPT_SAME_VERSION' as const,
+        };
+        const availableAssessments = new Set(
+          publishedItems
+            .filter((item) => item.type === 'QUIZ')
+            .map((item) => `${item.quizId}:${item.assessmentVersion}`),
+        );
+        for (const chapter of publishedChapters)
+          if (chapter.endSectionQuiz)
+            availableAssessments.add(
+              `${chapter.endSectionQuiz.quizId}:${chapter.endSectionQuiz.assessmentVersion}`,
+            );
+        if (
+          [
+            ...policy.requiredAssessments,
+            ...policy.chapterPolicies.flatMap((p) => p.requiredAssessments),
+          ].some(
+            (a) =>
+              !availableAssessments.has(`${a.quizId}:${a.assessmentVersion}`),
+          )
+        )
+          throw new ConflictException({
+            code: 'INVALID_COURSE_REQUIREMENTS',
+            message:
+              'Revision removes or changes an assessment still required by its policy',
+          });
         await manager.update(
+          LearningItem,
+          { revisionId: revision.id },
+          { contentVersion: nextContentVersion! },
+        );
+        const courseResult = await manager.update(
           Course,
           {
             id: revision.courseId,
@@ -238,9 +393,28 @@ export class CourseRevisionsService {
           {
             contentVersion: revision.baseContentVersion + 1,
             publishedRevisionId: revision.id,
+            version: () => '"version" + 1',
           },
         );
+        if (!courseResult.affected)
+          throw this.versionConflict(
+            revision.baseContentVersion,
+            revision.baseContentVersion + 1,
+          );
+        await manager.save(CompletionPolicy, policy);
+        await recordRevisionPublication(
+          manager,
+          await manager.findOneByOrFail(CourseRevision, { id }),
+        );
       }
+      await persistReviewNotification(manager, {
+        recipientId: course.instructorId,
+        courseId: revision.courseId,
+        revisionId: id,
+        decision: dto.decision,
+        reason: dto.reason,
+        version: dto.expectedVersion + 1,
+      });
     });
     return revisionData(await this.revisions.findOneByOrFail({ id }));
   }
@@ -298,23 +472,42 @@ export class CourseRevisionsService {
 
     const nextVersion = course.version + 1;
     const status = dto.decision === 'APPROVE' ? 'PUBLISHED' : 'REJECTED';
-    const result = await this.courses.update(
-      { id, version: dto.expectedVersion, status: 'IN_REVIEW' },
-      { status, version: nextVersion },
-    );
-    if (!result.affected)
-      throw this.versionConflict(dto.expectedVersion, nextVersion);
-    const saved = await this.reviews.save(
-      this.reviews.create({
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const result = await manager.update(
+        Course,
+        { id, version: dto.expectedVersion, status: 'IN_REVIEW' },
+        {
+          status,
+          version: nextVersion,
+          ...(status === 'PUBLISHED'
+            ? { initialPublishedContentVersion: course.contentVersion }
+            : {}),
+        },
+      );
+      if (!result.affected)
+        throw this.versionConflict(dto.expectedVersion, nextVersion);
+      const review = await manager.save(
+        CourseReview,
+        manager.create(CourseReview, {
+          courseId: id,
+          decision: dto.decision,
+          status,
+          reviewedBy: user.id,
+          reviewedAt: new Date(),
+          rejectionReason: dto.decision === 'REJECT' ? dto.reason : null,
+          version: nextVersion,
+        }),
+      );
+      await persistReviewNotification(manager, {
+        recipientId: course.instructorId,
         courseId: id,
+        revisionId: null,
         decision: dto.decision,
-        status,
-        reviewedBy: user.id,
-        reviewedAt: new Date(),
-        rejectionReason: dto.decision === 'REJECT' ? dto.reason : null,
+        reason: dto.reason,
         version: nextVersion,
-      }),
-    );
+      });
+      return review;
+    });
     return reviewData(saved);
   }
 

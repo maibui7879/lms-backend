@@ -1,0 +1,167 @@
+{
+  "course": {
+    "id": "33333333-3333-4333-8333-333333333333",
+    "owner": "instructorA",
+    "latestContentVersion": 2
+  },
+  "emptyCourse": {
+    "id": "00000000-0000-4000-8000-000000000951",
+    "owner": "instructorA",
+    "enrollments": []
+  },
+  "unknownCourseId": "00000000-0000-4000-8000-000000000952",
+  "unenrolledUserId": "00000000-0000-4000-8000-000000000953",
+  "actors": {
+    "owner": "instructorA",
+    "otherInstructor": "instructorB",
+    "admin": "adminA",
+    "learner": "studentB",
+    "anonymous": null
+  },
+  "learners": {
+    "an": {
+      "displayName": "An",
+      "fixtureUser": "studentB",
+      "courseLearner": {
+        "userId": "00000000-0000-4000-8000-000000000002",
+        "enrollment": {
+          "enrollmentId": "00000000-0000-4000-8000-000000000401",
+          "courseId": "33333333-3333-4333-8333-333333333333",
+          "userId": "00000000-0000-4000-8000-000000000002",
+          "status": "ACTIVE",
+          "enrolledAt": "2026-01-15T09:00:00Z",
+          "contentVersion": 1
+        }
+      }
+    },
+    "binh": {
+      "displayName": "Bình",
+      "fixtureUser": "studentA",
+      "courseLearner": {
+        "userId": "11111111-1111-4111-8111-111111111111",
+        "enrollment": {
+          "enrollmentId": "00000000-0000-4000-8000-000000000954",
+          "courseId": "33333333-3333-4333-8333-333333333333",
+          "userId": "11111111-1111-4111-8111-111111111111",
+          "status": "ACTIVE",
+          "enrolledAt": "2026-01-16T09:00:00Z",
+          "contentVersion": 2
+        }
+      }
+    }
+  },
+  "rosterOrder": ["binh", "an"],
+  "courseSnapshots": {
+    "v1Source": "learning-providers.mock.json#course.structure",
+    "v2AdditionalRequiredLesson": {
+      "chapterId": "00000000-0000-4000-8000-000000000202",
+      "lessonId": "00000000-0000-4000-8000-000000000213",
+      "title": "Thực hành viết route",
+      "learningItemId": "00000000-0000-4000-8000-000000000225",
+      "itemType": "READING"
+    }
+  },
+  "learningRecords": {
+    "itemCompletions": [
+      {
+        "enrollmentId": "00000000-0000-4000-8000-000000000401",
+        "contentVersion": 1,
+        "learningItemId": "00000000-0000-4000-8000-000000000221",
+        "status": "COMPLETED",
+        "completedAt": "2026-01-15T09:04:00Z"
+      }
+    ],
+    "lessonCompletions": [
+      {
+        "enrollmentId": "00000000-0000-4000-8000-000000000401",
+        "contentVersion": 1,
+        "lessonId": "00000000-0000-4000-8000-000000000211",
+        "completedAt": "2026-01-15T09:05:00Z"
+      }
+    ],
+    "resumeCheckpoints": [
+      {
+        "enrollmentId": "00000000-0000-4000-8000-000000000401",
+        "contentVersion": 1,
+        "lessonId": "00000000-0000-4000-8000-000000000211",
+        "learningItemId": "00000000-0000-4000-8000-000000000221",
+        "positionSeconds": 30,
+        "revision": 1,
+        "updatedAt": "2026-01-15T09:12:00Z"
+      }
+    ],
+    "assessmentAttempts": []
+  },
+  "expectedSummaries": {
+    "an": {
+      "userId": "00000000-0000-4000-8000-000000000002",
+      "progress": {
+        "courseId": "33333333-3333-4333-8333-333333333333",
+        "contentVersion": 1,
+        "status": "IN_PROGRESS",
+        "completedRequiredItems": 1,
+        "totalRequiredItems": 2,
+        "progressPercent": 50,
+        "completedRequiredLessons": 1,
+        "totalRequiredLessons": 2,
+        "lessonProgressPercent": 50,
+        "passedRequiredAssessments": 0,
+        "totalRequiredAssessments": 1,
+        "completedAt": null,
+        "updatedAt": "2026-01-15T09:05:00Z"
+      }
+    },
+    "binh": {
+      "userId": "11111111-1111-4111-8111-111111111111",
+      "progress": {
+        "courseId": "33333333-3333-4333-8333-333333333333",
+        "contentVersion": 2,
+        "status": "NOT_STARTED",
+        "completedRequiredItems": 0,
+        "totalRequiredItems": 3,
+        "progressPercent": 0,
+        "completedRequiredLessons": 0,
+        "totalRequiredLessons": 3,
+        "lessonProgressPercent": 0,
+        "passedRequiredAssessments": 0,
+        "totalRequiredAssessments": 1,
+        "completedAt": null,
+        "updatedAt": "2026-01-16T09:00:00Z"
+      }
+    }
+  },
+  "proposedDetailFields": {
+    "an": {
+      "completedLessons": [
+        {
+          "lessonId": "00000000-0000-4000-8000-000000000211",
+          "title": "Giới thiệu module",
+          "completedAt": "2026-01-15T09:05:00Z"
+        }
+      ],
+      "lastActivityAt": "2026-01-15T09:12:00Z"
+    },
+    "binh": {
+      "completedLessons": [],
+      "lastActivityAt": null
+    }
+  },
+  "recompletionScenario": {
+    "policy": "REQUIRE_RECOMPLETION",
+    "targetContentVersion": 2,
+    "previousItemId": "00000000-0000-4000-8000-000000000221",
+    "appliedAt": "2026-01-17T08:00:00Z",
+    "anProgressOverrides": {
+      "status": "OUTDATED",
+      "completedRequiredItems": 0,
+      "progressPercent": 0,
+      "completedRequiredLessons": 0,
+      "lessonProgressPercent": 0,
+      "updatedAt": "2026-01-17T08:00:00Z"
+    },
+    "anProposedDetailFields": {
+      "completedLessons": [],
+      "lastActivityAt": "2026-01-15T09:12:00Z"
+    }
+  }
+}

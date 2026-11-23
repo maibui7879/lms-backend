@@ -293,7 +293,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Cập nhật metadata, policy hoặc lịch mở/đóng của quiz DRAFT; yêu cầu expectedVersion khớp và kiểm tra lại policy sau khi merge dữ liệu PATCH.",
+        "description": "Role sử dụng: COURSE_OWNER. Chỉ sửa title hoặc policy khi quiz chưa phát hành và còn DRAFT; yêu cầu expectedVersion khớp và kiểm tra lại policy sau khi merge PATCH. Quiz PUBLISHED hoặc ARCHIVED trả 409 INVALID_QUIZ_TRANSITION dù version khớp; không cho chuyển ngược về DRAFT để sửa. Server kiểm tra trạng thái và version cùng thao tác ghi để tránh sửa đồng thời với publish.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -1061,7 +1061,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Tạo một câu hỏi authoring cho quiz DRAFT với các lựa chọn, điểm và đáp án đúng; server kiểm tra tính duy nhất và tính hợp lệ của choice IDs.",
+        "description": "Role sử dụng: COURSE_OWNER. Tạo một câu hỏi authoring chỉ khi quiz cha còn DRAFT với các lựa chọn, điểm và đáp án đúng; PUBLISHED hoặc ARCHIVED trả 409 INVALID_QUIZ_TRANSITION. Server kiểm tra tính duy nhất và tính hợp lệ của choice IDs. Quiz PRACTICE không bắt buộc gán kỹ năng: gửi skillIds: []; server lấy loại bài từ quiz cha, không gọi xác minh kỹ năng khi danh sách rỗng.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -1212,7 +1212,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Cập nhật câu hỏi authoring thuộc quiz DRAFT; yêu cầu expectedVersion khớp và vẫn phải bảo đảm số lựa chọn, điểm số và tập đáp án đúng hợp lệ.",
+        "description": "Role sử dụng: COURSE_OWNER. Chỉ sửa câu hỏi khi quiz cha còn DRAFT; yêu cầu expectedVersion khớp và bảo đảm số lựa chọn, điểm số, kỹ năng và tập đáp án đúng hợp lệ. Quiz cha PUBLISHED hoặc ARCHIVED trả 409 INVALID_QUIZ_TRANSITION dù version câu hỏi khớp. Kiểm tra trạng thái quiz cha và ghi câu hỏi phải được bảo vệ khỏi publish đồng thời.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -1361,7 +1361,7 @@
         "tags": [
           "quiz"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Xóa câu hỏi authoring khỏi quiz DRAFT khi expectedVersion khớp.",
+        "description": "Role sử dụng: COURSE_OWNER. Chỉ xóa câu hỏi khi quiz cha còn DRAFT và expectedVersion khớp. Quiz cha PUBLISHED hoặc ARCHIVED trả 409 INVALID_QUIZ_TRANSITION; bảo vệ thao tác khỏi publish đồng thời và không xóa snapshot hoặc kết quả lịch sử.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -3181,6 +3181,174 @@
         }
       }
     },
+    "/api/v1/internal/quizzes/{id}/recommendation-context": {
+      "get": {
+        "operationId": "getQuizRecommendationContext",
+        "tags": [
+          "quiz"
+        ],
+        "description": "Role sử dụng: INTERNAL. Trả kỹ năng theo phiên bản quiz và quyền tạo lượt mới của học viên.",
+        "x-access-policy": "INTERNAL",
+        "security": [
+          {
+            "serviceAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "courseId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "assessmentVersion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/QuizRecommendationContext"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Xem quy tắc lỗi dùng chung (400)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Xem quy tắc lỗi dùng chung (401)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Xem quy tắc lỗi dùng chung (403)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Xem quy tắc lỗi dùng chung (404)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Xem quy tắc lỗi dùng chung (409)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Xem quy tắc lỗi dùng chung (422)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Xem quy tắc lỗi dùng chung (503)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Xem quy tắc lỗi dùng chung (504)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/internal/courses/{id}/assessments": {
       "get": {
         "operationId": "getLearnerAssessments",
@@ -3533,6 +3701,10 @@
               },
               {
                 "type": "string",
+                "const": "INVALID_SKILL_REFERENCE"
+              },
+              {
+                "type": "string",
                 "const": "PREREQUISITE_NOT_COMPLETED"
               },
               {
@@ -3546,6 +3718,10 @@
               {
                 "type": "string",
                 "const": "CERTIFICATE_NOT_ELIGIBLE"
+              },
+              {
+                "type": "string",
+                "const": "CERTIFICATE_REVOKED"
               },
               {
                 "type": "string",
@@ -3714,10 +3890,6 @@
           },
           "gradingStatus": {
             "anyOf": [
-              {
-                "type": "string",
-                "const": "PENDING_REVIEW"
-              },
               {
                 "type": "string",
                 "const": "GRADED"
@@ -4093,6 +4265,39 @@
         ],
         "additionalProperties": false
       },
+      "CertificateRevocationData": {
+        "type": "object",
+        "properties": {
+          "certificateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "const": "REVOKED"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revokedBy": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "certificateId",
+          "status",
+          "revokedAt",
+          "revokedBy",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
       "CertificateStatus": {
         "anyOf": [
           {
@@ -4175,6 +4380,26 @@
         ],
         "additionalProperties": false
       },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ],
+        "additionalProperties": false
+      },
       "ChapterAccessData": {
         "type": "object",
         "properties": {
@@ -4189,6 +4414,19 @@
           "contentVersion": {
             "type": "integer",
             "minimum": 1
+          },
+          "completedLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "progressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
           },
           "status": {
             "anyOf": [
@@ -4238,6 +4476,9 @@
           "chapterId",
           "order",
           "contentVersion",
+          "completedLessons",
+          "totalLessons",
+          "progressPercent",
           "status",
           "reason"
         ],
@@ -4906,6 +5147,100 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "subtitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "\\S"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "targetAudience": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "learningOutcomes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "descriptionFormat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PLAIN_TEXT"
+              },
+              {
+                "type": "string",
+                "const": "HTML"
+              }
+            ]
           }
         },
         "required": [
@@ -4922,6 +5257,482 @@
         ],
         "additionalProperties": false
       },
+      "CourseItemMigrationContext": {
+        "type": "object",
+        "properties": {
+          "revision": {
+            "$ref": "#/components/schemas/CourseRevisionData"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "VIDEO"
+                        },
+                        "videoUrl": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "durationSeconds": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "attachments": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/LearningItemAttachment"
+                          }
+                        },
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "required": {
+                          "type": "boolean"
+                        },
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "courseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "lessonId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "order": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "contentVersion": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "videoUrl",
+                        "durationSeconds",
+                        "title",
+                        "required",
+                        "id",
+                        "courseId",
+                        "lessonId",
+                        "order",
+                        "contentVersion",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "READING"
+                        },
+                        "body": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "bodyFormat": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "PLAIN_TEXT"
+                            },
+                            {
+                              "type": "string",
+                              "const": "HTML"
+                            }
+                          ]
+                        },
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "required": {
+                          "type": "boolean"
+                        },
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "courseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "lessonId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "order": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "contentVersion": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "body",
+                        "title",
+                        "required",
+                        "id",
+                        "courseId",
+                        "lessonId",
+                        "order",
+                        "contentVersion",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "QUIZ"
+                        },
+                        "quizId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "assessmentVersion": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "revisionId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "required": {
+                          "type": "boolean"
+                        },
+                        "id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "courseId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "lessonId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "order": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "contentVersion": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "quizId",
+                        "assessmentVersion",
+                        "title",
+                        "required",
+                        "id",
+                        "courseId",
+                        "lessonId",
+                        "order",
+                        "contentVersion",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "previousItems": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "VIDEO"
+                          },
+                          "videoUrl": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "durationSeconds": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "attachments": {
+                            "type": "array",
+                            "items": {
+                              "$ref": "#/components/schemas/LearningItemAttachment"
+                            }
+                          },
+                          "revisionId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "courseId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "lessonId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "order": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "contentVersion": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "videoUrl",
+                          "durationSeconds",
+                          "title",
+                          "required",
+                          "id",
+                          "courseId",
+                          "lessonId",
+                          "order",
+                          "contentVersion",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "READING"
+                          },
+                          "body": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "bodyFormat": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "const": "PLAIN_TEXT"
+                              },
+                              {
+                                "type": "string",
+                                "const": "HTML"
+                              }
+                            ]
+                          },
+                          "revisionId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "courseId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "lessonId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "order": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "contentVersion": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "body",
+                          "title",
+                          "required",
+                          "id",
+                          "courseId",
+                          "lessonId",
+                          "order",
+                          "contentVersion",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "const": "QUIZ"
+                          },
+                          "quizId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "assessmentVersion": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "revisionId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "required": {
+                            "type": "boolean"
+                          },
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "courseId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "lessonId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "order": {
+                            "type": "integer",
+                            "minimum": 0
+                          },
+                          "contentVersion": {
+                            "type": "integer",
+                            "minimum": 1
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "quizId",
+                          "assessmentVersion",
+                          "title",
+                          "required",
+                          "id",
+                          "courseId",
+                          "lessonId",
+                          "order",
+                          "contentVersion",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                },
+                "requiredAssessment": {
+                  "anyOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/components/schemas/RequiredAssessment"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "item",
+                "previousItems",
+                "requiredAssessment"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "revision",
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "CourseLearnerData": {
         "type": "object",
         "properties": {
@@ -4931,6 +5742,17 @@
           },
           "enrollment": {
             "$ref": "#/components/schemas/EnrollmentSnapshotData"
+          },
+          "classId": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
           }
         },
         "required": [
@@ -4952,6 +5774,208 @@
         "required": [
           "outline",
           "completionPolicy"
+        ],
+        "additionalProperties": false
+      },
+      "CourseLevel": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "BEGINNER"
+          },
+          {
+            "type": "string",
+            "const": "INTERMEDIATE"
+          },
+          {
+            "type": "string",
+            "const": "ADVANCED"
+          },
+          {
+            "type": "string",
+            "const": "ALL_LEVELS"
+          }
+        ]
+      },
+      "CourseMetadata": {
+        "type": "object",
+        "properties": {
+          "subtitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "\\S"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "targetAudience": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "learningOutcomes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "descriptionFormat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PLAIN_TEXT"
+              },
+              {
+                "type": "string",
+                "const": "HTML"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "CourseNotificationData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uuid"
+              }
+            ]
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ENROLLMENT_SUCCEEDED"
+              },
+              {
+                "type": "string",
+                "const": "COURSE_APPROVED"
+              },
+              {
+                "type": "string",
+                "const": "COURSE_REJECTED"
+              },
+              {
+                "type": "string",
+                "const": "REVISION_APPROVED"
+              },
+              {
+                "type": "string",
+                "const": "REVISION_REJECTED"
+              }
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "message": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "readAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "revisionId",
+          "type",
+          "title",
+          "message",
+          "createdAt",
+          "readAt"
         ],
         "additionalProperties": false
       },
@@ -5100,6 +6124,19 @@
             "minimum": 0,
             "maximum": 100
           },
+          "completedRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lessonProgressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
           "passedRequiredAssessments": {
             "type": "number",
             "minimum": 0
@@ -5133,6 +6170,9 @@
           "completedRequiredItems",
           "totalRequiredItems",
           "progressPercent",
+          "completedRequiredLessons",
+          "totalRequiredLessons",
+          "lessonProgressPercent",
           "passedRequiredAssessments",
           "totalRequiredAssessments",
           "completedAt",
@@ -5188,6 +6228,19 @@
             "minimum": 0,
             "maximum": 100
           },
+          "completedRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lessonProgressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
           "passedRequiredAssessments": {
             "type": "number",
             "minimum": 0
@@ -5219,6 +6272,9 @@
           "completedRequiredItems",
           "totalRequiredItems",
           "progressPercent",
+          "completedRequiredLessons",
+          "totalRequiredLessons",
+          "lessonProgressPercent",
           "passedRequiredAssessments",
           "totalRequiredAssessments",
           "completedAt",
@@ -5305,15 +6361,44 @@
             "type": "string",
             "format": "uuid"
           },
+          "category": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string"
+          },
           "sort": {
             "anyOf": [
               {
                 "type": "string",
-                "const": "createdAt"
+                "const": "title"
               },
               {
                 "type": "string",
-                "const": "title"
+                "const": "createdAt"
               }
             ]
           },
@@ -5438,6 +6523,106 @@
           },
           "payload": {
             "$ref": "#/components/schemas/CourseReviewData"
+          }
+        },
+        "required": [
+          "eventId",
+          "eventType",
+          "version",
+          "occurredAt",
+          "producer",
+          "correlationId",
+          "payload"
+        ],
+        "additionalProperties": false
+      },
+      "CourseReviewNotificationEvent": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventType": {
+            "type": "string",
+            "const": "course.review.decided"
+          },
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "minimum": 1
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "producer": {
+            "type": "string",
+            "const": "course-service"
+          },
+          "correlationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "payload": {
+            "type": "object",
+            "properties": {
+              "recipientId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "courseId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "revisionId": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                ]
+              },
+              "decision": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "APPROVE"
+                  },
+                  {
+                    "type": "string",
+                    "const": "REJECT"
+                  }
+                ]
+              },
+              "reason": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                ]
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "recipientId",
+              "courseId",
+              "revisionId",
+              "decision",
+              "reason",
+              "version"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -5689,6 +6874,117 @@
           }
         ]
       },
+      "CourseSkillData": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "INACTIVE"
+              }
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^(?=[^\\u0000]*\\S)[^\\u0000]+$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "pattern": "^[^\\u0000]*$"
+          }
+        },
+        "required": [
+          "id",
+          "courseId",
+          "status",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "name",
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "CourseSkillPrerequisites": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillPrerequisiteEdge"
+            }
+          }
+        },
+        "required": [
+          "courseId",
+          "version",
+          "edges"
+        ],
+        "additionalProperties": false
+      },
+      "CourseSkillsData": {
+        "type": "object",
+        "properties": {
+          "skills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CourseSkillData"
+            }
+          }
+        },
+        "required": [
+          "skills"
+        ],
+        "additionalProperties": false
+      },
+      "CourseSkillStatus": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "ACTIVE"
+          },
+          {
+            "type": "string",
+            "const": "INACTIVE"
+          }
+        ]
+      },
       "CourseStatus": {
         "anyOf": [
           {
@@ -5758,6 +7054,100 @@
                 "format": "uri"
               }
             ]
+          },
+          "subtitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "\\S"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "targetAudience": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "learningOutcomes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "descriptionFormat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PLAIN_TEXT"
+              },
+              {
+                "type": "string",
+                "const": "HTML"
+              }
+            ]
           }
         },
         "required": [
@@ -5802,6 +7192,27 @@
           "baseContentVersion",
           "updateType",
           "migrationPolicy"
+        ],
+        "additionalProperties": false
+      },
+      "CreateCourseSkillRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^(?=[^\\u0000]*\\S)[^\\u0000]+$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "pattern": "^[^\\u0000]*$"
+          }
+        },
+        "required": [
+          "name",
+          "description"
         ],
         "additionalProperties": false
       },
@@ -5866,6 +7277,12 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LearningItemAttachment"
+                }
+              },
               "revisionId": {
                 "type": "string",
                 "format": "uuid"
@@ -5898,6 +7315,18 @@
               "body": {
                 "type": "string",
                 "minLength": 1
+              },
+              "bodyFormat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "PLAIN_TEXT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "HTML"
+                  }
+                ]
               },
               "revisionId": {
                 "type": "string",
@@ -6325,6 +7754,10 @@
           },
           {
             "type": "string",
+            "const": "INVALID_SKILL_REFERENCE"
+          },
+          {
+            "type": "string",
             "const": "PREREQUISITE_NOT_COMPLETED"
           },
           {
@@ -6338,6 +7771,10 @@
           {
             "type": "string",
             "const": "CERTIFICATE_NOT_ELIGIBLE"
+          },
+          {
+            "type": "string",
+            "const": "CERTIFICATE_REVOKED"
           },
           {
             "type": "string",
@@ -6389,6 +7826,10 @@
               {
                 "type": "string",
                 "const": "learning"
+              },
+              {
+                "type": "string",
+                "const": "notification"
               }
             ]
           },
@@ -6474,6 +7915,10 @@
           },
           "response": {
             "type": "string"
+          },
+          "binaryResponse": {
+            "type": "string",
+            "const": "application/pdf"
           },
           "list": {
             "anyOf": [
@@ -6785,6 +8230,9 @@
             "type": "string",
             "const": "course-service"
           },
+          "courseTitle": {
+            "type": "string"
+          },
           "eventId": {
             "type": "string",
             "format": "uuid"
@@ -7008,6 +8456,10 @@
                   "type": "number",
                   "minimum": 0,
                   "exclusiveMinimum": 0
+                },
+                "questionCount": {
+                  "type": "integer",
+                  "minimum": 1
                 }
               },
               "required": [
@@ -7037,10 +8489,6 @@
       },
       "GradingStatus": {
         "anyOf": [
-          {
-            "type": "string",
-            "const": "PENDING_REVIEW"
-          },
           {
             "type": "string",
             "const": "GRADED"
@@ -7081,15 +8529,44 @@
             "type": "string",
             "format": "uuid"
           },
+          "category": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string"
+          },
           "sort": {
             "anyOf": [
               {
                 "type": "string",
-                "const": "createdAt"
+                "const": "title"
               },
               {
                 "type": "string",
-                "const": "title"
+                "const": "createdAt"
               }
             ]
           },
@@ -7299,6 +8776,63 @@
         ],
         "additionalProperties": false
       },
+      "LearnerProgressDetail": {
+        "type": "object",
+        "properties": {
+          "completedLessons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lessonId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "completedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "lessonId",
+                "title",
+                "completedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "lastActivityAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/CourseProgressSummary"
+          }
+        },
+        "required": [
+          "completedLessons",
+          "lastActivityAt",
+          "userId",
+          "progress"
+        ],
+        "additionalProperties": false
+      },
       "LearnerProgressSummary": {
         "type": "object",
         "properties": {
@@ -7316,13 +8850,364 @@
         ],
         "additionalProperties": false
       },
+      "LearningAnalyticsData": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lessonProgressDistribution": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningPercentBand"
+            }
+          },
+          "lessonProgressTrend": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string"
+                },
+                "completedLessons": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "day",
+                "completedLessons"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "quizScores": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "quizId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "assessmentVersion": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "gradedAttempts": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "scoreDistribution": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LearningPercentBand"
+                  }
+                },
+                "trend": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "day": {
+                        "type": "string"
+                      },
+                      "gradedAttempts": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "averageScorePercent": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100
+                      }
+                    },
+                    "required": [
+                      "day",
+                      "gradedAttempts",
+                      "averageScorePercent"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "quizId",
+                "assessmentVersion",
+                "gradedAttempts",
+                "scoreDistribution",
+                "trend"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "courseId",
+          "enrolledCount",
+          "lessonProgressDistribution",
+          "lessonProgressTrend",
+          "quizScores",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "LearningAnalyticsQuery": {
+        "type": "object",
+        "properties": {
+          "quizId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "classId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LearningDashboardCourse": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextStep": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "LEARNING_ITEM"
+                  },
+                  "lessonId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "learningItemId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "positionSeconds": {
+                    "anyOf": [
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "lessonId",
+                  "learningItemId",
+                  "positionSeconds"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "COMPLETE_LESSON"
+                  },
+                  "lessonId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "lessonId"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "QUIZ"
+                  },
+                  "quizId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "assessmentVersion": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "kind",
+                  "quizId",
+                  "assessmentVersion"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrollmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "COMPLETED"
+              },
+              {
+                "type": "string",
+                "const": "IN_PROGRESS"
+              },
+              {
+                "type": "string",
+                "const": "NOT_STARTED"
+              },
+              {
+                "type": "string",
+                "const": "OUTDATED"
+              },
+              {
+                "type": "string",
+                "const": "RESET"
+              }
+            ]
+          },
+          "completedRequiredItems": {
+            "type": "number",
+            "minimum": 0
+          },
+          "totalRequiredItems": {
+            "type": "number",
+            "minimum": 0
+          },
+          "progressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "completedRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalRequiredLessons": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lessonProgressPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "passedRequiredAssessments": {
+            "type": "number",
+            "minimum": 0
+          },
+          "totalRequiredAssessments": {
+            "type": "number",
+            "minimum": 0
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "title",
+          "lastActivityAt",
+          "nextStep",
+          "userId",
+          "courseId",
+          "enrollmentId",
+          "contentVersion",
+          "status",
+          "completedRequiredItems",
+          "totalRequiredItems",
+          "progressPercent",
+          "completedRequiredLessons",
+          "totalRequiredLessons",
+          "lessonProgressPercent",
+          "passedRequiredAssessments",
+          "totalRequiredAssessments",
+          "completedAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
       "LearningDashboardData": {
         "type": "object",
         "properties": {
           "courses": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CourseProgressData"
+              "$ref": "#/components/schemas/LearningDashboardCourse"
+            }
+          },
+          "recentQuizzes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LearningRecentQuiz"
             }
           },
           "updatedAt": {
@@ -7332,7 +9217,40 @@
         },
         "required": [
           "courses",
+          "recentQuizzes",
           "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "LearningItemAttachment": {
+        "type": "object",
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "\\S"
+          },
+          "fileUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "mimeType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "pattern": "\\S"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "fileName",
+          "fileUrl",
+          "mimeType",
+          "sizeBytes"
         ],
         "additionalProperties": false
       },
@@ -7352,6 +9270,12 @@
               "durationSeconds": {
                 "type": "integer",
                 "minimum": 1
+              },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LearningItemAttachment"
+                }
               }
             },
             "required": [
@@ -7371,6 +9295,18 @@
               "body": {
                 "type": "string",
                 "minLength": 1
+              },
+              "bodyFormat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "PLAIN_TEXT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "HTML"
+                  }
+                ]
               }
             },
             "required": [
@@ -7420,6 +9356,12 @@
               "durationSeconds": {
                 "type": "integer",
                 "minimum": 1
+              },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LearningItemAttachment"
+                }
               },
               "revisionId": {
                 "type": "string",
@@ -7483,6 +9425,18 @@
               "body": {
                 "type": "string",
                 "minLength": 1
+              },
+              "bodyFormat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "PLAIN_TEXT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "HTML"
+                  }
+                ]
               },
               "revisionId": {
                 "type": "string",
@@ -7604,6 +9558,168 @@
           }
         ]
       },
+      "LearningNextStep": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "LEARNING_ITEM"
+              },
+              "lessonId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "learningItemId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "positionSeconds": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "lessonId",
+              "learningItemId",
+              "positionSeconds"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "COMPLETE_LESSON"
+              },
+              "lessonId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "kind",
+              "lessonId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "QUIZ"
+              },
+              "quizId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "assessmentVersion": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "kind",
+              "quizId",
+              "assessmentVersion"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "LearningPercentBand": {
+        "type": "object",
+        "properties": {
+          "fromPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "toPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "fromPercent",
+          "toPercent",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "LearningRecentQuiz": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quizId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "scorePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "gradedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "attemptId",
+          "courseId",
+          "quizId",
+          "assessmentVersion",
+          "scorePercent",
+          "passed",
+          "gradedAt"
+        ],
+        "additionalProperties": false
+      },
+      "LearningReportDateQuery": {
+        "type": "object",
+        "properties": {
+          "fromAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "LearningResumeData": {
         "type": "object",
         "properties": {
@@ -7674,6 +9790,18 @@
             "type": "integer",
             "minimum": 0
           },
+          "completionRatePercent": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            ]
+          },
           "averageProgressPercent": {
             "anyOf": [
               {
@@ -7695,6 +9823,7 @@
           "courseId",
           "enrolledCount",
           "completedCount",
+          "completionRatePercent",
           "averageProgressPercent",
           "updatedAt"
         ],
@@ -7723,6 +9852,66 @@
             "const": "RESET"
           }
         ]
+      },
+      "LearningWeakSkillsData": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "enrolledCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skillId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "skillName": {
+                  "type": "string"
+                },
+                "assessedLearnerCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "weakLearnerCount": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "weakRatePercent": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "skillId",
+                "skillName",
+                "assessedLearnerCount",
+                "weakLearnerCount",
+                "weakRatePercent"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "courseId",
+          "enrolledCount",
+          "skills",
+          "updatedAt"
+        ],
+        "additionalProperties": false
       },
       "LessonCompletedEvent": {
         "type": "object",
@@ -7864,6 +10053,12 @@
                       "type": "integer",
                       "minimum": 1
                     },
+                    "attachments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LearningItemAttachment"
+                      }
+                    },
                     "revisionId": {
                       "type": "string",
                       "format": "uuid"
@@ -7926,6 +10121,18 @@
                     "body": {
                       "type": "string",
                       "minLength": 1
+                    },
+                    "bodyFormat": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "PLAIN_TEXT"
+                        },
+                        {
+                          "type": "string",
+                          "const": "HTML"
+                        }
+                      ]
                     },
                     "revisionId": {
                       "type": "string",
@@ -8047,6 +10254,14 @@
                 }
               ]
             }
+          },
+          "skillIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
           },
           "id": {
             "type": "string",
@@ -8251,45 +10466,7 @@
           "skills": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "skillId": {
-                  "type": "string",
-                  "format": "uuid"
-                },
-                "scorePercent": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 100
-                },
-                "level": {
-                  "anyOf": [
-                    {
-                      "type": "string",
-                      "const": "BEGINNER"
-                    },
-                    {
-                      "type": "string",
-                      "const": "DEVELOPING"
-                    },
-                    {
-                      "type": "string",
-                      "const": "PROFICIENT"
-                    }
-                  ]
-                },
-                "evidenceCount": {
-                  "type": "integer",
-                  "minimum": 0
-                }
-              },
-              "required": [
-                "skillId",
-                "scorePercent",
-                "level",
-                "evidenceCount"
-              ],
-              "additionalProperties": false
+              "$ref": "#/components/schemas/SkillMasteryData"
             }
           },
           "algorithmVersion": {
@@ -8306,6 +10483,54 @@
           "skills",
           "algorithmVersion",
           "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "MasteryHistoryPoint": {
+        "type": "object",
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "contentVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "gradedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "effectiveAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "algorithmVersion": {
+            "type": "string"
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillMasteryData"
+            }
+          }
+        },
+        "required": [
+          "attemptId",
+          "assessmentVersion",
+          "contentVersion",
+          "gradedAt",
+          "effectiveAt",
+          "algorithmVersion",
+          "skills"
         ],
         "additionalProperties": false
       },
@@ -8377,6 +10602,49 @@
         ],
         "additionalProperties": false
       },
+      "NotificationCreatedPayload": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CourseNotificationData"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ApiMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationQuery": {
+        "type": "object",
+        "properties": {
+          "unreadOnly": {
+            "anyOf": [
+              {
+                "type": "boolean",
+                "const": false
+              },
+              {
+                "type": "boolean",
+                "const": true
+              }
+            ]
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "additionalProperties": false
+      },
       "PageQuery": {
         "type": "object",
         "properties": {
@@ -8430,6 +10698,31 @@
         "required": [
           "pinned",
           "expectedVersion"
+        ],
+        "additionalProperties": false
+      },
+      "ProfileSecurity": {
+        "type": "object",
+        "properties": {
+          "activeSessionsCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "passwordChangedAt": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "date-time"
+              }
+            ]
+          }
+        },
+        "required": [
+          "activeSessionsCount",
+          "passwordChangedAt"
         ],
         "additionalProperties": false
       },
@@ -8810,10 +11103,6 @@
             "anyOf": [
               {
                 "type": "string",
-                "const": "PENDING_REVIEW"
-              },
-              {
-                "type": "string",
                 "const": "GRADED"
               },
               {
@@ -8878,10 +11167,6 @@
           {
             "type": "string",
             "const": "SUBMITTED"
-          },
-          {
-            "type": "string",
-            "const": "PENDING_REVIEW"
           }
         ]
       },
@@ -9139,6 +11424,88 @@
         ],
         "additionalProperties": false
       },
+      "QuizRecommendationContext": {
+        "type": "object",
+        "properties": {
+          "quizId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quizType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PRACTICE"
+              },
+              {
+                "type": "string",
+                "const": "GRADED"
+              }
+            ]
+          },
+          "skillIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          },
+          "attemptsRemaining": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "canStart": {
+            "type": "boolean"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "quizId",
+          "quizType",
+          "skillIds",
+          "attemptsRemaining",
+          "canStart",
+          "courseId",
+          "userId",
+          "assessmentVersion"
+        ],
+        "additionalProperties": false
+      },
+      "QuizRecommendationContextQuery": {
+        "type": "object",
+        "properties": {
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assessmentVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "courseId",
+          "userId",
+          "assessmentVersion"
+        ],
+        "additionalProperties": false
+      },
       "QuizResultData": {
         "type": "object",
         "properties": {
@@ -9179,10 +11546,6 @@
               {
                 "type": "string",
                 "const": "SUBMITTED"
-              },
-              {
-                "type": "string",
-                "const": "PENDING_REVIEW"
               }
             ]
           },
@@ -9336,16 +11699,8 @@
                 ]
               },
               "gradingStatus": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "const": "PENDING_REVIEW"
-                  },
-                  {
-                    "type": "string",
-                    "const": "NOT_GRADED"
-                  }
-                ]
+                "type": "string",
+                "const": "NOT_GRADED"
               },
               "score": {
                 "type": "null"
@@ -9497,16 +11852,8 @@
                     ]
                   },
                   "gradingStatus": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "const": "PENDING_REVIEW"
-                      },
-                      {
-                        "type": "string",
-                        "const": "NOT_GRADED"
-                      }
-                    ]
+                    "type": "string",
+                    "const": "NOT_GRADED"
                   },
                   "score": {
                     "type": "null"
@@ -9694,6 +12041,11 @@
               {
                 "type": "string",
                 "const": "RETRY_ASSESSMENT",
+                "minLength": 1
+              },
+              {
+                "type": "string",
+                "const": "SKILL_PREREQUISITE",
                 "minLength": 1
               }
             ]
@@ -9977,6 +12329,21 @@
         ],
         "additionalProperties": false
       },
+      "RevokeCertificateRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "^(?=[^\\u0000\\uD800-\\uDFFF]*\\S)[^\\u0000\\uD800-\\uDFFF]+$"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
       "SaveAnswersRequest": {
         "type": "object",
         "properties": {
@@ -10034,6 +12401,28 @@
           "contentVersion",
           "positionSeconds",
           "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "SaveSkillPrerequisitesRequest": {
+        "type": "object",
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483646
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkillPrerequisiteEdge"
+            },
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "expectedVersion",
+          "edges"
         ],
         "additionalProperties": false
       },
@@ -10113,6 +12502,79 @@
         ],
         "additionalProperties": false
       },
+      "SkillMasteryData": {
+        "type": "object",
+        "properties": {
+          "skillId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "skillName": {
+            "type": "string"
+          },
+          "scorePercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "DEVELOPING"
+              },
+              {
+                "type": "string",
+                "const": "PROFICIENT"
+              }
+            ]
+          },
+          "evidenceCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "questionCount": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "integer",
+                "minimum": 1
+              }
+            ]
+          }
+        },
+        "required": [
+          "skillId",
+          "scorePercent",
+          "level",
+          "evidenceCount"
+        ],
+        "additionalProperties": false
+      },
+      "SkillPrerequisiteEdge": {
+        "type": "object",
+        "properties": {
+          "skillId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "prerequisiteSkillId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "skillId",
+          "prerequisiteSkillId"
+        ],
+        "additionalProperties": false
+      },
       "StartAttemptData": {
         "type": "object",
         "properties": {
@@ -10167,10 +12629,6 @@
           },
           "gradingStatus": {
             "anyOf": [
-              {
-                "type": "string",
-                "const": "PENDING_REVIEW"
-              },
               {
                 "type": "string",
                 "const": "GRADED"
@@ -10250,6 +12708,19 @@
         ],
         "additionalProperties": false
       },
+      "UnreadNotificationCount": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "additionalProperties": false
+      },
       "UpdateAccountStatusRequest": {
         "type": "object",
         "properties": {
@@ -10284,6 +12755,10 @@
       "UpdateChapterRequest": {
         "type": "object",
         "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string",
             "minLength": 1,
@@ -10298,10 +12773,6 @@
                 "$ref": "#/components/schemas/SectionEndQuizRef"
               }
             ]
-          },
-          "revisionId": {
-            "type": "string",
-            "format": "uuid"
           },
           "expectedVersion": {
             "type": "integer",
@@ -10380,6 +12851,100 @@
               }
             ]
           },
+          "subtitle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "pattern": "\\S"
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "BEGINNER"
+              },
+              {
+                "type": "string",
+                "const": "INTERMEDIATE"
+              },
+              {
+                "type": "string",
+                "const": "ADVANCED"
+              },
+              {
+                "type": "string",
+                "const": "ALL_LEVELS"
+              }
+            ]
+          },
+          "language": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "targetAudience": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "learningOutcomes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "pattern": "\\S"
+            },
+            "maxItems": 50,
+            "uniqueItems": true
+          },
+          "descriptionFormat": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "PLAIN_TEXT"
+              },
+              {
+                "type": "string",
+                "const": "HTML"
+              }
+            ]
+          },
           "expectedVersion": {
             "type": "integer",
             "minimum": 1
@@ -10389,6 +12954,44 @@
           "expectedVersion"
         ],
         "additionalProperties": false
+      },
+      "UpdateCourseSkillRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^(?=[^\\u0000]*\\S)[^\\u0000]+$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "pattern": "^[^\\u0000]*$"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "ACTIVE"
+              },
+              {
+                "type": "string",
+                "const": "INACTIVE"
+              }
+            ]
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+          }
+        },
+        "required": [
+          "expectedVersion"
+        ],
+        "additionalProperties": false,
+        "minProperties": 2
       },
       "UpdateDiscussionRequest": {
         "type": "object",
@@ -10424,6 +13027,12 @@
               "durationSeconds": {
                 "type": "integer",
                 "minimum": 1
+              },
+              "attachments": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LearningItemAttachment"
+                }
               },
               "revisionId": {
                 "type": "string",
@@ -10462,6 +13071,18 @@
               "body": {
                 "type": "string",
                 "minLength": 1
+              },
+              "bodyFormat": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "PLAIN_TEXT"
+                  },
+                  {
+                    "type": "string",
+                    "const": "HTML"
+                  }
+                ]
               },
               "revisionId": {
                 "type": "string",
@@ -10536,14 +13157,14 @@
       "UpdateLessonRequest": {
         "type": "object",
         "properties": {
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
           "title": {
             "type": "string",
             "minLength": 1,
             "maxLength": 200
-          },
-          "revisionId": {
-            "type": "string",
-            "format": "uuid"
           },
           "expectedVersion": {
             "type": "integer",
@@ -10559,6 +13180,79 @@
       "UpdateProfileRequest": {
         "type": "object",
         "properties": {
+          "firstName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "lastName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "\\S"
+          },
+          "phoneNumber": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "dateOfBirth": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "MALE"
+              },
+              {
+                "type": "string",
+                "const": "FEMALE"
+              },
+              {
+                "type": "string",
+                "const": "OTHER"
+              }
+            ]
+          },
+          "githubUrl": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uri"
+              }
+            ]
+          },
+          "linkedinUrl": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uri"
+              }
+            ]
+          },
           "displayName": {
             "type": "string",
             "minLength": 1,
@@ -10815,9 +13509,116 @@
         ],
         "additionalProperties": false
       },
+      "UserGender": {
+        "anyOf": [
+          {
+            "type": "string",
+            "const": "MALE"
+          },
+          {
+            "type": "string",
+            "const": "FEMALE"
+          },
+          {
+            "type": "string",
+            "const": "OTHER"
+          }
+        ]
+      },
       "UserProfile": {
         "type": "object",
         "properties": {
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "firstName": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "lastName": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "phoneNumber": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "dateOfBirth": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "const": "MALE"
+              },
+              {
+                "type": "string",
+                "const": "FEMALE"
+              },
+              {
+                "type": "string",
+                "const": "OTHER"
+              }
+            ]
+          },
+          "githubUrl": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uri"
+              }
+            ]
+          },
+          "linkedinUrl": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string",
+                "format": "uri"
+              }
+            ]
+          },
+          "security": {
+            "$ref": "#/components/schemas/ProfileSecurity"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
           "avatarUrl": {
             "anyOf": [
               {
@@ -10891,6 +13692,16 @@
           }
         },
         "required": [
+          "emailVerified",
+          "firstName",
+          "lastName",
+          "phoneNumber",
+          "dateOfBirth",
+          "gender",
+          "githubUrl",
+          "linkedinUrl",
+          "security",
+          "updatedAt",
           "avatarUrl",
           "bio",
           "createdAt",
@@ -10977,6 +13788,25 @@
       "Uuid": {
         "type": "string",
         "format": "uuid"
+      },
+      "ValidateCourseSkillsRequest": {
+        "type": "object",
+        "properties": {
+          "skillIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true,
+            "minItems": 1,
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "skillIds"
+        ],
+        "additionalProperties": false
       },
       "VersionRequest": {
         "type": "object",

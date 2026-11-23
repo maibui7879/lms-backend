@@ -4,9 +4,11 @@ Owner: chưa chốt tên. Workspace `@lms/learning-service`, port mặc định 
 
 ## Trạng thái và phạm vi
 
-Hiện chỉ có scaffold `GET /` → `Hello World!`; chưa có progress API, consumer, receipt hoặc DB. Learning sở hữu progress/resume/mastery/certificate và processed_events/receipts trong PostgreSQL riêng. MongoDB Atlas chỉ cho activity/read model phụ trợ, không quyết định completion hay SYNCED.
+Learning có các nhóm Progress, Mastery, Recommendations, Certificates và Instructor Reports với PostgreSQL. Các API cần đăng nhập xác thực access token RS256 do Identity cấp và đọc trạng thái tài khoản hiện tại qua API nội bộ của Identity. Consumer nhận kết quả chấm quiz để áp dụng policy của chương và khóa. MongoDB Atlas dự kiến phục vụ activity và read model.
 
 Course sở hữu cấu trúc/requirements/enrollment; Quiz sở hữu câu hỏi và kết quả chấm. Learning không tự tạo danh sách required lessons hoặc chấm lại quiz.
+
+PRG-01 đến PRG-08 đã qua rà soát và kiểm thử bởi hai agent: bộ đầy đủ 56/56 E2E với PostgreSQL/RabbitMQ và 10/10 mock API; vòng độc lập 32/32 E2E thuộc ba suite và 10/10 mock. Course/Quiz vẫn là provider giả. Khóa chỉ báo `COMPLETED` khi đủ policy và các bài bắt buộc đã được xác nhận qua PRG-01; thời điểm hoàn thành bao gồm lần xác nhận bài cuối. Quiz bị sửa dùng đúng phiên bản và ngưỡng mới, không loại kết quả hợp lệ do migration đến muộn. Chi tiết và ví dụ nằm trong [WORK.md](../../WORK.md) và [báo cáo kiểm thử](test/TEST_REPORT.md).
 
 ## Contracts phải đọc
 
@@ -33,7 +35,7 @@ Xây dựng backend theo dõi học tập, tiếp tục bài đang học, xác �
 **Công việc cụ thể:**
 
 1. Triển khai config validation, PostgreSQL connection/migrations, health và kiểm tra user/service credentials.
-2. Thiết kế progress theo enrollment/contentVersion, checkpoint có revision, certificate unique theo enrollment/version.
+2. Thiết kế progress theo `enrollmentId` và `contentVersion`, checkpoint có revision. Khóa chống cấp trùng chứng chỉ là `(userId, courseId, contentVersion)`.
 3. Tạo processed_events và receipts; chuẩn bị transaction cập nhật cùng progress.
 4. Chuẩn bị kết nối Atlas bằng MongoDB Native Driver, collections/indexes và projection outbox theo mục kiến trúc bên dưới. Thiết kế cả hai DB ngay từ đầu, chưa cần triển khai toàn bộ truy vấn dashboard.
 
@@ -266,7 +268,7 @@ Sync endpoint phải xác minh attempt existence/ownership qua Quiz; không tìm
 
 Consume course.enrollment.created.v2 và quiz.attempt.graded.v2 qua queue riêng; tránh áp dụng cả v1/v2. Cancellation chặn mutation mới nhưng giữ lịch sử. Internal Course structure phải cùng course/contentVersion với policy. Không suy luận published content từ dữ liệu Atlas.
 
-Provide Course/Gateway: learner progress summaries, official course progress, dashboard và sync receipt. Completion/certificate events chỉ phát qua outbox khi có consumer thực tế. Certificate unique enrollment/version, retry không cấp trùng; public verification không lộ email/userId/enrollmentId.
+Provide Course/Gateway: learner progress summaries, official course progress, dashboard và sync receipt. Completion/certificate events chỉ phát qua outbox khi có consumer thực tế. Mỗi học viên có một chứng chỉ cho mỗi khóa và phiên bản, kể cả khi ID ghi danh thay đổi. Xác minh công khai ẩn email, `userId` và `enrollmentId`.
 
 Atlas unavailable cần retry/rebuild projection riêng; không đảo rollback progress chính thức đã commit hoặc tự báo progress chưa SYNCED chỉ vì Atlas lỗi. Không import Mongoose: workspace dùng MongoDB native driver theo thiết kế hiện tại.
 
@@ -283,7 +285,157 @@ npm.cmd run start:dev -w @lms/learning-service
 
 Terminal khác: `Invoke-RestMethod http://127.0.0.1:3004/` chỉ smoke check scaffold.
 
-[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, RABBITMQ_URL, COURSE_URL, MONGODB_URI/MONGODB_DATABASE, JWT_PUBLIC_KEY/JWT_ISSUER. Chỉ PORT đang được đọc. Khi triển khai thêm QUIZ_URL, service credentials, queue/retry settings và config validation; các biến mới phải được ghi vào env example bằng placeholder. `.env` chưa tự load. Mock auth theo [package auth](../../packages/auth/README.md).
+### Kết nối Supabase cho Learning
+
+Trong Dashboard của project Supabase, mở **Connect**, chọn kiểu **URI** và lấy chuỗi PostgreSQL. Dùng **Session pooler** (cổng `5432`) nếu mạng chỉ có IPv4. Dùng **Direct connection** nếu máy kết nối được endpoint direct. Giữ nguyên host, user và tên database trong URI. Thay `[YOUR-PASSWORD]` bằng mật khẩu database của project và mã hóa ký tự đặc biệt trong mật khẩu theo URL. Bật TLS với `sslmode=require` nếu URI chưa có tham số `sslmode`. [Hướng dẫn kết nối Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres)
+
+Tạo `.env` từ mẫu trong Learning rồi thay giá trị `DATABASE_URL` bằng URI đã điền. NestJS đọc file này qua `ConfigModule` trong `src/app.module.ts`. Lệnh migration đọc cùng file. Các biến đã đặt trong terminal được ưu tiên.
+
+```powershell
+if (-not (Test-Path services/learning-service/.env)) {
+  Copy-Item services/learning-service/.env.example services/learning-service/.env
+}
+notepad services/learning-service/.env
+```
+
+Sau khi lưu, chạy từ thư mục gốc của repo.
+
+```powershell
+npm.cmd run build -w @lms/contracts -w @lms/auth -w @lms/learning-service
+npm.cmd run migration:run -w @lms/learning-service
+npm.cmd run start:dev -w @lms/learning-service
+```
+
+Kiểm tra các bảng như `learning_item_completions` và `learning_certificates` trong **Table Editor** của Supabase. Gọi API xác minh với một mã chứng chỉ hợp lệ về định dạng nhưng chưa được cấp để kiểm tra NestJS truy vấn được database. API trả HTTP `200` với `data.valid: false`.
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:3004/api/v1/certificates/verify/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+```
+
+`test:mock` dùng dữ liệu giả trên máy và chạy riêng với cấu hình Supabase.
+
+### Chạy API tiến độ
+
+Dùng PostgreSQL của Learning, Identity và Course có API ghi danh cùng API internal trả cấu trúc theo phiên bản. Learning lấy snapshot bằng credential service và `contentVersion` thuộc enrollment của học viên.
+
+```powershell
+npm.cmd run build -w @lms/contracts -w @lms/auth -w @lms/learning-service
+$env:NODE_ENV='development'
+$env:DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/learning'
+$env:COURSE_URL='http://127.0.0.1:3002'
+$env:COURSE_SERVICE_TOKEN='TOKEN_NOI_BO_DO_COURSE_CAP'
+npm.cmd run migration:run -w @lms/learning-service
+npm.cmd run start:dev -w @lms/learning-service
+```
+
+Thay `DATABASE_URL` bằng kết nối PostgreSQL của Learning trước khi chạy migration. Mỗi yêu cầu đăng nhập gửi `Authorization: Bearer <accessToken>` lấy từ Identity.
+
+### Xác thực và kết nối Identity
+
+Điền `IDENTITY_URL`, `JWT_ISSUER`, `JWT_PUBLIC_KEY` và `IDENTITY_INTERNAL_JWT_PRIVATE_KEY` trong `.env` của Learning. `JWT_PUBLIC_KEY` là khóa công khai xác minh access token người dùng do Identity ký. Khóa riêng service dùng để ký JWT có `sub=learning-service`, `aud=identity-service`, thời hạn 240 giây và scope tương ứng với `getUserAccess` hoặc `getUserSummary`. Identity phải tin khóa công khai tương ứng qua `INTERNAL_JWT_PUBLIC_KEY`.
+
+Learning kiểm tra chữ ký RS256, issuer, thời điểm phát hành và hạn token, sau đó gọi `GET /api/v1/internal/users/{id}/access` để lấy vai trò và trạng thái hiện tại. Token hết hạn hoặc sai chữ ký trả `401`. Tài khoản bị khóa hoặc đổi vai trò kể từ lúc cấp token trả `403`. Identity lỗi hoặc cấu hình xác thực thiếu trả `503`. API lấy tên người nhận PDF gọi `GET /api/v1/internal/users/{id}` với scope `getUserSummary`.
+
+Các API Course theo người dùng nhận cùng Bearer token đã xác thực. API snapshot nội bộ dùng `COURSE_SERVICE_TOKEN` khi Course chạy development/test; staging/production dùng JWT ký từ `COURSE_INTERNAL_JWT_PRIVATE_KEY`, được Course tin qua `INTERNAL_JWT_PUBLIC_KEY`.
+
+Ví dụ đăng nhập và gọi Learning từ PowerShell.
+
+```powershell
+$login = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:3001/api/v1/auth/login' -ContentType 'application/json' -Body (@{ email = 'EMAIL_DA_DANG_KY'; password = 'MAT_KHAU' } | ConvertTo-Json)
+$headers = @{ Authorization = "Bearer $($login.data.accessToken)" }
+Invoke-RestMethod 'http://127.0.0.1:3004/api/v1/learning/me/certificates' -Headers $headers
+```
+
+Ví dụ học viên đăng nhập, sau đó Admin khóa tài khoản trên Identity. Dù token vẫn còn hạn, lần gọi Learning tiếp theo trả `403`. Khi Admin đổi vai trò, người dùng đăng nhập lại để nhận token khớp vai trò mới. Trang xác minh QR tiếp tục là API công khai.
+
+Môi trường local đã cấu hình Identity ở cổng `3001` với PostgreSQL riêng trong container `lms-identity-local-pg`, volume `lms-identity-local-data`. Thông tin tài khoản Admin có trong `ADMIN_EMAIL` và `ADMIN_PASSWORD` của `services/identity-service/.env`. Khóa riêng và mật khẩu được lưu trong các file `.env` đã được Git bỏ qua. Migration `1795392000000-AlignUserAuthenticationColumns` bổ sung schema User đang được Identity sử dụng.
+
+Khi khởi động lại máy, bật Docker Desktop và chạy `docker start lms-identity-local-pg`. Từ thư mục gốc repo, chạy `npm.cmd run start:dev -w @lms/identity-service` và `npm.cmd run start:dev -w @lms/learning-service` ở hai terminal. Learning kết nối PostgreSQL Supabase theo `.env` của mình.
+
+| Method | Path | Dữ liệu gửi |
+| --- | --- | --- |
+| PUT | `/api/v1/learning/items/{id}/completion` | `{ "completed": true, "contentVersion": 1 }` với phiên bản đã ghi danh |
+| GET | `/api/v1/learning/lessons/{id}/progress` | Trạng thái bài học và các item trong bài |
+| PUT | `/api/v1/learning/lessons/{id}/completion` | `{ "completed": true, "contentVersion": 1 }` với phiên bản đã ghi danh |
+| GET | `/api/v1/learning/courses/{id}/progress` | |
+| GET | `/api/v1/learning/courses/{id}/chapters/access` | |
+| GET | `/api/v1/learning/me/dashboard` | Tiến độ theo bài, quiz đã chấm gần đây và bước học tiếp |
+| GET | `/api/v1/learning/courses/{id}/resume` | Vị trí đã lưu trong lượt ghi danh hiện tại hoặc `data: null` |
+| PUT | `/api/v1/learning/courses/{id}/resume` | Mã bài, mã mục học, phiên bản nội dung, vị trí video và `expectedRevision` |
+| GET | `/api/v1/learning/attempts/{id}/sync` | Chỉ chủ lượt làm có quyền xem |
+
+Mỗi item chỉ có một bản ghi hoàn thành theo enrollment và `contentVersion`. `progressPercent` đếm item bắt buộc, còn `lessonProgressPercent` đếm các bài bắt buộc đã xác nhận hoàn thành. API trạng thái chương đọc `chapterPolicies` theo phiên bản ghi danh. Chương đã đủ điều kiện trả `COMPLETED`. Khi chương trước còn thiếu điều kiện, chương sau trả `LOCKED` với lý do `PREVIOUS_CHAPTER_NOT_COMPLETED`.
+
+Mọi lần đọc cấu trúc dùng `GET /api/v1/internal/courses/{id}/structure?contentVersion={enrollment.contentVersion}` với `COURSE_SERVICE_TOKEN`. Learning kiểm tra khóa và phiên bản của cả outline lẫn policy. Nếu Course chưa phục vụ được bản đó, Learning trả `409 CONTENT_VERSION_MISMATCH`. Thiếu credential trả `503`.
+
+Với **PRG-01**, API đọc tiến độ bài trả `IN_PROGRESS` khi đã hoàn thành ít nhất một item. API ghi hoàn thành bài kiểm tra các item bắt buộc theo policy và quyền vào bài. Khi đủ điều kiện, nó lưu một dòng theo enrollment, `contentVersion` và `lessonId`. Gửi lại cùng yêu cầu giữ nguyên `completedAt`.
+
+Với **PRG-03**, `GET /api/v1/learning/courses/{id}/chapters/access` trả `completedLessons`, `totalLessons` và `progressPercent` cho mỗi chương. Tỷ lệ tính theo số bài đã xác nhận hoàn thành qua PRG-01 trên tổng số bài trong phiên bản ghi danh. Chương rỗng trả `0%`. Trường `status` vẫn xét các item và quiz bắt buộc theo policy, vì vậy thanh tiến độ bài học có thể đạt `100%` trong khi chương chờ quiz.
+
+Với **PRG-08**, lần lưu đầu gửi `expectedRevision: 0`. Các lần sau gửi số `revision` trong dữ liệu vừa đọc hoặc lưu thành công. Khi gặp `409 REVISION_CONFLICT`, đọc lại vị trí mới nhất bằng `GET`. [Ví dụ lưu ở giây 60 trên Postman](../../WORK.md#prg-08--lưu-thời-điểm-học-gần-nhất)
+
+### Học lại nội dung sau critical revision
+
+Theo [hướng dẫn migration của nhóm](../../packages/contracts/docs/learning-migration-guide.md), Learning có `POST /api/v1/internal/courses/{id}/migrations`. Endpoint dùng `Authorization: Bearer <LEARNING_SERVICE_TOKEN>` và trả `204`. Policy `REQUIRE_RECOMPLETION` đánh dấu đúng item thành `OUTDATED`, làm giảm tiến độ liên quan và áp dụng lại điều kiện mở chương. `NOTIFY_ONLY` giữ kết quả đã học và ghi lý do thông báo.
+
+Dữ liệu cũ được nâng thành `COMPLETED`. Khi học lại hợp lệ, item chuyển về `COMPLETED` và xóa metadata invalidation. Enrollment giữ phiên bản đã ghi danh, attempt quiz cũ được giữ để audit. Quiz bị thay đổi cần kết quả đạt của assessmentVersion mới.
+
+Learning bổ sung contract `getCourseItemMigrationContext` để lấy revision đã xuất bản và liên hệ item cũ–mới bằng credential `COURSE_SERVICE_TOKEN`. Course cần triển khai endpoint này và phục vụ nội dung đã sửa tương ứng cho người học cũ. Test hiện dùng Course giả lập. [Danh sách file, request mock và ví dụ học lại](../../WORK.md#học-lại-sau-khi-course-sửa-nội-dung)
+
+Đặt `RABBITMQ_URL` trước khi khởi động Learning để bật consumer. Quiz gửi JSON `AttemptGradedV2Event` đến exchange topic `lms.events` với routing key `quiz.attempt.graded.v2`. Learning đăng ký queue bền vững `learning.quiz-results.v2` và ACK sau khi lưu kết quả vào PostgreSQL. Khóa duy nhất theo `eventId` và cặp `attemptId`/`assessmentVersion` chống ghi trùng.
+
+Learning dùng kết quả đúng học viên, khóa học, quiz, phiên bản bài đánh giá và ngưỡng điểm trong policy đã chốt của lượt ghi danh. Một lần đạt đủ điều kiện. Lỗi lưu được thử lại sau 1, 5 và 30 giây trong cùng lượt giao. Event không hợp lệ hoặc hết lượt thử được chuyển sang `learning.quiz-results.v2.dlq` với JSON gốc.
+
+### PRG-06 — Đồng bộ tiến độ qua event
+
+`ProgressSyncModule` chứa consumer nhận điểm, repository lưu kết quả và API đọc trạng thái đồng bộ. `ProgressModule` dùng repository này để đọc điểm khi tính tiến độ.
+
+Đặt `QUIZ_URL` và `QUIZ_SERVICE_TOKEN` để Learning gọi `getAttemptAccess` của Quiz qua HTTP với Bearer token nội bộ. Quiz xác minh credential và trả metadata lượt làm. Learning so sánh chủ lượt làm với học viên đang gọi rồi tra receipt theo event. Sai chủ trả `403 NOT_ATTEMPT_OWNER`, lượt làm không tồn tại trả `404`, lỗi kết nối hoặc timeout Quiz trả `503` hoặc `504`.
+
+- `PENDING` khi chưa có receipt hoặc event đang được xử lý lại. `eventId` là `null` nếu Quiz chưa biết mã event.
+- `SYNCED` khi dữ liệu điểm và receipt cùng được commit. Migration bổ sung receipt và phiên bản bài đánh giá cho điểm đã lưu trước đó.
+- `FAILED` khi hết retry và Learning đã lưu được failure receipt. Nếu PostgreSQL vẫn chưa ghi được receipt, trạng thái chờ được giữ.
+
+Khi xử lý lại một event hợp lệ từ DLQ, publish JSON gốc đến `lms.events` với routing key `quiz.attempt.graded.v2`, giữ nguyên `eventId`. Learning chuyển receipt `FAILED` sang `PENDING` khi nhận lại và sang `SYNCED` khi commit.
+
+**PRG-07 — Chống tính trùng event.** Event giao lại giữ nguyên thời điểm đồng bộ của receipt hiện có. Nếu Quiz gửi một event ID mới với cùng lượt làm, phiên bản và dữ liệu điểm, Learning ghi receipt cho mã mới và giữ một bản ghi điểm. Event tái sử dụng mã cho một kết quả khác, hoặc đổi kết quả của lượt làm đã lưu, được đưa vào DLQ với lý do `EVENT_CONFLICT`.
+
+Bộ test `progress.e2e-spec.ts` chạy consumer và API NestJS với Quiz, RabbitMQ, Course và repository giả lập.
+
+### Mock API cho Postman
+
+Sau `npm.cmd ci`, chạy lệnh sau từ thư mục gốc.
+
+```powershell
+npm.cmd run start:mock -w @lms/learning-service
+```
+
+Mock chạy riêng trên `http://127.0.0.1:3104`. Có thể đặt `$env:MOCK_PORT='3105'` trước khi chạy. Server dùng dữ liệu trong [test/fixtures](test/fixtures) và giữ tiến độ trong bộ nhớ. Khởi động lại để đưa dữ liệu về trạng thái ban đầu.
+
+Gửi header `X-Mock-User: studentB` trong Postman. Với `PUT` hoặc `POST`, chọn body JSON. Các route dưới đây giữ nguyên đường dẫn trong [OpenAPI Learning](../../packages/contracts/openapi/learning.json), ngoại trừ route mô phỏng sự kiện `POST /__mock/events`.
+
+| Method | Path | Dữ liệu gửi |
+| --- | --- | --- |
+| GET | `/api/v1/learning/courses/{courseId}/progress` | |
+| GET | `/api/v1/learning/me/dashboard` | `studentB` có khóa mẫu. `studentA` có danh sách rỗng. |
+| GET | `/api/v1/learning/courses/{courseId}/chapters/access` | |
+| PUT | `/api/v1/learning/items/{itemId}/completion` | `{ "completed": true, "contentVersion": 1 }` |
+| GET | `/api/v1/learning/lessons/{lessonId}/progress` | |
+| PUT | `/api/v1/learning/lessons/{lessonId}/completion` | `{ "completed": true, "contentVersion": 1 }` |
+| GET | `/api/v1/learning/courses/{courseId}/me/quiz-scores` | `X-Mock-User: studentB`. Tùy chọn `?page=1&limit=20`. |
+| GET | `/api/v1/learning/courses/{courseId}/quiz-scores` | `X-Mock-User: instructorA` hoặc `adminA`. Có cùng tùy chọn phân trang. |
+| GET | `/api/v1/learning/courses/{courseId}/resume` | |
+| PUT | `/api/v1/learning/courses/{courseId}/resume` | `requests.saveResume` trong [fixture kịch bản](test/fixtures/learning-scenarios.mock.json) |
+| GET | `/api/v1/learning/attempts/{attemptId}/sync` | |
+| POST | `/__mock/events` | `{ "event": "chapterAttempt79" }`, `{ "event": "chapterAttempt80" }` hoặc `{ "event": "attemptGraded" }` |
+
+Để thử mở khóa chương, dùng `courseId=33333333-3333-4333-8333-333333333333` và hoàn thành video có `itemId=00000000-0000-4000-8000-000000000221`. Gửi event `chapterAttempt79` rồi đọc lại `chapters/access` để thấy chương 2 vẫn khóa. Gửi `chapterAttempt80` và đọc lại để thấy chương 1 `COMPLETED`, chương 2 `UNLOCKED`. Ngưỡng 80 lấy từ policy của bộ dữ liệu mẫu.
+
+Để thử **PRG-04 – Tổng hợp điểm quiz**, dùng cùng `courseId` và gọi `me/quiz-scores` hoặc `quiz-scores`. Trước khi mock nhận event, danh sách rỗng. Sau `chapterAttempt79` rồi `chapterAttempt80`, API trả một nhóm gồm hai lượt đã chấm, điểm cao nhất 80% và `passed: true`. [Các bước và kết quả mong đợi](../../WORK.md#prg-04--tổng-hợp-điểm-quiz)
+
+```powershell
+npm.cmd run test:mock -w @lms/learning-service
+```
 
 ## Kiểm tra và bàn giao
 

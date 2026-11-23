@@ -28,11 +28,14 @@ import { Enrollment } from '../enrollments/entities/enrollment.entity';
 import { chapterData } from '../chapters/chapters.service';
 import { lessonData } from '../lessons/lessons.service';
 import { learningItemData } from '../learning-items/learning-items.service';
+import { sanitizeRichText } from '../../common/rich-text';
+import { courseMetadata, courseMetadataFilter } from './course-metadata';
 
 export function courseData(saved: Course): CourseData {
   // Chỉ trả các trường được CourseData cho phép, không trả thẳng entity database.
   // Timestamps từ PostgreSQL được chuyển từ Date sang chuỗi ISO 8601 UTC.
   return {
+    ...courseMetadata(saved.metadata ?? {}),
     id: saved.id,
     instructorId: saved.instructorId,
     title: saved.title,
@@ -105,7 +108,7 @@ export class CoursesService {
 
   async create(dto: CreateCourseRequest, user: AuthUser): Promise<CourseData> {
     // Bước 1: dto đã qua validation tại controller; user do auth guard xác minh.
-    // Bản mẫu dùng MockAuthGuard. Chỉ Instructor ACTIVE được tạo khóa học.
+    // CourseAuthGuard xác minh danh tính; chỉ Instructor ACTIVE được tạo khóa học.
     if (user.role !== 'INSTRUCTOR' || user.status !== 'ACTIVE')
       throw new ForbiddenException('Active instructor account required');
     // Bước 2: Tạo entity trong bộ nhớ; repository.create chưa ghi vào PostgreSQL.
@@ -114,7 +117,11 @@ export class CoursesService {
     const course = this.repository.create({
       instructorId: user.id,
       title: dto.title,
-      description: dto.description,
+      description:
+        dto.descriptionFormat === 'HTML'
+          ? sanitizeRichText(dto.description)
+          : dto.description,
+      metadata: courseMetadata(dto),
       thumbnailUrl: dto.thumbnailUrl ?? null,
       status: 'DRAFT',
       version: 1,
@@ -147,9 +154,11 @@ export class CoursesService {
           },
         ]
       : [{ status: 'PUBLISHED' as const }];
-    const filtered = query.instructorId
-      ? where.map((item) => ({ ...item, instructorId: query.instructorId }))
-      : where;
+    const filtered = where.map((item) => ({
+      ...item,
+      ...courseMetadataFilter(query),
+      ...(query.instructorId ? { instructorId: query.instructorId } : {}),
+    }));
     const [rows, total] = await this.repository.findAndCount({
       where: filtered,
       order: {
@@ -175,6 +184,7 @@ export class CoursesService {
     const limit = query.limit ?? 20;
     const base = {
       instructorId: user.id,
+      ...courseMetadataFilter(query),
       ...(query.status ? { status: query.status } : {}),
     };
     const where = query.search
@@ -264,10 +274,20 @@ export class CoursesService {
     user: AuthUser,
   ): Promise<CourseData> {
     this.requireInstructor(user);
-    const changes = Object.fromEntries(
-      Object.entries(dto).filter(([key]) => key !== 'expectedVersion'),
-    ) as Partial<Course>;
-    if (Object.keys(changes).length === 0)
+    const metadataPatch = courseMetadata(dto);
+    const changes: Partial<Course> = {
+      ...(dto.title !== undefined ? { title: dto.title } : {}),
+      ...(dto.description !== undefined
+        ? { description: dto.description }
+        : {}),
+      ...(dto.thumbnailUrl !== undefined
+        ? { thumbnailUrl: dto.thumbnailUrl }
+        : {}),
+    };
+    if (
+      Object.keys(changes).length === 0 &&
+      Object.keys(metadataPatch).length === 0
+    )
       throw new ConflictException({
         code: 'VALIDATION_ERROR',
         message: 'At least one course field must be changed',
@@ -283,6 +303,17 @@ export class CoursesService {
           'Courses in review or published must be updated through the appropriate review flow',
         details: {},
       });
+
+    const metadata = { ...current.metadata, ...metadataPatch };
+    if (Object.keys(metadataPatch).length) changes.metadata = metadata;
+    if (
+      metadata.descriptionFormat === 'HTML' &&
+      (dto.description !== undefined || dto.descriptionFormat !== undefined)
+    ) {
+      changes.description = sanitizeRichText(
+        dto.description ?? current.description,
+      );
+    }
 
     const result = await this.repository.update(
       { id, instructorId: user.id, version: dto.expectedVersion },
