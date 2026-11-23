@@ -17,7 +17,9 @@ npm.cmd run migration:run -w @lms/course-service
 
 Các migration hiện tại là bản nâng cấp schema cũ, không phải migration khởi tạo một database trống. Không chạy migration nâng cấp trên database đã được synchronize sang schema mới mà chưa đối chiếu migration history. Không tự suy đoán lineage cho revision được tạo trước bản sửa; cần đối chiếu dữ liệu gốc trước khi dùng chúng để migrate tiến độ.
 
-- `MOCK_AUTH=true` chỉ dành development/test. Khi tắt mock, Course xác minh JWT RS256 với `JWT_PUBLIC_KEY`, issuer `identity-service`, rồi gọi Identity qua `IDENTITY_URL` và `IDENTITY_SERVICE_TOKEN` để kiểm tra trạng thái/role hiện tại. Identity thiếu API access thì Course trả 503, không tự chấp nhận người dùng.
+- `MOCK_AUTH=true` chỉ dành development/test. Khi tắt mock, Course xác minh JWT RS256 với `JWT_PUBLIC_KEY`, issuer `identity-service`, rồi gọi Identity qua `IDENTITY_URL` để kiểm tra trạng thái/role hiện tại. Mỗi request tạo service JWT mới, thời hạn 240 giây, từ `IDENTITY_INTERNAL_JWT_PRIVATE_KEY`, với issuer `lms-internal`, subject `course-service`, audience `identity-service` và scope `getUserAccess`. Không dùng `IDENTITY_SERVICE_TOKEN` cố định nữa. Thiếu cấu hình hoặc Identity không truy cập được thì trả 503, không tự chấp nhận người dùng.
+
+  Cấu hình tích hợp thật: đặt `MOCK_AUTH=false`; đưa public key đăng nhập của Identity vào `JWT_PUBLIC_KEY` của Course; đặt `IDENTITY_URL` trỏ tới Identity. Cấp riêng cặp khóa RSA nội bộ: private key qua secret `IDENTITY_INTERNAL_JWT_PRIVATE_KEY` ở Course, public key tương ứng qua `INTERNAL_JWT_PUBLIC_KEY` ở Identity. Không dùng lại private key đăng nhập của Identity, không commit khóa vào Git. Cặp khóa nội bộ phải do deployment quản lý và chỉ cấp cho caller được tin cậy; đây không phải API cấp token login. Cấu hình này không thay thế cơ chế inbound `COURSE_SERVICE_TOKEN`/`INTERNAL_JWT_PUBLIC_KEY` của Course. Sau khi Admin duyệt Instructor, người dùng cần login/refresh lấy token có role mới; Course vẫn kiểm tra owner/enrollment tại service nghiệp vụ.
 - Internal development/test dùng `COURSE_SERVICE_TOKEN`. Staging/production dùng `INTERNAL_JWT_PUBLIC_KEY`, JWT issuer `lms-internal`, audience `course-service`, subject là service được phép, scope theo operationId và TTL không quá 5 phút.
 - Enrollment create/cancel ghi outbox cùng transaction. `RABBITMQ_URL` bật publisher confirm trên exchange `lms.events`; sự cố broker giữ nguyên event để retry, cùng eventId.
 - Revision CRITICAL với `MIGRATE_AFFECTED_ITEMS` tạo job bền vững cho item thêm/sửa. Dispatcher gọi Learning bằng `LEARNING_URL` và `LEARNING_SERVICE_TOKEN`, giữ nguyên payload/revisionId khi retry. Thiếu cấu hình thì job chưa được gửi. Không tự reset toàn bộ khóa hay đổi contentVersion enrollment.
@@ -246,7 +248,7 @@ npm.cmd run start:dev -w @lms/course-service
 
 Smoke check ở terminal khác: `Invoke-RestMethod http://127.0.0.1:3002/` chỉ trả hello scaffold.
 
-[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, DB_SYNC đang được dùng cho bản mẫu create-course. RABBITMQ_URL, IDENTITY_URL, JWT_PUBLIC_KEY/JWT_ISSUER vẫn là placeholder cho task sau. Khi triển khai adapter Learning, bổ sung LEARNING_URL và service credentials vào config/env example. Config loader hiện nạp env của service; mock auth xem [package auth](../../packages/auth/README.md).
+[Env example](.env.example) mô tả cấu hình DB, auth và tích hợp service. `IDENTITY_URL`, `JWT_PUBLIC_KEY` và `IDENTITY_INTERNAL_JWT_PRIVATE_KEY` được dùng cho xác thực thật như hướng dẫn phía trên; issuer access token được kiểm tra cố định là `identity-service`. Config loader nạp env của service; mock auth xem [package auth](../../packages/auth/README.md).
 
 ## Kiểm tra và bàn giao
 
@@ -266,3 +268,22 @@ PR bàn giao cho Quiz/Learning phải nêu provider routes đã chạy, policy s
 Course IN_REVIEW bị khóa chỉnh sửa. Instructor phải chờ Admin REJECT để sửa lại. Course PUBLISHED chỉ được thay đổi qua CourseRevision; enrollment cũ tiếp tục dùng contentVersion đã pin.
 
 Revision NORMAL chỉ áp dụng cho learner mới. Revision CRITICAL có thể tạo patch notice và gọi Learning migration theo item. Item không thay đổi giữ COMPLETED; item bị ảnh hưởng có thể thành OUTDATED hoặc RESET. Không tự động reset toàn bộ course và không xóa attempt quiz cũ.
+## Chạy Course bằng Compose từ root repository
+
+Compose chung tại [docker-compose.yml](../../docker-compose.yml), Dockerfile riêng tại [Dockerfile](./Dockerfile). Hiện Compose chỉ khai báo Course; chưa container hóa Identity, Learning, Quiz, Gateway hay DB. PostgreSQL/Supabase tiếp tục dùng `DATABASE_URL` trong env Course, không tạo container DB và không tự chạy migration trên DB ngoài.
+
+Chuẩn bị Docker Desktop với Linux containers và env Course hợp lệ. Identity phải chạy trên máy host cổng 3001; cấu hình cặp khóa nội bộ như phần xác thực phía trên. Không copy private key đăng nhập sang Course. Compose đọc env theo cú pháp env-file: giá trị chứa `$` cần đặt trong dấu nháy đơn để không bị nội suy; PEM có thể dùng dấu nháy kép với `\n`. Env chỉ được đưa vào container lúc chạy, không copy vào image. Người có quyền Docker vẫn có thể đọc env container, nên cấu hình này dành cho local; deployment thật nên dùng secret manager.
+
+Từ root repository:
+
+```sh
+docker compose up --build -d course
+docker compose ps
+docker compose logs --tail=100 course
+```
+
+Sau build đầu, `docker compose up -d` khởi động các service hiện có trong Compose. Truy cập Course tại `http://localhost:3002`, Swagger tại `/docs`, JSON tại `/docs-json`. Chỉ bind cổng loopback trong bản thử này. Dừng Course chạy bằng npm trước để tránh trùng cổng, hoặc đặt `COURSE_HOST_PORT=3102` trong môi trường shell để dùng cổng 3102. Không dùng `docker compose config` không có `--quiet` khi chia sẻ log vì có thể lộ secrets sau khi resolve env.
+
+Identity/Learning trên host được gọi qua `host.docker.internal`; có thể override bằng `COURSE_IDENTITY_URL` và `COURSE_LEARNING_URL`. Khi bổ sung container Identity/Learning vào Compose, đổi sang tên service tương ứng. Nếu DB hoặc RabbitMQ nằm trên máy host thì URL bên trong container cũng phải dùng `host.docker.internal`, không phải `localhost`; Supabase remote giữ nguyên URL. Compose không override `RABBITMQ_URL`.
+
+Container luôn dùng `MOCK_AUTH=false`, `DB_SYNC=false`, `NODE_ENV=production`. API internal của Course vì vậy yêu cầu JWT nội bộ đúng scope, không nhận token tĩnh development. Healthcheck hiện chỉ kiểm tra HTTP `GET /`, không phải ping DB liên tục. Để dừng container Course: `docker compose stop course`.

@@ -8,7 +8,13 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as argon2 from 'argon2';
-import { DeepPartial, EntityManager, IsNull, Repository } from 'typeorm';
+import {
+  DeepPartial,
+  EntityManager,
+  IsNull,
+  MoreThan,
+  Repository,
+} from 'typeorm';
 import { RefreshTokenEntity } from '../auth/entities/refresh-token.entity';
 import {
   ListUsersQueryDto,
@@ -61,16 +67,31 @@ export class UsersService {
     return email.trim().toLowerCase();
   }
 
-  toUserProfile(user: UserEntity) {
+  toUserProfile(user: UserEntity, activeSessionsCount?: number) {
     return {
       id: user.id,
       email: user.email,
+      emailVerified: Boolean(user.emailVerifiedAt),
+      lastName: user.lastName ?? null,
+      firstName: user.firstName ?? null,
       displayName: user.displayName,
+      phoneNumber: user.phoneNumber ?? null,
+      dateOfBirth: user.dateOfBirth ?? null,
+      gender: user.gender ?? null,
       role: user.role,
       status: user.status,
       avatarUrl: user.avatarUrl ?? null,
       bio: user.bio ?? null,
+      githubUrl: user.githubUrl ?? null,
+      linkedinUrl: user.linkedinUrl ?? null,
+      security: {
+        activeSessionsCount: activeSessionsCount ?? 0,
+        passwordChangedAt: user.passwordChangedAt
+          ? user.passwordChangedAt.toISOString()
+          : null,
+      },
       createdAt: user.createdAt.toISOString(),
+      updatedAt: user.updatedAt.toISOString(),
       version: user.version,
     };
   }
@@ -315,6 +336,16 @@ export class UsersService {
     });
   }
 
+  private async countActiveSessions(userId: string): Promise<number> {
+    return this.refreshTokenRepo.count({
+      where: {
+        userId,
+        revokedAt: IsNull(),
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+  }
+
   async getProfile(userId: string) {
     const user = await this.findById(userId);
     if (!user) {
@@ -323,13 +354,36 @@ export class UsersService {
         message: 'User not found',
       });
     }
-    return this.toUserProfile(user);
+    const activeSessionsCount = await this.countActiveSessions(userId);
+    return this.toUserProfile(user, activeSessionsCount);
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     const patch: Partial<UserEntity> = {
       version: dto.expectedVersion + 1,
     };
+
+    if (dto.lastName !== undefined) {
+      const trimmed = dto.lastName.trim();
+      if (!trimmed) {
+        throw new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message: 'lastName must not be empty',
+        });
+      }
+      patch.lastName = trimmed;
+    }
+
+    if (dto.firstName !== undefined) {
+      const trimmed = dto.firstName.trim();
+      if (!trimmed) {
+        throw new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message: 'firstName must not be empty',
+        });
+      }
+      patch.firstName = trimmed;
+    }
 
     if (dto.displayName !== undefined) {
       const trimmed = dto.displayName.trim();
@@ -342,6 +396,19 @@ export class UsersService {
       patch.displayName = trimmed;
     }
 
+    if (dto.phoneNumber !== undefined) {
+      patch.phoneNumber =
+        dto.phoneNumber === null ? null : dto.phoneNumber.trim() || null;
+    }
+
+    if (dto.dateOfBirth !== undefined) {
+      patch.dateOfBirth = dto.dateOfBirth ?? null;
+    }
+
+    if (dto.gender !== undefined) {
+      patch.gender = dto.gender ?? null;
+    }
+
     if (dto.bio !== undefined) {
       patch.bio = dto.bio === null ? null : dto.bio.trim() || null;
     }
@@ -349,6 +416,16 @@ export class UsersService {
     if (dto.avatarUrl !== undefined) {
       patch.avatarUrl =
         dto.avatarUrl === null ? null : dto.avatarUrl.trim() || null;
+    }
+
+    if (dto.githubUrl !== undefined) {
+      patch.githubUrl =
+        dto.githubUrl === null ? null : dto.githubUrl.trim() || null;
+    }
+
+    if (dto.linkedinUrl !== undefined) {
+      patch.linkedinUrl =
+        dto.linkedinUrl === null ? null : dto.linkedinUrl.trim() || null;
     }
 
     const result = await this.userRepo.update(
@@ -378,7 +455,80 @@ export class UsersService {
       });
     }
 
-    return this.toUserProfile(updated);
+    const activeSessionsCount = await this.countActiveSessions(userId);
+    return this.toUserProfile(updated, activeSessionsCount);
+  }
+
+  async clearOptionalProfile(userId: string) {
+    const user = await this.findById(userId);
+    if (!user) {
+      throw new NotFoundException({
+        code: 'NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    await this.userRepo.update(
+      { id: userId },
+      {
+        phoneNumber: null,
+        dateOfBirth: null,
+        gender: null,
+        bio: null,
+        avatarUrl: null,
+        githubUrl: null,
+        linkedinUrl: null,
+        version: user.version + 1,
+      },
+    );
+
+    const updated = await this.findById(userId);
+    if (!updated) {
+      throw new NotFoundException({
+        code: 'NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    const activeSessionsCount = await this.countActiveSessions(userId);
+    return this.toUserProfile(updated, activeSessionsCount);
+  }
+
+  async deactivateMyAccount(userId: string): Promise<void> {
+    await this.userRepo.manager.transaction(async (manager) => {
+      const userRepo = manager.getRepository(UserEntity);
+      const tokenRepo = manager.getRepository(RefreshTokenEntity);
+      const auditRepo = manager.getRepository(UserAuditEntity);
+
+      const user = await userRepo.findOne({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException({
+          code: 'NOT_FOUND',
+          message: 'User not found',
+        });
+      }
+
+      await this.ensureNotLastActiveAdmin(manager, user);
+
+      await userRepo.update(
+        { id: userId },
+        { status: UserStatus.INACTIVE, version: user.version + 1 },
+      );
+
+      await tokenRepo.update(
+        { userId, revokedAt: IsNull() },
+        { revokedAt: new Date() },
+      );
+
+      await auditRepo.save(
+        auditRepo.create({
+          userId,
+          actorId: userId,
+          action: 'STATUS_CHANGED' as UserAuditAction,
+          reason: 'User deactivated their own account and profile',
+        }),
+      );
+    });
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
@@ -424,7 +574,10 @@ export class UsersService {
       const userRepo = manager.getRepository(UserEntity);
       const tokenRepo = manager.getRepository(RefreshTokenEntity);
 
-      await userRepo.update({ id: userId }, { passwordHash: newPasswordHash });
+      await userRepo.update(
+        { id: userId },
+        { passwordHash: newPasswordHash, passwordChangedAt: new Date() },
+      );
       await tokenRepo.update(
         { userId, revokedAt: IsNull() },
         { revokedAt: new Date() },
@@ -440,7 +593,10 @@ export class UsersService {
       const userRepo = manager.getRepository(UserEntity);
       const tokenRepo = manager.getRepository(RefreshTokenEntity);
 
-      await userRepo.update({ id: userId }, { passwordHash: newPasswordHash });
+      await userRepo.update(
+        { id: userId },
+        { passwordHash: newPasswordHash, passwordChangedAt: new Date() },
+      );
       await tokenRepo.update(
         { userId, revokedAt: IsNull() },
         { revokedAt: new Date() },
@@ -483,9 +639,10 @@ export class UsersService {
     }
     if (query.search?.trim()) {
       const term = `%${query.search.trim()}%`;
-      qb.andWhere('(u.email ILIKE :term OR u.displayName ILIKE :term)', {
-        term,
-      });
+      qb.andWhere(
+        '(u.email ILIKE :term OR u.displayName ILIKE :term OR u.firstName ILIKE :term OR u.lastName ILIKE :term)',
+        { term },
+      );
     }
 
     qb.orderBy('u.createdAt', 'DESC').skip(skip).take(limit);

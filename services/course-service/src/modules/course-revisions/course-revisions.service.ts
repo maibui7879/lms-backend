@@ -148,6 +148,8 @@ export class CourseRevisionsService {
             videoUrl: source.videoUrl,
             durationSeconds: source.durationSeconds,
             body: source.body,
+            bodyFormat: source.bodyFormat ?? 'PLAIN_TEXT',
+            attachments: structuredClone(source.attachments ?? []),
             quizId: source.quizId,
             assessmentVersion: source.assessmentVersion,
             required: source.required,
