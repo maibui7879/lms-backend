@@ -3,7 +3,7 @@
   "info": {
     "title": "LMS contract baseline",
     "version": "0.2.0",
-    "description": "Đặc tả theo hướng contract-first. Các endpoint nghiệp vụ không được triển khai trong package này. Chủ sở hữu cần xem xét các quyết định về chính sách."
+    "description": "Đặc tả theo hướng contract-first. Các endpoint nghiệp vụ không được triển khai trong package này. Chủ sở hữu cần xem xét các quyết định về chính sách.\n\n### Quy ước lỗi dùng chung\n\nResponse lỗi chỉ hiển thị mô tả ngắn tại từng endpoint để tránh lặp ví dụ JSON.\n\nCấu trúc lỗi được định nghĩa một lần trong schema `ApiErrorResponse`. Khi xử lý lỗi, đọc `error.code`, `error.message` và `error.details`; dùng mã request để tra cứu log.\n\nCác mã HTTP là quy ước chung; không có nghĩa mọi endpoint đều phát sinh tất cả các lỗi này."
   },
   "paths": {
     "/api/v1/notifications": {
@@ -120,84 +120,28 @@
             }
           },
           "400": {
-            "description": "Xem quy tắc lỗi dùng chung (400)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Dữ liệu không hợp lệ."
           },
           "401": {
-            "description": "Xem quy tắc lỗi dùng chung (401)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Chưa đăng nhập hoặc token hết hạn."
           },
           "403": {
-            "description": "Xem quy tắc lỗi dùng chung (403)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Không có quyền thực hiện."
           },
           "404": {
-            "description": "Xem quy tắc lỗi dùng chung (404)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Không tìm thấy dữ liệu."
           },
           "409": {
-            "description": "Xem quy tắc lỗi dùng chung (409)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Xung đột phiên bản hoặc trạng thái."
           },
           "422": {
-            "description": "Xem quy tắc lỗi dùng chung (422)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
           },
           "503": {
-            "description": "Xem quy tắc lỗi dùng chung (503)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Dịch vụ tạm thời không khả dụng."
           },
           "504": {
-            "description": "Xem quy tắc lỗi dùng chung (504)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Quá thời gian chờ dịch vụ."
           }
         }
       }
@@ -252,84 +196,28 @@
             }
           },
           "400": {
-            "description": "Xem quy tắc lỗi dùng chung (400)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Dữ liệu không hợp lệ."
           },
           "401": {
-            "description": "Xem quy tắc lỗi dùng chung (401)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Chưa đăng nhập hoặc token hết hạn."
           },
           "403": {
-            "description": "Xem quy tắc lỗi dùng chung (403)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Không có quyền thực hiện."
           },
           "404": {
-            "description": "Xem quy tắc lỗi dùng chung (404)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Không tìm thấy dữ liệu."
           },
           "409": {
-            "description": "Xem quy tắc lỗi dùng chung (409)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Xung đột phiên bản hoặc trạng thái."
           },
           "422": {
-            "description": "Xem quy tắc lỗi dùng chung (422)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
           },
           "503": {
-            "description": "Xem quy tắc lỗi dùng chung (503)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Dịch vụ tạm thời không khả dụng."
           },
           "504": {
-            "description": "Xem quy tắc lỗi dùng chung (504)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Quá thời gian chờ dịch vụ."
           }
         }
       }
@@ -393,84 +281,28 @@
             }
           },
           "400": {
-            "description": "Xem quy tắc lỗi dùng chung (400)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Dữ liệu không hợp lệ."
           },
           "401": {
-            "description": "Xem quy tắc lỗi dùng chung (401)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Chưa đăng nhập hoặc token hết hạn."
           },
           "403": {
-            "description": "Xem quy tắc lỗi dùng chung (403)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Không có quyền thực hiện."
           },
           "404": {
-            "description": "Xem quy tắc lỗi dùng chung (404)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Không tìm thấy dữ liệu."
           },
           "409": {
-            "description": "Xem quy tắc lỗi dùng chung (409)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Xung đột phiên bản hoặc trạng thái."
           },
           "422": {
-            "description": "Xem quy tắc lỗi dùng chung (422)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
           },
           "503": {
-            "description": "Xem quy tắc lỗi dùng chung (503)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Dịch vụ tạm thời không khả dụng."
           },
           "504": {
-            "description": "Xem quy tắc lỗi dùng chung (504)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiErrorResponse"
-                }
-              }
-            }
+            "description": "Quá thời gian chờ dịch vụ."
           }
         }
       }

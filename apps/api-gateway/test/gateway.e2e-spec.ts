@@ -218,6 +218,39 @@ describe('Gateway proxy (local upstreams)', () => {
     );
   });
 
+  it('routes Identity controller APIs outside the contract and rejects planned Quiz APIs', async () => {
+    const authorization = bearer();
+    for (const [path, method, body] of [
+      [
+        '/api/v1/auth/verify-email',
+        'POST',
+        '{"email":"test@example.com","otp":"123456"}',
+      ],
+      [
+        '/api/v1/users/me/password',
+        'POST',
+        '{"currentPassword":"old","newPassword":"new"}',
+      ],
+      ['/api/v1/users/me', 'GET', undefined],
+    ] as const) {
+      const response = await send(path, method, body, { authorization });
+      expect(response.status).toBe(200);
+      expect(seen.identity.at(-1)?.url).toBe(path);
+    }
+    const count = seen.quiz.length;
+    expect(
+      (await send('/api/v1/quizzes', 'POST', '{}', { authorization })).status,
+    ).toBe(404);
+    expect(
+      (
+        await send('/api/v1/courses/id/assessments', 'GET', undefined, {
+          authorization,
+        })
+      ).status,
+    ).toBe(404);
+    expect(seen.quiz).toHaveLength(count);
+  });
+
   it.each([undefined, 'Bearer malformed', bearer().replace(/.$/, '!')])(
     'rejects missing or invalid JWT before upstream: %s',
     async (authorization) => {

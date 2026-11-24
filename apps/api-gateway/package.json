@@ -6,6 +6,12 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "routes:generate": "node scripts/generate-routes.cjs",
+    "routes:check": "node scripts/generate-routes.cjs --check",
+    "prebuild": "npm run routes:generate",
+    "prestart": "npm run routes:generate",
+    "prestart:dev": "npm run routes:generate",
+    "pretest": "npm run routes:check",
     "build": "nest build",
     "deploy": "nest deploy",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

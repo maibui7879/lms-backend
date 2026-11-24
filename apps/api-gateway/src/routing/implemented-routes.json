@@ -1,0 +1,1825 @@
+[
+  {
+    "service": "learning",
+    "method": "put",
+    "path": "/api/v1/admin/certificates/{id}/revocation",
+    "access": "ADMIN",
+    "operationId": "learning_AdminCertificatesController_revoke",
+    "success": 200,
+    "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/admin/course-revisions/{id}/review",
+    "access": "ADMIN",
+    "operationId": "course_CourseRevisionsController_reviewRevision",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": [
+            "APPROVE",
+            "REJECT"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "decision",
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/admin/courses/{id}/review",
+    "access": "ADMIN",
+    "operationId": "course_CourseRevisionsController_review",
+    "success": 200,
+    "bodySchema": {
+      "anyOf": [
+        {},
+        {}
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/admin/courses/review-queue",
+    "access": "ADMIN",
+    "operationId": "course_CourseRevisionsController_reviewQueue",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/admin/users",
+    "access": "ADMIN",
+    "operationId": "identity_AdminUsersController_listUsers",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "search": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "ADMIN",
+            "INSTRUCTOR",
+            "STUDENT"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ACTIVE",
+            "INACTIVE"
+          ]
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    }
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/admin/users/{id}/audit",
+    "access": "ADMIN",
+    "operationId": "identity_AdminUsersController_listUserAudits",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "identity",
+    "method": "patch",
+    "path": "/api/v1/admin/users/{id}/role",
+    "access": "ADMIN",
+    "operationId": "identity_AdminUsersController_updateRole",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "ADMIN",
+            "INSTRUCTOR",
+            "STUDENT"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedVersion": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "role",
+        "reason",
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "patch",
+    "path": "/api/v1/admin/users/{id}/status",
+    "access": "ADMIN",
+    "operationId": "identity_AdminUsersController_updateStatus",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ACTIVE",
+            "INACTIVE"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedVersion": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "status",
+        "reason",
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/admin/users/role-requests",
+    "access": "ADMIN",
+    "operationId": "identity_AdminUsersController_listRoleRequests",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "APPROVED",
+            "REJECTED"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "service": "identity",
+    "method": "patch",
+    "path": "/api/v1/admin/users/role-requests/{requestId}/review",
+    "access": "ADMIN",
+    "operationId": "identity_AdminUsersController_reviewRoleRequest",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": [
+            "APPROVED",
+            "REJECTED"
+          ]
+        },
+        "reviewNote": {
+          "type": "string",
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "decision"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/auth/forgot-password",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_forgotPassword",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      },
+      "required": [
+        "email"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/auth/github",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_githubLogin",
+    "success": 200
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/auth/github/callback",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_githubCallback",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/auth/google",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_googleLogin",
+    "success": 200
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/auth/google/callback",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_googleCallback",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/auth/login",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_login",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "password"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/auth/logout",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_logout",
+    "success": 204,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "refreshToken": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "refreshToken"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/auth/logout-all",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_AuthController_logoutAll",
+    "success": 200
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/auth/public-key",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_getPublicKey",
+    "success": 200
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/auth/refresh",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_refresh",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "refreshToken": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "refreshToken"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/auth/register",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_register",
+    "success": 201,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "password": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 72
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        }
+      },
+      "required": [
+        "email",
+        "password",
+        "displayName"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/auth/resend-otp",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_resendOtp",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        }
+      },
+      "required": [
+        "email"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/auth/reset-password",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_resetPassword",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "otp": {
+          "type": "string"
+        },
+        "newPassword": {
+          "type": "string",
+          "minLength": 8
+        }
+      },
+      "required": [
+        "email",
+        "otp",
+        "newPassword"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/auth/verify-email",
+    "access": "PUBLIC",
+    "operationId": "identity_AuthController_verifyEmail",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "otp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "otp"
+      ]
+    }
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/certificates/verify/{code}",
+    "access": "PUBLIC",
+    "operationId": "learning_CertificateVerificationController_verify",
+    "success": 200
+  },
+  {
+    "service": "course",
+    "method": "delete",
+    "path": "/api/v1/chapters/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_ChaptersController_remove",
+    "success": 204,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "type": "string"
+        },
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "patch",
+    "path": "/api/v1/chapters/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_ChaptersController_update",
+    "success": 200,
+    "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/chapters/{id}/lessons",
+    "access": "AUTHENTICATED",
+    "operationId": "course_LessonsController_create",
+    "success": 201,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "put",
+    "path": "/api/v1/chapters/{id}/lessons/order",
+    "access": "AUTHENTICATED",
+    "operationId": "course_LessonsController_reorder",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "type": "string"
+        },
+        "orderedIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "orderedIds",
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/course-revisions/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseRevisionsController_getRevision",
+    "success": 200
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/course-revisions/{id}/changes",
+    "access": "AUTHENTICATED",
+    "operationId": "course_RevisionMetadataController_changes",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/course-revisions/{id}/submit-review",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseRevisionsController_submitRevision",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses",
+    "access": "PUBLIC",
+    "operationId": "course_CoursesController_list",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "search": {
+          "type": "string"
+        },
+        "instructorId": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "level": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED",
+            "ALL_LEVELS"
+          ]
+        },
+        "language": {
+          "type": "string"
+        },
+        "sort": {
+          "type": "string",
+          "enum": [
+            "createdAt",
+            "title"
+          ]
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "asc",
+            "desc"
+          ]
+        },
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/courses",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CoursesController_create",
+    "success": 201,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "thumbnailUrl": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "level": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED",
+            "ALL_LEVELS"
+          ]
+        },
+        "language": {
+          "type": "string"
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "targetAudience": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "learningOutcomes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "descriptionFormat": {
+          "type": "string",
+          "enum": [
+            "PLAIN_TEXT",
+            "HTML"
+          ]
+        }
+      },
+      "required": [
+        "title",
+        "description"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "delete",
+    "path": "/api/v1/courses/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CoursesController_remove",
+    "success": 204,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses/{id}",
+    "access": "PUBLIC",
+    "operationId": "course_CoursesController_get",
+    "success": 200
+  },
+  {
+    "service": "course",
+    "method": "patch",
+    "path": "/api/v1/courses/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CoursesController_update",
+    "success": 200,
+    "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/courses/{id}/chapters",
+    "access": "AUTHENTICATED",
+    "operationId": "course_ChaptersController_create",
+    "success": 201,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "endSectionQuiz": {
+          "type": "object",
+          "properties": {
+            "quizId": {
+              "type": "string"
+            },
+            "assessmentVersion": {
+              "type": "number"
+            },
+            "passingScorePercent": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "quizId",
+            "assessmentVersion",
+            "passingScorePercent"
+          ]
+        }
+      },
+      "required": [
+        "title"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "put",
+    "path": "/api/v1/courses/{id}/chapters/order",
+    "access": "AUTHENTICATED",
+    "operationId": "course_ChaptersController_reorder",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "type": "string"
+        },
+        "orderedIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "orderedIds",
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses/{id}/completion-policy",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CompletionPolicyController_get",
+    "success": 200
+  },
+  {
+    "service": "course",
+    "method": "put",
+    "path": "/api/v1/courses/{id}/completion-policy",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CompletionPolicyController_update",
+    "success": 200,
+    "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses/{id}/discussions",
+    "access": "AUTHENTICATED",
+    "operationId": "course_DiscussionsController_list",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/courses/{id}/discussions",
+    "access": "AUTHENTICATED",
+    "operationId": "course_DiscussionsController_create",
+    "success": 201,
+    "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/courses/{id}/enrollments",
+    "access": "AUTHENTICATED",
+    "operationId": "course_EnrollmentsController_create",
+    "success": 201
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses/{id}/learners",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CoursesController_learners",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses/{id}/outline",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CoursesController_outline",
+    "success": 200
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses/{id}/patch-notices",
+    "access": "AUTHENTICATED",
+    "operationId": "course_RevisionMetadataController_notices",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses/{id}/reviews",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseRevisionsController_listReviews",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses/{id}/revisions",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseRevisionsController_listRevisions",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/courses/{id}/revisions",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseRevisionsController_createRevision",
+    "success": 201,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "baseContentVersion": {
+          "type": "number"
+        },
+        "updateType": {
+          "type": "string",
+          "enum": [
+            "NORMAL",
+            "CRITICAL"
+          ]
+        },
+        "migrationPolicy": {
+          "type": "string",
+          "enum": [
+            "KEEP_ENROLLED_VERSION",
+            "MIGRATE_AFFECTED_ITEMS"
+          ]
+        }
+      },
+      "required": [
+        "baseContentVersion",
+        "updateType",
+        "migrationPolicy"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/courses/{id}/submit-review",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseRevisionsController_submit",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "delete",
+    "path": "/api/v1/discussions/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_DiscussionsController_remove",
+    "success": 204,
+    "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "patch",
+    "path": "/api/v1/discussions/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_DiscussionsController_update",
+    "success": 200,
+    "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "put",
+    "path": "/api/v1/discussions/{id}/pin",
+    "access": "AUTHENTICATED",
+    "operationId": "course_DiscussionsController_pin",
+    "success": 200,
+    "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "delete",
+    "path": "/api/v1/enrollments/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_EnrollmentsController_cancel",
+    "success": 204
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/enrollments/me",
+    "access": "AUTHENTICATED",
+    "operationId": "course_EnrollmentsController_listMine",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/instructor/courses",
+    "access": "AUTHENTICATED",
+    "operationId": "course_InstructorCoursesController_list",
+    "success": 200,
+    "querySchema": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "DRAFT",
+            "IN_REVIEW",
+            "PUBLISHED",
+            "REJECTED"
+          ]
+        },
+        "search": {
+          "type": "string"
+        },
+        "instructorId": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "level": {
+          "type": "string",
+          "enum": [
+            "BEGINNER",
+            "INTERMEDIATE",
+            "ADVANCED",
+            "ALL_LEVELS"
+          ]
+        },
+        "language": {
+          "type": "string"
+        },
+        "sort": {
+          "type": "string",
+          "enum": [
+            "createdAt",
+            "title"
+          ]
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "asc",
+            "desc"
+          ]
+        },
+        "page": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        }
+      }
+    }
+  },
+  {
+    "service": "course",
+    "method": "delete",
+    "path": "/api/v1/learning-items/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_LearningItemsController_remove",
+    "success": 204,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "type": "string"
+        },
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "patch",
+    "path": "/api/v1/learning-items/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_LearningItemsController_update",
+    "success": 200,
+    "bodySchema": {
+      "anyOf": [
+        {},
+        {},
+        {}
+      ]
+    }
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/attempts/{id}/sync",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_ProgressSyncController_getProgressSync",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/analytics",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_InstructorReportsController_analytics",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "post",
+    "path": "/api/v1/learning/courses/{id}/certificate",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_CertificatesController_issue",
+    "success": 201,
+    "bodySchema": {}
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/chapters/access",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_ProgressController_getCourseChapterAccess",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/learners",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_InstructorReportsController_list",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/learners/{userId}",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_InstructorReportsController_detail",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/mastery",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_MasteryController_current",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/mastery/history",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_MasteryController_history",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/me/quiz-scores",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_QuizScoresController_listMine",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/progress",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_ProgressController_getCourseProgress",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/quiz-scores",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_QuizScoresController_listForCourse",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/resume",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_ProgressController_getResume",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "put",
+    "path": "/api/v1/learning/courses/{id}/resume",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_ProgressController_saveResume",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "lessonId": {
+          "type": "string"
+        },
+        "learningItemId": {
+          "type": "string"
+        },
+        "contentVersion": {
+          "type": "number"
+        },
+        "positionSeconds": {
+          "type": "number"
+        },
+        "expectedRevision": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "lessonId",
+        "learningItemId",
+        "contentVersion",
+        "positionSeconds",
+        "expectedRevision"
+      ]
+    }
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/skill-prerequisites",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_SkillPrerequisitesController_get",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "put",
+    "path": "/api/v1/learning/courses/{id}/skill-prerequisites",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_SkillPrerequisitesController_save",
+    "success": 200,
+    "bodySchema": {}
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/skills",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_CourseSkillsController_list",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "post",
+    "path": "/api/v1/learning/courses/{id}/skills",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_CourseSkillsController_create",
+    "success": 201,
+    "bodySchema": {}
+  },
+  {
+    "service": "learning",
+    "method": "patch",
+    "path": "/api/v1/learning/courses/{id}/skills/{skillId}",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_CourseSkillsController_update",
+    "success": 200,
+    "bodySchema": {}
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/statistics",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_InstructorReportsController_statistics",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/courses/{id}/weak-skills",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_InstructorReportsController_weakSkills",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "put",
+    "path": "/api/v1/learning/items/{id}/completion",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_ProgressController_completeItem",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "completed": {
+          "type": "boolean"
+        },
+        "contentVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "completed",
+        "contentVersion"
+      ]
+    }
+  },
+  {
+    "service": "learning",
+    "method": "put",
+    "path": "/api/v1/learning/lessons/{id}/completion",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_ProgressController_completeLesson",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "completed": {
+          "type": "boolean"
+        },
+        "contentVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "completed",
+        "contentVersion"
+      ]
+    }
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/lessons/{id}/progress",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_ProgressController_getLessonProgress",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/me/certificates",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_CertificatesController_list",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/me/certificates/{id}/download",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_CertificatesController_download",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/me/dashboard",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_DashboardController_getDashboard",
+    "success": 200
+  },
+  {
+    "service": "learning",
+    "method": "get",
+    "path": "/api/v1/learning/me/recommendations",
+    "access": "AUTHENTICATED",
+    "operationId": "learning_RecommendationsController_list",
+    "success": 200
+  },
+  {
+    "service": "course",
+    "method": "delete",
+    "path": "/api/v1/lessons/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_LessonsController_remove",
+    "success": 204,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "type": "string"
+        },
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "patch",
+    "path": "/api/v1/lessons/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_LessonsController_update",
+    "success": 200,
+    "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/lessons/{id}/items",
+    "access": "AUTHENTICATED",
+    "operationId": "course_LearningItemsController_create",
+    "success": 201,
+    "bodySchema": {
+      "anyOf": [
+        {},
+        {},
+        {}
+      ]
+    }
+  },
+  {
+    "service": "course",
+    "method": "put",
+    "path": "/api/v1/lessons/{id}/items/order",
+    "access": "AUTHENTICATED",
+    "operationId": "course_LearningItemsController_reorder",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "revisionId": {
+          "type": "string"
+        },
+        "orderedIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expectedVersion": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "orderedIds",
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "notification",
+    "method": "get",
+    "path": "/api/v1/notifications",
+    "access": "AUTHENTICATED",
+    "operationId": "notification_NotificationsController_list",
+    "success": 200
+  },
+  {
+    "service": "notification",
+    "method": "put",
+    "path": "/api/v1/notifications/{id}/read",
+    "access": "AUTHENTICATED",
+    "operationId": "notification_NotificationsController_read",
+    "success": 200
+  },
+  {
+    "service": "notification",
+    "method": "get",
+    "path": "/api/v1/notifications/unread-count",
+    "access": "AUTHENTICATED",
+    "operationId": "notification_NotificationsController_count",
+    "success": 200
+  },
+  {
+    "service": "course",
+    "method": "post",
+    "path": "/api/v1/patch-notices/{id}/read",
+    "access": "AUTHENTICATED",
+    "operationId": "course_RevisionMetadataController_read",
+    "success": 204
+  },
+  {
+    "service": "identity",
+    "method": "delete",
+    "path": "/api/v1/users/me",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_UsersController_deactivateMe",
+    "success": 204
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/users/me",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_UsersController_getMe",
+    "success": 200
+  },
+  {
+    "service": "identity",
+    "method": "patch",
+    "path": "/api/v1/users/me",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_UsersController_updateMe",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "expectedVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lastName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "phoneNumber": {
+          "type": "string"
+        },
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "bio": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "githubUrl": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "linkedinUrl": {
+          "type": "string",
+          "maxLength": 255
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/users/me/password",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_UsersController_changePassword",
+    "success": 204,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "currentPassword": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "newPassword": {
+          "type": "string",
+          "minLength": 12,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "currentPassword",
+        "newPassword"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "delete",
+    "path": "/api/v1/users/me/profile",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_UsersController_clearMyProfile",
+    "success": 200
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/users/me/profile",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_UsersController_getMyProfile",
+    "success": 200
+  },
+  {
+    "service": "identity",
+    "method": "patch",
+    "path": "/api/v1/users/me/profile",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_UsersController_updateMyProfile",
+    "success": 200,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "expectedVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lastName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "firstName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "phoneNumber": {
+          "type": "string"
+        },
+        "dateOfBirth": {
+          "type": "string"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "MALE",
+            "FEMALE",
+            "OTHER"
+          ]
+        },
+        "bio": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "githubUrl": {
+          "type": "string",
+          "maxLength": 255
+        },
+        "linkedinUrl": {
+          "type": "string",
+          "maxLength": 255
+        }
+      },
+      "required": [
+        "expectedVersion"
+      ]
+    }
+  },
+  {
+    "service": "identity",
+    "method": "get",
+    "path": "/api/v1/users/me/role-requests",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_UsersController_getMyRoleRequests",
+    "success": 200
+  },
+  {
+    "service": "identity",
+    "method": "post",
+    "path": "/api/v1/users/me/role-requests",
+    "access": "AUTHENTICATED",
+    "operationId": "identity_UsersController_createRoleRequest",
+    "success": 201,
+    "bodySchema": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "reason"
+      ]
+    }
+  }
+]
