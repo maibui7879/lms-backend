@@ -1,3 +1,4 @@
+import { fixtureActor, bearerFor } from './fixtures/identity-auth';
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
@@ -65,7 +66,7 @@ suite(
           incoming.url ?? '/',
           'http://fixture',
         );
-        const actor = incoming.headers['x-mock-user'];
+        const actor = fixtureActor(incoming);
         const reply = (status: number, data: unknown) => {
           response.writeHead(status, { 'Content-Type': 'application/json' });
           response.end(JSON.stringify({ data }));
@@ -165,13 +166,13 @@ suite(
     function list(actor: string, id?: string) {
       return request(app.getHttpServer())
         .get(skillsPath(id))
-        .set('X-Mock-User', actor);
+        .set('Authorization', bearerFor(actor));
     }
 
     function create(actor: string, id = courseId, body: unknown = sample) {
       return request(app.getHttpServer())
         .post(skillsPath(id))
-        .set('X-Mock-User', actor)
+        .set('Authorization', bearerFor(actor))
         .send(body as object);
     }
 
@@ -183,7 +184,7 @@ suite(
     ) {
       return request(app.getHttpServer())
         .patch(`${skillsPath(id)}/${skillId}`)
-        .set('X-Mock-User', actor)
+        .set('Authorization', bearerFor(actor))
         .send(body as object);
     }
 
@@ -329,7 +330,7 @@ suite(
       );
       const get = (course?: string) =>
         request(app.getHttpServer()).get(internalPath(id, course));
-      await get().set('X-Mock-User', 'adminA').expect(401);
+      await get().set('Authorization', bearerFor('adminA')).expect(401);
       await get().set('Authorization', `Bearer ${migrationToken}`).expect(401);
       await get(draftId)
         .set('Authorization', `Bearer ${lookupToken}`)
@@ -347,7 +348,7 @@ suite(
       for (const url of [path, `${path}/history`]) {
         const empty = await request(app.getHttpServer())
           .get(url)
-          .set('X-Mock-User', 'studentB')
+          .set('Authorization', bearerFor('studentB'))
           .expect(200);
         expect(empty.body.data).toMatchObject(
           url === path
@@ -356,7 +357,7 @@ suite(
         );
         await request(app.getHttpServer())
           .get(url)
-          .set('X-Mock-User', 'studentA')
+          .set('Authorization', bearerFor('studentA'))
           .expect(403);
       }
     });
@@ -385,7 +386,7 @@ suite(
         const get = (url: string) =>
           request(app.getHttpServer())
             .get(url)
-            .set('X-Mock-User', 'studentB')
+            .set('Authorization', bearerFor('studentB'))
             .expect(200);
         const current = parseContract(
           'MasteryData',
@@ -462,7 +463,7 @@ suite(
       await validateSkills([a], courseId, migrationToken).expect(401);
       await request(app.getHttpServer())
         .post(`/api/v1/internal/courses/${courseId}/skills/validate`)
-        .set('X-Mock-User', 'adminA')
+        .set('Authorization', bearerFor('adminA'))
         .send({ skillIds: [a] })
         .expect(401);
       await validateSkills([a, a.toUpperCase()]).expect(400);

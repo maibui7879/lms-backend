@@ -1,3 +1,4 @@
+import { bearerFor } from './fixtures/identity-auth';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { parseContract } from '@lms/contracts';
@@ -60,6 +61,18 @@ const attemptAccess = parseContract(
   providers.quiz.attemptAccess,
 );
 const syncPath = `/api/v1/learning/attempts/${attemptAccess.attemptId}/sync`;
+const realFetch = global.fetch;
+function mockQuizFetch() {
+  const quizFetch = jest.fn<Promise<Response>, Parameters<typeof fetch>>();
+  jest.spyOn(global, 'fetch').mockImplementation((...args) => {
+    const target = args[0] instanceof Request ? args[0].url : args[0];
+    if (new URL(target).origin === new URL(process.env.IDENTITY_URL!).origin)
+      return realFetch(...args);
+    return quizFetch(...args);
+  });
+  return quizFetch;
+}
+
 const progressPath = `/api/v1/learning/courses/${enrollment.courseId}/progress`;
 const chapterAccessPath = `/api/v1/learning/courses/${enrollment.courseId}/chapters/access`;
 const itemPath = (id: string) => `/api/v1/learning/items/${id}/completion`;
@@ -280,20 +293,20 @@ describe('Learning progress (e2e)', () => {
   function put(id: string, body = scenarios.requests.completeItem) {
     return request(app.getHttpServer())
       .put(itemPath(id))
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .send(body);
   }
 
   function getProgress() {
     return request(app.getHttpServer())
       .get(progressPath)
-      .set('X-Mock-User', 'studentB');
+      .set('Authorization', bearerFor('studentB'));
   }
 
   async function getChapterAccess() {
     const result = await request(app.getHttpServer())
       .get(chapterAccessPath)
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .expect(200);
     return parseContract('CourseChapterAccessData', result.body.data);
   }
@@ -310,16 +323,14 @@ describe('Learning progress (e2e)', () => {
   function getSync(user = 'studentB') {
     return request(app.getHttpServer())
       .get(syncPath)
-      .set('X-Mock-User', user)
+      .set('Authorization', bearerFor(user))
       .set('X-Request-Id', 'quiz-sync-e2e');
   }
 
   it('shows pending before delivery and synced only after recording the grade', async () => {
-    const fetchQuiz = jest
-      .spyOn(global, 'fetch')
-      .mockImplementation(() =>
-        Promise.resolve(Response.json({ data: attemptAccess })),
-      );
+    const fetchQuiz = mockQuizFetch().mockImplementation(() =>
+      Promise.resolve(Response.json({ data: attemptAccess })),
+    );
     const pending = await getSync().expect(200);
     expect(parseContract('ProgressSyncData', pending.body.data)).toEqual({
       attemptId: attemptAccess.attemptId,
@@ -354,8 +365,7 @@ describe('Learning progress (e2e)', () => {
   });
 
   it('checks attempt ownership and distinguishes Quiz errors from pending', async () => {
-    const fetchQuiz = jest
-      .spyOn(global, 'fetch')
+    const fetchQuiz = mockQuizFetch()
       .mockResolvedValueOnce(Response.json({ data: attemptAccess }))
       .mockResolvedValueOnce(new Response(null, { status: 404 }))
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
@@ -390,11 +400,9 @@ describe('Learning progress (e2e)', () => {
   });
 
   it('shows a saved failure and accepts a replay of the original event', async () => {
-    jest
-      .spyOn(global, 'fetch')
-      .mockImplementation(() =>
-        Promise.resolve(Response.json({ data: attemptAccess })),
-      );
+    mockQuizFetch().mockImplementation(() =>
+      Promise.resolve(Response.json({ data: attemptAccess })),
+    );
     const failure = new Error('Fixture storage error');
     record
       .mockRejectedValueOnce(failure)
@@ -487,7 +495,7 @@ describe('Learning progress (e2e)', () => {
     ).toBe('UNAUTHORIZED');
     const otherStudent = await request(app.getHttpServer())
       .get(progressPath)
-      .set('X-Mock-User', 'studentA')
+      .set('Authorization', bearerFor('studentA'))
       .expect(403);
     expect(otherStudent.body.error.code).toBe('ENROLLMENT_REQUIRED');
     await put('not-a-uuid').expect(400);
@@ -654,7 +662,7 @@ describe('Learning progress (e2e)', () => {
   it('rejects chapter access reads outside the learner enrollment', async () => {
     const result = await request(app.getHttpServer())
       .get(chapterAccessPath)
-      .set('X-Mock-User', 'studentA')
+      .set('Authorization', bearerFor('studentA'))
       .expect(403);
     expect(parseContract('ApiErrorResponse', result.body).error.code).toBe(
       'ENROLLMENT_REQUIRED',
@@ -667,7 +675,7 @@ describe('Learning progress (e2e)', () => {
     expect(progress.body.error.code).toBe('CONTENT_VERSION_MISMATCH');
     await request(app.getHttpServer())
       .get(chapterAccessPath)
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .expect(409);
     await put(video.id).expect(409);
     expect(complete).not.toHaveBeenCalled();

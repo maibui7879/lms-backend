@@ -8,7 +8,8 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { LearningAuthGuard } from '../../../common/auth/learning-auth.guard';
 import type {
   ApiResponse,
   AuthUser,
@@ -24,7 +25,7 @@ import { QuizScoresService } from './quiz-scores.service';
 
 @Controller('api/v1/learning/courses/:id')
 @UseFilters(ApiExceptionFilter)
-@UseGuards(MockAuthGuard)
+@UseGuards(LearningAuthGuard)
 export class QuizScoresController {
   constructor(private readonly quizScores: QuizScoresService) {}
 
@@ -33,12 +34,12 @@ export class QuizScoresController {
     @Param('id') id: string,
     @Query() query: Record<string, unknown>,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ApiResponse<PageData<LearnerAssessmentSummary>>> {
     const context = {
       userId: user.id,
-      mockUser,
+      authorization,
       requestId: requestId(response),
     };
     return {
@@ -57,12 +58,12 @@ export class QuizScoresController {
     @Param('id') id: string,
     @Query() query: Record<string, unknown>,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ApiResponse<PageData<LearnerAssessmentSummary>>> {
     const context = {
       userId: user.id,
-      mockUser,
+      authorization,
       requestId: requestId(response),
     };
     return {

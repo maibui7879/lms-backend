@@ -1,3 +1,4 @@
+import { fixtureActor, bearerFor } from './fixtures/identity-auth';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -141,7 +142,7 @@ suite(
       };
       if (url.pathname === '/api/v1/enrollments/me') {
         const items =
-          incoming.headers['x-mock-user'] === an.fixtureUser && !anCancelled
+          fixtureActor(incoming) === an.fixtureUser && !anCancelled
             ? [
                 {
                   enrollment: {
@@ -168,7 +169,7 @@ suite(
       ) {
         if (
           ![fixture.actors.owner, fixture.actors.admin].includes(
-            String(incoming.headers['x-mock-user']),
+            String(fixtureActor(incoming)),
           )
         )
           return response.writeHead(403).end();
@@ -325,7 +326,7 @@ suite(
       const query = request(app!.getHttpServer()).get(
         `/api/v1/learning/courses/${id}/${path}`,
       );
-      return actor ? query.set('X-Mock-User', actor) : query;
+      return actor ? query.set('Authorization', bearerFor(actor)) : query;
     }
 
     async function grade(overrides: Partial<GradedAssessmentSummary>) {
@@ -475,7 +476,7 @@ suite(
       });
       const dashboard = await request(app!.getHttpServer())
         .get('/api/v1/learning/me/dashboard')
-        .set('X-Mock-User', an.fixtureUser)
+        .set('Authorization', bearerFor(an.fixtureUser))
         .expect(200);
       expect(dashboard.body).toMatchObject({
         data: {
@@ -769,7 +770,7 @@ suite(
       const complete = (target: 'items' | 'lessons', id: string) =>
         request(app!.getHttpServer())
           .put(`/api/v1/learning/${target}/${id}/completion`)
-          .set('X-Mock-User', an.fixtureUser)
+          .set('Authorization', bearerFor(an.fixtureUser))
           .send({ completed: true, contentVersion: 1 });
 
       const initial = await get('progress', an.fixtureUser).expect(200);
@@ -879,12 +880,12 @@ suite(
       const setCompletion = (type: 'items' | 'lessons', id: string) =>
         http()
           .put(`/api/v1/learning/${type}/${id}/completion`)
-          .set('X-Mock-User', learner)
+          .set('Authorization', bearerFor(learner))
           .send({ completed: true, contentVersion: 1 });
       const saveResume = (positionSeconds: number, expectedRevision: number) =>
         http()
           .put(`/api/v1/learning/courses/${courseId}/resume`)
-          .set('X-Mock-User', learner)
+          .set('Authorization', bearerFor(learner))
           .send({
             contentVersion: 1,
             lessonId: lesson.lessonId,

@@ -3,7 +3,6 @@ import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { requestContext } from '../../common/request-context';
 import { LearningDatabaseModule } from '../../database/learning-database.module';
 import { CourseClient } from '../../integrations/course.client';
-import { IdentityClient } from '../../integrations/identity.client';
 import { ProgressModule } from '../progress/progress.module';
 import {
   AdminCertificatesController,
@@ -20,12 +19,7 @@ import { CertificatesRepository } from './repositories/certificates.repository';
     CertificateVerificationController,
     AdminCertificatesController,
   ],
-  providers: [
-    CourseClient,
-    IdentityClient,
-    CertificatesService,
-    CertificatesRepository,
-  ],
+  providers: [CourseClient, CertificatesService, CertificatesRepository],
 })
 export class CertificatesModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

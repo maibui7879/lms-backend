@@ -1,3 +1,4 @@
+import { bearerFor } from './fixtures/identity-auth';
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import type { Server } from 'node:http';
@@ -12,7 +13,7 @@ const enrollment = parseContract(
 );
 const requestContext = {
   userId: enrollment.userId,
-  mockUser: 'studentB',
+  authorization: bearerFor('studentB'),
   requestId: 'pinned-snapshot-test',
 };
 const expectedPath = `/api/v1/internal/courses/${enrollment.courseId}/structure?contentVersion=${enrollment.contentVersion}`;

@@ -2,6 +2,7 @@ import { EnrollmentOutboxPublisher } from './enrollment-outbox.publisher';
 import { EnrollmentOutboxEvent } from './enrollment-outbox.entity';
 import { DataSource } from 'typeorm';
 import { connect } from 'amqplib';
+import { COURSE_REVIEW_NOTIFICATION_ROUTING_KEY } from '@lms/contracts';
 
 jest.mock('amqplib', () => ({ connect: jest.fn() }));
 
@@ -34,6 +35,8 @@ describe('Enrollment outbox delivery', () => {
   const channel = {
     on: jest.fn(),
     assertExchange: jest.fn(),
+    assertQueue: jest.fn(),
+    bindQueue: jest.fn(),
     publish: jest.fn(),
   };
   const connection = {
@@ -91,6 +94,62 @@ describe('Enrollment outbox delivery', () => {
       channel.publish.mock.calls[1][2],
     );
     expect(update).toHaveBeenCalledTimes(1);
+  });
+
+  it('establishes durable notification routing before publishing without a consumer', async () => {
+    query.getMany.mockResolvedValue([
+      { ...row, routingKey: COURSE_REVIEW_NOTIFICATION_ROUTING_KEY },
+    ]);
+    await new EnrollmentOutboxPublisher(database).flush();
+    expect(channel.assertQueue).toHaveBeenNthCalledWith(
+      1,
+      'notification.course-review.v1.dead',
+      { durable: true },
+    );
+    expect(channel.assertQueue).toHaveBeenNthCalledWith(
+      2,
+      'notification.course-review.v1',
+      {
+        durable: true,
+        arguments: {
+          'x-dead-letter-exchange': '',
+          'x-dead-letter-routing-key': 'notification.course-review.v1.dead',
+        },
+      },
+    );
+    expect(channel.bindQueue).toHaveBeenCalledWith(
+      'notification.course-review.v1',
+      'lms.events',
+      COURSE_REVIEW_NOTIFICATION_ROUTING_KEY,
+    );
+    expect(channel.assertQueue.mock.invocationCallOrder[1]).toBeLessThan(
+      channel.bindQueue.mock.invocationCallOrder[0],
+    );
+    expect(channel.bindQueue.mock.invocationCallOrder[0]).toBeLessThan(
+      channel.publish.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('leaves notification events pending when binding fails', async () => {
+    query.getMany.mockResolvedValue([
+      { ...row, routingKey: COURSE_REVIEW_NOTIFICATION_ROUTING_KEY },
+    ]);
+    channel.bindQueue.mockRejectedValueOnce(new Error('binding failed'));
+    await expect(
+      new EnrollmentOutboxPublisher(database).flush(),
+    ).rejects.toThrow('binding failed');
+    expect(channel.publish).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(connection.close).toHaveBeenCalled();
+  });
+
+  it('does not declare notification queues for cancellation-only batches', async () => {
+    query.getMany.mockResolvedValue([
+      { ...row, routingKey: 'course.enrollment.cancelled.v1' },
+    ]);
+    await new EnrollmentOutboxPublisher(database).flush();
+    expect(channel.assertQueue).not.toHaveBeenCalled();
+    expect(channel.bindQueue).not.toHaveBeenCalled();
   });
 
   it('does not mark sent when broker connection fails', async () => {

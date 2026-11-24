@@ -6,7 +6,8 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { LearningAuthGuard } from '../../common/auth/learning-auth.guard';
 import type { ApiResponse, AuthUser, ProgressSyncData } from '@lms/contracts';
 import type { Response } from 'express';
 import { ApiExceptionFilter, apiError } from '../../common/api-error';
@@ -16,7 +17,7 @@ import { ProgressSyncService } from './progress-sync.service';
 
 @Controller('api/v1/learning/attempts')
 @UseFilters(ApiExceptionFilter)
-@UseGuards(MockAuthGuard)
+@UseGuards(LearningAuthGuard)
 export class ProgressSyncController {
   constructor(private readonly sync: ProgressSyncService) {}
 

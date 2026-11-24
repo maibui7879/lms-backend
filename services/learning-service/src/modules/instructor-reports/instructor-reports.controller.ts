@@ -8,7 +8,8 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { LearningAuthGuard } from '../../common/auth/learning-auth.guard';
 import type { AuthUser } from '@lms/contracts';
 import type { Response } from 'express';
 import { apiError, ApiExceptionFilter } from '../../common/api-error';
@@ -19,7 +20,7 @@ import { InstructorReportsService } from './instructor-reports.service';
 
 function instructorContext(
   user: AuthUser,
-  mockUser: string,
+  authorization: string,
   response: Response,
 ) {
   if (
@@ -28,12 +29,12 @@ function instructorContext(
   )
     throw apiError('FORBIDDEN', 'An active instructor or admin is required');
   response.setHeader('Cache-Control', 'private, no-store');
-  return { userId: user.id, mockUser, requestId: requestId(response) };
+  return { userId: user.id, authorization, requestId: requestId(response) };
 }
 
 @Controller('api/v1/learning/courses/:id')
 @UseFilters(ApiExceptionFilter)
-@UseGuards(MockAuthGuard)
+@UseGuards(LearningAuthGuard)
 export class InstructorReportsController {
   constructor(private readonly reports: InstructorReportsService) {}
 
@@ -42,10 +43,10 @@ export class InstructorReportsController {
     @Param('id') id: string,
     @Query() query: Record<string, unknown>,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const context = instructorContext(user, mockUser, response);
+    const context = instructorContext(user, authorization, response);
     const data = await this.reports.list(
       validateRequest('Uuid', id).toLowerCase(),
       pageQuery(query),
@@ -59,10 +60,10 @@ export class InstructorReportsController {
     @Param('id') id: string,
     @Param('userId') userId: string,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const context = instructorContext(user, mockUser, response);
+    const context = instructorContext(user, authorization, response);
     const data = await this.reports.detail(
       validateRequest('Uuid', id).toLowerCase(),
       validateRequest('Uuid', userId).toLowerCase(),
@@ -76,10 +77,10 @@ export class InstructorReportsController {
     @Param('id') id: string,
     @Query() query: Record<string, unknown>,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const context = instructorContext(user, mockUser, response);
+    const context = instructorContext(user, authorization, response);
     const data = await this.reports.statistics(
       validateRequest('Uuid', id).toLowerCase(),
       validateRequest('LearningReportDateQuery', query),
@@ -92,10 +93,10 @@ export class InstructorReportsController {
   async weakSkills(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const context = instructorContext(user, mockUser, response);
+    const context = instructorContext(user, authorization, response);
     const data = await this.reports.weakSkills(
       validateRequest('Uuid', id).toLowerCase(),
       context,
@@ -108,10 +109,10 @@ export class InstructorReportsController {
     @Param('id') id: string,
     @Query() query: Record<string, unknown>,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const context = instructorContext(user, mockUser, response);
+    const context = instructorContext(user, authorization, response);
     const values = { ...query };
     if (
       typeof values.assessmentVersion === 'string' &&

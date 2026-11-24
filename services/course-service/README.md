@@ -4,6 +4,9 @@ Owner: chưa chốt tên. Workspace `@lms/course-service`, port mặc định 30
 
 ## Trạng thái và phạm vi
 
+Course ghi sự kiện duyệt course/revision vào transactional outbox; notification-service
+xử lý inbox và Socket.IO. Xem [hợp đồng sự kiện Notifications](../../packages/contracts/docs/notifications.md).
+
 Đã có API course/chapter/lesson/item, completion policy, review/revision, enrollment, discussion, patch notice và internal learning structure/migration context. Swagger dùng contract chung tại `/docs`. Các mục lộ trình phía dưới là tài liệu lịch sử; không dùng chúng để suy ra kết quả kiểm thử hay trạng thái triển khai cloud.
 
 ### Cập nhật schema và tích hợp

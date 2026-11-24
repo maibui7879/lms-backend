@@ -7,7 +7,8 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { LearningAuthGuard } from '../../common/auth/learning-auth.guard';
 import type { AuthUser } from '@lms/contracts';
 import type { Response } from 'express';
 import { ApiExceptionFilter } from '../../common/api-error';
@@ -17,7 +18,7 @@ import { RecommendationsService } from './recommendations.service';
 
 @Controller('api/v1/learning/me/recommendations')
 @UseFilters(ApiExceptionFilter)
-@UseGuards(MockAuthGuard)
+@UseGuards(LearningAuthGuard)
 export class RecommendationsController {
   constructor(private readonly recommendations: RecommendationsService) {}
 
@@ -25,13 +26,13 @@ export class RecommendationsController {
   async list(
     @Query() query: Record<string, unknown>,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ) {
     const id = requestId(response);
     const data = await this.recommendations.list(
       user,
-      { userId: user.id, mockUser, requestId: id },
+      { userId: user.id, authorization, requestId: id },
       pageQuery(query),
     );
     return { data, meta: { requestId: id } };

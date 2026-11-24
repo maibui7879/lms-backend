@@ -192,6 +192,8 @@ const definitions = Object.fromEntries(
 );
 definitions.Uuid.format = 'uuid';
 definitions.IsoDateTime.format = 'date-time';
+definitions.CourseReviewNotificationEvent.properties.correlationId.format =
+  'uuid';
 Object.assign(definitions.ChangePasswordRequest.properties.currentPassword, {
   minLength: 8,
   maxLength: 128,
@@ -311,6 +313,16 @@ const ref = (name) => {
   return { $ref: `#/components/schemas/${name}` };
 };
 const paths = {};
+const errorDescriptions = {
+  400: 'Dữ liệu không hợp lệ.',
+  401: 'Chưa đăng nhập hoặc token hết hạn.',
+  403: 'Không có quyền thực hiện.',
+  404: 'Không tìm thấy dữ liệu.',
+  409: 'Xung đột phiên bản hoặc trạng thái.',
+  422: 'Không đáp ứng điều kiện nghiệp vụ.',
+  503: 'Dịch vụ tạm thời không khả dụng.',
+  504: 'Quá thời gian chờ dịch vụ.',
+};
 const operationIds = new Set();
 for (const e of ENDPOINTS) {
   if (operationIds.has(e.operationId))
@@ -383,10 +395,9 @@ for (const e of ENDPOINTS) {
         : {}),
     },
   };
-  for (const status of [400, 401, 403, 404, 409, 422, 503, 504])
+  for (const [status, description] of Object.entries(errorDescriptions))
     responses[status] = {
-      description: `Xem quy tắc lỗi dùng chung (${status})`,
-      content: { 'application/json': { schema: ref('ApiErrorResponse') } },
+      description,
     };
   if (e.binaryResponse) {
     responses[e.success].content = {
@@ -451,6 +462,14 @@ const api = openapiRefs({
     },
   },
 });
+api.info.description += [
+  '',
+  '### Quy ước lỗi dùng chung',
+  'Response lỗi chỉ hiển thị mô tả ngắn tại từng endpoint để tránh lặp ví dụ JSON.',
+  'Cấu trúc lỗi được định nghĩa một lần trong schema `ApiErrorResponse`. Khi xử lý lỗi, đọc `error.code`, `error.message` và `error.details`; dùng mã request để tra cứu log.',
+  'Các mã HTTP là quy ước chung; không có nghĩa mọi endpoint đều phát sinh tất cả các lỗi này.',
+].join('\n\n');
+
 function output(relative, content) {
   const target = path.join(root, relative);
   if (process.argv.includes('--check')) {
@@ -481,7 +500,13 @@ output(
     '\n}\n',
 );
 output('openapi.json', JSON.stringify(api, null, 2) + '\n');
-for (const service of ['identity', 'course', 'quiz', 'learning'])
+for (const service of [
+  'identity',
+  'course',
+  'quiz',
+  'learning',
+  'notification',
+])
   output(
     `openapi/${service}.json`,
     JSON.stringify(

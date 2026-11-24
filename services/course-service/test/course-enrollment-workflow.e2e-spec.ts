@@ -66,6 +66,10 @@ describe('Course creation to enrollment workflow', () => {
   const revisionRepository = {};
   const transactionManager = {
     update: jest.fn(),
+    create: jest.fn((_entity: unknown, value: unknown) => value),
+    save: jest.fn(async (entity: unknown, value: Record<string, unknown>) =>
+      entity === CourseReview ? reviewRepository.save(value) : value,
+    ),
     queryRunner: { isTransactionActive: true },
     insert: jest.fn(),
     getRepository: (entity: unknown) =>
@@ -130,6 +134,13 @@ describe('Course creation to enrollment workflow', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    transactionManager.update.mockImplementation(
+      async (
+        _entity: unknown,
+        criteria: unknown,
+        changes: Record<string, unknown>,
+      ) => courseRepository.update(criteria, changes),
+    );
     enrollmentRepository.manager.transaction.mockImplementation(async (work) =>
       work(transactionManager),
     );

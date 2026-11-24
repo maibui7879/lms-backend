@@ -15,6 +15,8 @@ import { Chapter } from '../src/modules/chapters/entities/chapter.entity';
 import { Lesson } from '../src/modules/lessons/entities/lesson.entity';
 import { LearningItem } from '../src/modules/learning-items/entities/learning-item.entity';
 import { DataSource } from 'typeorm';
+import { EnrollmentOutboxEvent } from '../src/modules/outbox/enrollment-outbox.entity';
+import { COURSE_REVIEW_NOTIFICATION_ROUTING_KEY } from '@lms/contracts';
 
 describe('Course review endpoints (HTTP with repository test doubles)', () => {
   let app: INestApplication;
@@ -36,13 +38,20 @@ describe('Course review endpoints (HTTP with repository test doubles)', () => {
   const revisionRepository = {
     findOneBy: jest.fn(),
     findOne: jest.fn(),
+    findOneByOrFail: jest.fn(),
     findAndCount: jest.fn(),
     update: jest.fn(),
   };
   const chapterRepository = { find: jest.fn() };
   const lessonRepository = { find: jest.fn() };
   const itemRepository = { find: jest.fn() };
-  const transactionManager = { update: jest.fn() };
+  const transactionManager = {
+    update: jest.fn(),
+    create: jest.fn((_entity: unknown, value: unknown) => value),
+    save: jest.fn(async (entity: unknown, value: Record<string, unknown>) =>
+      entity === CourseReview ? reviewRepository.save(value) : value,
+    ),
+  };
   const dataSource = {
     transaction: jest.fn(
       async (callback: (manager: typeof transactionManager) => unknown) =>
@@ -96,6 +105,13 @@ describe('Course review endpoints (HTTP with repository test doubles)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    transactionManager.update.mockImplementation(
+      async (
+        _entity: unknown,
+        criteria: unknown,
+        changes: Record<string, unknown>,
+      ) => courseRepository.update(criteria, changes),
+    );
     courseRepository.findOneBy.mockResolvedValue(course());
     courseRepository.findOneByOrFail.mockResolvedValue(course('IN_REVIEW', 2));
     courseRepository.findAndCount.mockResolvedValue([[course('IN_REVIEW')], 1]);
@@ -156,6 +172,30 @@ describe('Course review endpoints (HTTP with repository test doubles)', () => {
       rejectionReason: null,
     });
     parseContract('CourseReviewData', result.body.data);
+    expect(transactionManager.save).toHaveBeenCalledWith(
+      EnrollmentOutboxEvent,
+      expect.objectContaining({
+        routingKey: COURSE_REVIEW_NOTIFICATION_ROUTING_KEY,
+        sentAt: null,
+        event: expect.objectContaining({
+          eventType: 'course.review.decided',
+          version: 1,
+          producer: 'course-service',
+          payload: {
+            recipientId: instructor.id,
+            courseId,
+            revisionId: null,
+            decision: 'APPROVE',
+            reason: null,
+            version: 3,
+          },
+        }),
+      }),
+    );
+    expect(courseRepository.update).toHaveBeenCalledWith(
+      { id: courseId, version: 2, status: 'IN_REVIEW' },
+      { status: 'PUBLISHED', version: 3, initialPublishedContentVersion: 2 },
+    );
   });
 
   it('rejects with a reason and exposes review history to the owner', async () => {
@@ -194,6 +234,82 @@ describe('Course review endpoints (HTTP with repository test doubles)', () => {
       total: 1,
       items: [{ id: reviewId, decision: 'REJECT' }],
     });
+  });
+
+  it('notifies the course owner when rejecting a revision', async () => {
+    const revisionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    revisionRepository.findOneBy.mockResolvedValue({
+      id: revisionId,
+      courseId,
+      version: 4,
+      status: 'IN_REVIEW',
+      baseContentVersion: 2,
+    });
+    const service = app.get(CourseRevisionsService);
+    revisionRepository.findOneByOrFail.mockResolvedValue({
+      id: revisionId,
+      courseId,
+      version: 5,
+      status: 'REJECTED',
+      baseContentVersion: 2,
+      contentVersion: null,
+      createdAt: new Date(),
+      submittedAt: null,
+      publishedAt: null,
+    });
+    await expect(
+      service.reviewRevision(
+        revisionId,
+        {
+          expectedVersion: 4,
+          decision: 'REJECT',
+          reason: 'Needs changes',
+        },
+        admin,
+      ),
+    ).resolves.toMatchObject({ status: 'REJECTED', version: 5 });
+    expect(transactionManager.save).toHaveBeenCalledWith(
+      EnrollmentOutboxEvent,
+      expect.objectContaining({
+        routingKey: COURSE_REVIEW_NOTIFICATION_ROUTING_KEY,
+        event: expect.objectContaining({
+          payload: {
+            recipientId: instructor.id,
+            courseId,
+            revisionId,
+            decision: 'REJECT',
+            reason: 'Needs changes',
+            version: 5,
+          },
+        }),
+      }),
+    );
+  });
+
+  it('does not persist a notice when the optimistic update conflicts', async () => {
+    courseRepository.findOneBy.mockResolvedValue(course('IN_REVIEW', 2));
+    courseRepository.update.mockResolvedValueOnce({ affected: 0 });
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/courses/${courseId}/review`)
+      .set('x-mock-user', 'adminA')
+      .send({ expectedVersion: 2, decision: 'APPROVE' })
+      .expect(409);
+    expect(transactionManager.save).not.toHaveBeenCalled();
+  });
+
+  it('fails the review transaction if the notice cannot be persisted', async () => {
+    courseRepository.findOneBy.mockResolvedValue(course('IN_REVIEW', 2));
+    transactionManager.save
+      .mockImplementationOnce(async (_entity, value) =>
+        reviewRepository.save(value),
+      )
+      .mockRejectedValueOnce(new Error('Notification persistence failed'));
+    await expect(
+      app
+        .get(CourseRevisionsService)
+        .review(courseId, { expectedVersion: 2, decision: 'APPROVE' }, admin),
+    ).rejects.toThrow('Notification persistence failed');
+    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
   });
 
   it('rejects non-admin review and stale versions', async () => {
