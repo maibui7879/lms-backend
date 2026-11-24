@@ -4,8 +4,8 @@ Cổng HTTP cho frontend, mặc định port 3000. Không chứa luật nghiệp
 
 ## Đã triển khai
 
-- Định tuyến theo [endpoint catalog](../../packages/contracts/src/endpoints.ts), bổ sung route OTP, OAuth và yêu cầu cấp role hiện có của Identity.
-- Course assessments đi đến Quiz. Chặn `/api/v1/internal/...`; method hoặc đường dẫn ngoài danh sách trả 404.
+- Định tuyến theo các controller đã đăng ký trong module của service, không lấy contract làm danh sách route mặc định. Danh sách sinh tự động tại [implemented-routes.json](src/routing/implemented-routes.json).
+- Hiện chỉ công bố API nghiệp vụ của Identity, Course, Learning và Notification. Quiz mới có scaffold nên chưa map API Quiz hoặc course assessments. Chặn `/api/v1/internal/...`; method hoặc đường dẫn ngoài danh sách trả 404.
 - Kiểm tra JWT RS256, issuer `identity-service`, thời gian và cấu trúc claims ở route cần đăng nhập. Không mock auth. Service đích vẫn kiểm tra role, trạng thái tài khoản và quyền sở hữu.
 - Giữ nguyên method, query, body, Authorization, Idempotency-Key, status và response upstream, bao gồm PDF và 204. Không bọc envelope hai lần.
 - Xóa header giả danh user/role và header nội bộ do client gửi; tạo hoặc chuyển tiếp X-Request-Id hợp lệ.
@@ -58,6 +58,12 @@ Chưa triển khai rate limit, giới hạn dung lượng request và circuit br
 - `src/common/http/`: header filtering and gateway error envelopes.
 - `src/common/auth/`: JWT verification and its unit tests.
 - `src/config/`: upstream, timeout, retry, origin and environment configuration.
-- `src/routing/`: contract route matching and its unit tests.
+- `src/routing/`: implemented controller routes, matching and unit tests.
 
 Environment paths resolve from both source and compiled configuration to the gateway and repository roots. Swagger loads the repository contract from both source and compiled bootstrap directories.
+
+## Đồng bộ route thực tế và Swagger
+
+`npm run routes:generate -w @lms/api-gateway` đọc decorator của controller đã đăng ký trong các Nest module, lấy method/path, guard, DTO body và query. Không expose health/scaffold riêng của từng service hoặc API internal. Build và start/dev tự sinh lại manifest; trước unit test có bước `routes:check` để phát hiện manifest cũ.
+
+Swagger và proxy dùng chung manifest. Contract chỉ cung cấp schema/mô tả cho operation khớp, không tạo thêm route. API ngoài contract vẫn hiện trong Swagger; body/query lấy từ type DTO thực tế, response chưa có schema được ghi rõ thay vì tự dựng cấu trúc. Dùng `routes:generate` và kiểm thử lại khi thêm hoặc sửa controller; presence trong controller không khẳng định toàn bộ luồng nghiệp vụ đã được kiểm thử với provider thật.

@@ -1,44 +1,24 @@
-import { ENDPOINTS, type EndpointContract } from '@lms/contracts';
+import type { EndpointContract } from '@lms/contracts';
+import implementedRoutes from './implemented-routes.json';
 
 type RoutePolicy = Pick<EndpointContract, 'service' | 'access'>;
 
-type Route = RoutePolicy & { method: string; path: string };
+export type ImplementedRoute = RoutePolicy & {
+  method: string;
+  path: string;
+  operationId: string;
+  success: number;
+  bodySchema?: Record<string, unknown>;
+  querySchema?: { properties: Record<string, unknown>; required?: string[] };
+};
+
+export const gatewayRoutes = implementedRoutes as ImplementedRoute[];
 
 const hasUnsafeCharacters = (path: string): boolean =>
   /[?#\\\s]/.test(path) ||
   path.split('').some((character) => character.charCodeAt(0) < 32);
 
-const extra = (
-  method: string,
-  path: string,
-  access: RoutePolicy['access'],
-): Route => ({
-  method,
-  path: `/api/v1/${path}`,
-  access,
-  service: 'identity',
-});
-
-const routes: Route[] = [
-  ...ENDPOINTS,
-  ...['verify-email', 'resend-otp', 'forgot-password', 'reset-password'].map(
-    (path) => extra('post', `auth/${path}`, 'PUBLIC'),
-  ),
-  ...[
-    'public-key',
-    'google',
-    'google/callback',
-    'github',
-    'github/callback',
-  ].map((path) => extra('get', `auth/${path}`, 'PUBLIC')),
-  extra('post', 'auth/logout-all', 'AUTHENTICATED'),
-  extra('post', 'users/me/role-requests', 'AUTHENTICATED'),
-  extra('get', 'users/me/role-requests', 'AUTHENTICATED'),
-  extra('patch', 'admin/users/role-requests/{id}/review', 'ADMIN'),
-  extra('get', 'admin/users/role-requests', 'ADMIN'),
-];
-
-const compiled = routes
+const compiled = gatewayRoutes
   .map((route) => ({
     ...route,
     segments: route.path.split('/'),

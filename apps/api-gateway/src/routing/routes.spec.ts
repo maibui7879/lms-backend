@@ -1,11 +1,8 @@
-import { ENDPOINTS } from '@lms/contracts';
-import { resolveRoute } from './routes';
+import { resolveRoute, gatewayRoutes } from './routes';
 
 describe('resolveRoute', () => {
-  it('resolves every external contract route', () => {
-    for (const endpoint of ENDPOINTS.filter(
-      (route) => route.access !== 'INTERNAL',
-    )) {
+  it('resolves every implemented public controller route', () => {
+    for (const endpoint of gatewayRoutes) {
       expect(
         resolveRoute(
           endpoint.method.toUpperCase(),
@@ -13,6 +10,24 @@ describe('resolveRoute', () => {
         ),
       ).toEqual({ service: endpoint.service, access: endpoint.access });
     }
+  });
+
+  it('does not expose planned Quiz endpoints or course assessment summaries', () => {
+    expect(resolveRoute('POST', '/api/v1/quizzes')).toBeUndefined();
+    expect(
+      resolveRoute('GET', '/api/v1/courses/id/assessments'),
+    ).toBeUndefined();
+    expect(resolveRoute('GET', '/api/v1/users/me')).toEqual({
+      service: 'identity',
+      access: 'AUTHENTICATED',
+    });
+    expect(resolveRoute('POST', '/api/v1/users/me/password')?.service).toBe(
+      'identity',
+    );
+    expect(
+      resolveRoute('GET', '/api/v1/learning/courses/id/me/quiz-scores')
+        ?.service,
+    ).toBe('learning');
   });
 
   it.each([
