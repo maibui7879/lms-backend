@@ -289,4 +289,10 @@ Sau build đầu, `docker compose up -d` khởi động các service hiện có 
 
 Identity/Learning trên host được gọi qua `host.docker.internal`; có thể override bằng `COURSE_IDENTITY_URL` và `COURSE_LEARNING_URL`. Khi bổ sung container Identity/Learning vào Compose, đổi sang tên service tương ứng. Nếu DB hoặc RabbitMQ nằm trên máy host thì URL bên trong container cũng phải dùng `host.docker.internal`, không phải `localhost`; Supabase remote giữ nguyên URL. Compose không override `RABBITMQ_URL`.
 
-Container luôn dùng `MOCK_AUTH=false`, `DB_SYNC=false`, `NODE_ENV=production`. API internal của Course vì vậy yêu cầu JWT nội bộ đúng scope, không nhận token tĩnh development. Healthcheck hiện chỉ kiểm tra HTTP `GET /`, không phải ping DB liên tục. Để dừng container Course: `docker compose stop course`.
+Container luôn dùng `MOCK_AUTH=false`, `DB_SYNC=false`, `NODE_ENV=production`. API internal của Course vì vậy yêu cầu JWT nội bộ đúng scope, không nhận token tĩnh development. Healthcheck dùng `GET /health` để kiểm tra HTTP và khả năng truy vấn DB. Để dừng container Course: `docker compose stop course`.
+
+## Health checks
+
+- `GET /health/live`: process liveness, no authentication or dependency checks.
+- `GET /health`: readiness; queries the `courses` table and returns HTTP 503 if the database/table is unavailable. Course broker delivery is not checked by this endpoint.
+- Both endpoints are direct service URLs (default port 3002), not Gateway business routes. Compose uses `/health` for container readiness.
