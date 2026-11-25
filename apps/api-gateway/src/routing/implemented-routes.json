@@ -542,6 +542,14 @@
   },
   {
     "service": "course",
+    "method": "get",
+    "path": "/api/v1/chapters/{id}/lessons",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseContentController_lessons",
+    "success": 200
+  },
+  {
+    "service": "course",
     "method": "post",
     "path": "/api/v1/chapters/{id}/lessons",
     "access": "AUTHENTICATED",
@@ -804,6 +812,14 @@
     "operationId": "course_CoursesController_update",
     "success": 200,
     "bodySchema": {}
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/courses/{id}/chapters",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseContentController_chapters",
+    "success": 200
   },
   {
     "service": "course",
@@ -1574,6 +1590,14 @@
         "expectedVersion"
       ]
     }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/lessons/{id}/learning-items",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseContentController_learningItems",
+    "success": 200
   },
   {
     "service": "notification",

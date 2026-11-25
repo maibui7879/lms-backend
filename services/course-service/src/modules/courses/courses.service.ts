@@ -9,6 +9,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, IsNull, Repository } from 'typeorm';
 import type {
   AuthUser,
+  ChapterData,
+  LessonData,
+  LearningItemData,
   CourseData,
   CourseLearnerData,
   CourseOutlineData,
@@ -62,6 +65,57 @@ export class CoursesService {
     @InjectRepository(Enrollment)
     private readonly enrollments: Repository<Enrollment>,
   ) {}
+
+  async listChapters(id: string, user: AuthUser): Promise<ChapterData[]> {
+    const course = await this.findReadableCourse(id, user);
+    const rows = await this.chapters.find({
+      where: {
+        courseId: id,
+        revisionId: course.publishedRevisionId ?? IsNull(),
+      },
+      order: { order: 'ASC', id: 'ASC' },
+    });
+    return rows.map(chapterData);
+  }
+
+  async listLessons(id: string, user: AuthUser): Promise<LessonData[]> {
+    const parent = await this.chapters.findOneBy({ id });
+    if (!parent) throw new NotFoundException('Chapter not found');
+    const course = await this.findReadableCourse(parent.courseId, user);
+    if ((parent.revisionId ?? null) !== (course.publishedRevisionId ?? null))
+      throw new NotFoundException(
+        'Chapter not found in current course content',
+      );
+    const rows = await this.lessons.find({
+      where: {
+        courseId: parent.courseId,
+        chapterId: id,
+        revisionId: course.publishedRevisionId ?? IsNull(),
+      },
+      order: { order: 'ASC', id: 'ASC' },
+    });
+    return rows.map(lessonData);
+  }
+
+  async listLearningItems(
+    id: string,
+    user: AuthUser,
+  ): Promise<LearningItemData[]> {
+    const parent = await this.lessons.findOneBy({ id });
+    if (!parent) throw new NotFoundException('Lesson not found');
+    const course = await this.findReadableCourse(parent.courseId, user);
+    if ((parent.revisionId ?? null) !== (course.publishedRevisionId ?? null))
+      throw new NotFoundException('Lesson not found in current course content');
+    const rows = await this.items.find({
+      where: {
+        courseId: parent.courseId,
+        lessonId: id,
+        revisionId: course.publishedRevisionId ?? IsNull(),
+      },
+      order: { order: 'ASC', id: 'ASC' },
+    });
+    return rows.map(learningItemData);
+  }
 
   async outline(id: string, user: AuthUser): Promise<CourseOutlineData> {
     const course = await this.findReadableCourse(id, user);

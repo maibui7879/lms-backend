@@ -1792,6 +1792,456 @@
         }
       }
     },
+    "/api/v1/courses/{id}/chapters": {
+      "get": {
+        "operationId": "listCourseChapters",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: ENROLLED. List chapters in current course content, ordered by order then id. Same access rules as course outline; returns an array without nested lessons.",
+        "x-access-policy": "ENROLLED",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ChapterData"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ."
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn."
+          },
+          "403": {
+            "description": "Không có quyền thực hiện."
+          },
+          "404": {
+            "description": "Không tìm thấy dữ liệu."
+          },
+          "409": {
+            "description": "Xung đột phiên bản hoặc trạng thái."
+          },
+          "422": {
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
+          },
+          "503": {
+            "description": "Dịch vụ tạm thời không khả dụng."
+          },
+          "504": {
+            "description": "Quá thời gian chờ dịch vụ."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createChapter",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Tạo chapter mới trong revision DRAFT của course; không thay đổi contentVersion đang public.",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ChapterData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ."
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn."
+          },
+          "403": {
+            "description": "Không có quyền thực hiện."
+          },
+          "404": {
+            "description": "Không tìm thấy dữ liệu."
+          },
+          "409": {
+            "description": "Xung đột phiên bản hoặc trạng thái."
+          },
+          "422": {
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
+          },
+          "503": {
+            "description": "Dịch vụ tạm thời không khả dụng."
+          },
+          "504": {
+            "description": "Quá thời gian chờ dịch vụ."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChapterRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/chapters/{id}/lessons": {
+      "get": {
+        "operationId": "listChapterLessons",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: ENROLLED. List lessons of a chapter in current course content. Same access rules as course outline; returns an array without nested items. Missing or non-current chapter returns 404.",
+        "x-access-policy": "ENROLLED",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LessonData"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ."
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn."
+          },
+          "403": {
+            "description": "Không có quyền thực hiện."
+          },
+          "404": {
+            "description": "Không tìm thấy dữ liệu."
+          },
+          "409": {
+            "description": "Xung đột phiên bản hoặc trạng thái."
+          },
+          "422": {
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
+          },
+          "503": {
+            "description": "Dịch vụ tạm thời không khả dụng."
+          },
+          "504": {
+            "description": "Quá thời gian chờ dịch vụ."
+          }
+        }
+      },
+      "post": {
+        "operationId": "createLesson",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Tạo lesson mới trong chapter thuộc revision DRAFT.",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LessonData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ."
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn."
+          },
+          "403": {
+            "description": "Không có quyền thực hiện."
+          },
+          "404": {
+            "description": "Không tìm thấy dữ liệu."
+          },
+          "409": {
+            "description": "Xung đột phiên bản hoặc trạng thái."
+          },
+          "422": {
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
+          },
+          "503": {
+            "description": "Dịch vụ tạm thời không khả dụng."
+          },
+          "504": {
+            "description": "Quá thời gian chờ dịch vụ."
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLessonRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/lessons/{id}/learning-items": {
+      "get": {
+        "operationId": "listLessonLearningItems",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: ENROLLED. List learning items of a lesson in current course content, ordered by order then id. Same access rules as course outline. Missing or non-current lesson returns 404.",
+        "x-access-policy": "ENROLLED",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LearningItemData"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ."
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn."
+          },
+          "403": {
+            "description": "Không có quyền thực hiện."
+          },
+          "404": {
+            "description": "Không tìm thấy dữ liệu."
+          },
+          "409": {
+            "description": "Xung đột phiên bản hoặc trạng thái."
+          },
+          "422": {
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
+          },
+          "503": {
+            "description": "Dịch vụ tạm thời không khả dụng."
+          },
+          "504": {
+            "description": "Quá thời gian chờ dịch vụ."
+          }
+        }
+      }
+    },
     "/api/v1/courses/{id}/outline": {
       "get": {
         "operationId": "getCourseOutline",
@@ -2055,101 +2505,6 @@
         }
       }
     },
-    "/api/v1/courses/{id}/chapters": {
-      "post": {
-        "operationId": "createChapter",
-        "tags": [
-          "course"
-        ],
-        "description": "Role sử dụng: COURSE_OWNER. Tạo chapter mới trong revision DRAFT của course; không thay đổi contentVersion đang public.",
-        "x-access-policy": "COURSE_OWNER",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "X-Request-Id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Thành công",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "data",
-                    "meta"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/ChapterData"
-                    },
-                    "meta": {
-                      "$ref": "#/components/schemas/ApiMeta"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Dữ liệu không hợp lệ."
-          },
-          "401": {
-            "description": "Chưa đăng nhập hoặc token hết hạn."
-          },
-          "403": {
-            "description": "Không có quyền thực hiện."
-          },
-          "404": {
-            "description": "Không tìm thấy dữ liệu."
-          },
-          "409": {
-            "description": "Xung đột phiên bản hoặc trạng thái."
-          },
-          "422": {
-            "description": "Không đáp ứng điều kiện nghiệp vụ."
-          },
-          "503": {
-            "description": "Dịch vụ tạm thời không khả dụng."
-          },
-          "504": {
-            "description": "Quá thời gian chờ dịch vụ."
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateChapterRequest"
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/chapters/{id}": {
       "patch": {
         "operationId": "updateChapter",
@@ -2407,101 +2762,6 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RevisionReorderRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/chapters/{id}/lessons": {
-      "post": {
-        "operationId": "createLesson",
-        "tags": [
-          "course"
-        ],
-        "description": "Role sử dụng: COURSE_OWNER. Tạo lesson mới trong chapter thuộc revision DRAFT.",
-        "x-access-policy": "COURSE_OWNER",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "X-Request-Id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 128
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Thành công",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "data",
-                    "meta"
-                  ],
-                  "additionalProperties": false,
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/LessonData"
-                    },
-                    "meta": {
-                      "$ref": "#/components/schemas/ApiMeta"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Dữ liệu không hợp lệ."
-          },
-          "401": {
-            "description": "Chưa đăng nhập hoặc token hết hạn."
-          },
-          "403": {
-            "description": "Không có quyền thực hiện."
-          },
-          "404": {
-            "description": "Không tìm thấy dữ liệu."
-          },
-          "409": {
-            "description": "Xung đột phiên bản hoặc trạng thái."
-          },
-          "422": {
-            "description": "Không đáp ứng điều kiện nghiệp vụ."
-          },
-          "503": {
-            "description": "Dịch vụ tạm thời không khả dụng."
-          },
-          "504": {
-            "description": "Quá thời gian chờ dịch vụ."
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateLessonRequest"
               }
             }
           }
@@ -9125,6 +9385,18 @@
             "const": "application/pdf"
           },
           "list": {
+            "anyOf": [
+              {
+                "type": "boolean",
+                "const": false
+              },
+              {
+                "type": "boolean",
+                "const": true
+              }
+            ]
+          },
+          "array": {
             "anyOf": [
               {
                 "type": "boolean",

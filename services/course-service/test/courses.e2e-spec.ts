@@ -25,8 +25,8 @@ describe('POST courses (HTTP with repository test double)', () => {
     update: jest.fn(),
     delete: jest.fn(),
   };
-  const chapterRepository = { find: jest.fn() };
-  const lessonRepository = { find: jest.fn() };
+  const chapterRepository = { find: jest.fn(), findOneBy: jest.fn() };
+  const lessonRepository = { find: jest.fn(), findOneBy: jest.fn() };
   const itemRepository = { find: jest.fn() };
   const enrollmentRepository = {
     findOneBy: jest.fn(),
@@ -66,6 +66,8 @@ describe('POST courses (HTTP with repository test double)', () => {
     repository.update.mockReset();
     repository.delete.mockReset();
     chapterRepository.find.mockReset();
+    chapterRepository.findOneBy.mockReset();
+    lessonRepository.findOneBy.mockReset();
     lessonRepository.find.mockReset();
     itemRepository.find.mockReset();
     enrollmentRepository.findOneBy.mockReset();
@@ -264,6 +266,89 @@ describe('POST courses (HTTP with repository test double)', () => {
     await request(app.getHttpServer())
       .get('/api/v1/courses/not-a-uuid')
       .expect(400);
+  });
+
+  it('lists content by parent with auth, validation and current-version checks', async () => {
+    const courseId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const chapterId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const lessonId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    repository.findOneBy.mockResolvedValue({
+      id: courseId,
+      instructorId: getMockUser('instructorA').id,
+      status: 'DRAFT',
+      publishedRevisionId: null,
+    });
+    const chapter = {
+      id: chapterId,
+      courseId,
+      revisionId: null,
+      title: 'Chapter',
+      order: 1,
+      version: 1,
+      endSectionQuiz: null,
+    };
+    const lesson = {
+      id: lessonId,
+      courseId,
+      chapterId,
+      revisionId: null,
+      title: 'Lesson',
+      order: 1,
+      version: 1,
+    };
+    chapterRepository.findOneBy.mockResolvedValue(chapter);
+    lessonRepository.findOneBy.mockResolvedValue(lesson);
+    chapterRepository.find.mockResolvedValue([chapter]);
+    lessonRepository.find.mockResolvedValue([lesson]);
+    const paths = [
+      `/api/v1/courses/${courseId}/chapters`,
+      `/api/v1/chapters/${chapterId}/lessons`,
+      `/api/v1/lessons/${lessonId}/learning-items`,
+    ];
+    for (const [i, path] of paths.entries()) {
+      const result = await request(app.getHttpServer())
+        .get(path)
+        .set('x-mock-user', 'instructorA')
+        .expect(200);
+      expect(Array.isArray(result.body.data)).toBe(true);
+      expect(result.body.meta.requestId).toBeDefined();
+      expect(result.body.data).toHaveLength(i === 2 ? 0 : 1);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('x-mock-user', 'instructorB')
+        .expect(403);
+      await request(app.getHttpServer()).get(path).expect(401);
+    }
+    await request(app.getHttpServer())
+      .get('/api/v1/courses/invalid/chapters')
+      .set('x-mock-user', 'instructorA')
+      .expect(400);
+    chapterRepository.findOneBy.mockResolvedValue(null);
+    await request(app.getHttpServer())
+      .get(paths[1]!)
+      .set('x-mock-user', 'instructorA')
+      .expect(404);
+    chapterRepository.findOneBy.mockResolvedValue({
+      ...chapter,
+      revisionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    });
+    await request(app.getHttpServer())
+      .get(paths[1]!)
+      .set('x-mock-user', 'instructorA')
+      .expect(404);
+    lessonRepository.findOneBy.mockResolvedValue(null);
+    await request(app.getHttpServer())
+      .get(paths[2]!)
+      .set('x-mock-user', 'instructorA')
+      .expect(404);
+    lessonRepository.findOneBy.mockResolvedValue({
+      ...lesson,
+      revisionId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    });
+    await request(app.getHttpServer())
+      .get(paths[2]!)
+      .set('x-mock-user', 'instructorA')
+      .expect(404);
   });
 
   it('returns the nested course outline for an owner preview', async () => {

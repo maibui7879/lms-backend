@@ -329,6 +329,7 @@ for (const e of ENDPOINTS) {
     throw new Error(`Duplicate operation ${e.operationId}`);
   operationIds.add(e.operationId);
   let data = e.response ? ref(e.response) : null;
+  if (e.array) data = { type: 'array', items: data };
   if (e.list)
     data = {
       type: 'object',

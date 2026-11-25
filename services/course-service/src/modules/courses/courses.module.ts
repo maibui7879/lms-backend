@@ -10,6 +10,7 @@ import {
   InstructorCoursesController,
 } from './courses.controller';
 import { CoursesService } from './courses.service';
+import { CourseContentController } from './course-content.controller';
 
 @Module({
   imports: [
@@ -21,7 +22,11 @@ import { CoursesService } from './courses.service';
       Enrollment,
     ]),
   ],
-  controllers: [CoursesController, InstructorCoursesController],
+  controllers: [
+    CoursesController,
+    InstructorCoursesController,
+    CourseContentController,
+  ],
   providers: [CoursesService],
 })
 export class CoursesModule {}

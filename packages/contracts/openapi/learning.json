@@ -7650,6 +7650,18 @@
               }
             ]
           },
+          "array": {
+            "anyOf": [
+              {
+                "type": "boolean",
+                "const": false
+              },
+              {
+                "type": "boolean",
+                "const": true
+              }
+            ]
+          },
           "nullable": {
             "anyOf": [
               {
