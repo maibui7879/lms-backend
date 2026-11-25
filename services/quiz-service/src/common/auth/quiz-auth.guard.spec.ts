@@ -1,4 +1,4 @@
-import { generateKeyPairSync, sign } from 'node:crypto';
+import { generateKeyPairSync, sign, verify } from 'node:crypto';
 import type { ExecutionContext } from '@nestjs/common';
 import type { AuthenticatedRequest } from '@lms/auth';
 import { QuizAuthGuard } from './quiz-auth.guard';
@@ -49,7 +49,7 @@ describe('QuizAuthGuard', () => {
     process.env.MOCK_AUTH = 'false';
     process.env.JWT_PUBLIC_KEY = publicKey;
     process.env.IDENTITY_URL = 'http://identity.test';
-    process.env.IDENTITY_SERVICE_TOKEN = 'test-service-token';
+    process.env.IDENTITY_INTERNAL_JWT_PRIVATE_KEY = privateKey;
     request.headers = { authorization: `Bearer ${token()}` };
     delete request.user;
     fetchMock.mockReset().mockResolvedValue({
@@ -78,10 +78,38 @@ describe('QuizAuthGuard', () => {
     expect(String(url)).toBe(
       `http://identity.test/api/v1/internal/users/${userId}/access`,
     );
-    expect(options.headers).toEqual({
-      Authorization: 'Bearer test-service-token',
-    });
+    expect(options.headers.Authorization).toMatch(
+      /^Bearer [\w-]+\.[\w-]+\.[\w-]+$/,
+    );
     expect(options.redirect).toBe('error');
+
+    const [, payload, signature] =
+      options.headers.Authorization.slice(7).split('.');
+    const claims = JSON.parse(
+      Buffer.from(payload, 'base64url').toString(),
+    ) as Record<string, unknown>;
+    expect(
+      verify(
+        'RSA-SHA256',
+        Buffer.from(
+          options.headers.Authorization.slice(7)
+            .split('.')
+            .slice(0, 2)
+            .join('.'),
+        ),
+        publicKey,
+        Buffer.from(signature, 'base64url'),
+      ),
+    ).toBe(true);
+    expect(claims).toMatchObject({
+      iss: 'lms-internal',
+      sub: 'quiz-service',
+      aud: 'identity-service',
+      scope: 'getUserAccess',
+    });
+    expect(claims.exp as number).toBeLessThanOrEqual(
+      (claims.iat as number) + 300,
+    );
   });
 
   it('rejects JWT algorithms other than RS256', async () => {
@@ -119,6 +147,15 @@ describe('QuizAuthGuard', () => {
       status: 503,
     });
     expect(request.user).toBeUndefined();
+  });
+
+  it('fails when the Identity signing key is not configured', async () => {
+    delete process.env.IDENTITY_INTERNAL_JWT_PRIVATE_KEY;
+
+    await expect(guard.canActivate(context)).rejects.toMatchObject({
+      status: 503,
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('allows fixture auth only in development or test', async () => {

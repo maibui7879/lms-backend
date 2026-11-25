@@ -10,6 +10,7 @@ import type { AuthenticatedRequest } from '@lms/auth';
 import { parseContract } from '@lms/contracts';
 import type { JwtClaims, UserAccessStatus } from '@lms/contracts';
 import { createPublicKey, verify } from 'node:crypto';
+import { createIdentityServiceToken } from './identity-service-token';
 
 @Injectable()
 export class QuizAuthGuard implements CanActivate {
@@ -37,8 +38,7 @@ export class QuizAuthGuard implements CanActivate {
 
     const publicKey = process.env.JWT_PUBLIC_KEY?.replace(/\\n/g, '\n');
     const identityUrl = process.env.IDENTITY_URL;
-    const identityServiceToken = process.env.IDENTITY_SERVICE_TOKEN;
-    if (!publicKey || !identityUrl || !identityServiceToken)
+    if (!publicKey || !identityUrl)
       throw new ServiceUnavailableException(
         'Identity authentication is not configured',
       );
@@ -74,6 +74,7 @@ export class QuizAuthGuard implements CanActivate {
     }
 
     let access: UserAccessStatus;
+    const identityServiceToken = createIdentityServiceToken();
     try {
       const response = await fetch(
         new URL(`/api/v1/internal/users/${claims.sub}/access`, identityUrl),

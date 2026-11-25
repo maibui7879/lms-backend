@@ -141,7 +141,7 @@ Tách AttemptStatus, GradingStatus và ProgressSyncStatus. Result đang chờ ch
 
 Consume Course enrollment/access/reference; dependency failure trả 503/504, không bypass enrollment. Publish/start phải xác minh course/lesson/quiz reference và version đúng. Identity cấp user JWT; service authentication dùng credential riêng.
 
-Public controller dùng `QuizAuthGuard`: guard xác minh user JWT RS256 bằng `JWT_PUBLIC_KEY`, sau đó gọi Identity `GET /api/v1/internal/users/{id}/access` để kiểm tra trạng thái/role hiện tại. Cấu hình `IDENTITY_URL` và `IDENTITY_SERVICE_TOKEN`; token nội bộ phải có scope `getUserAccess`, caller `quiz-service`, audience `identity-service` và TTL tối đa 5 phút. Identity không gọi được thì request bị từ chối bằng 503.
+Public controller dùng `QuizAuthGuard`: guard xác minh user JWT RS256 bằng `JWT_PUBLIC_KEY`, sau đó tự ký service JWT ngắn hạn bằng `IDENTITY_INTERNAL_JWT_PRIVATE_KEY` để gọi Identity `GET /api/v1/internal/users/{id}/access` và kiểm tra trạng thái/role hiện tại. Token có scope `getUserAccess`, caller `quiz-service`, audience `identity-service` và TTL 4 phút. Identity phải tin public key tương ứng qua `INTERNAL_JWT_PUBLIC_KEY`; không dùng private key của access JWT người dùng. Identity không gọi được thì request bị từ chối bằng 503.
 
 Local/test có thể đặt `MOCK_AUTH=true` và gửi `x-mock-user: instructorA` để dùng fixture từ `@lms/auth`; mock guard tự từ chối ngoài `development`/`test` và không fallback sang mock khi JWT thật sai. Mock auth chỉ thay xác thực danh tính, không thay kiểm tra role theo operation hoặc quyền sở hữu course.
 
@@ -164,7 +164,7 @@ npm.cmd run start:dev -w @lms/quiz-service
 
 Terminal khác: `Invoke-RestMethod http://127.0.0.1:3003/` để kiểm tra hello scaffold.
 
-[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, RABBITMQ_URL, COURSE_URL, JWT_PUBLIC_KEY/JWT_ISSUER, IDENTITY_URL, IDENTITY_SERVICE_TOKEN và INTERNAL_JWT_PUBLIC_KEY. Guard dùng các biến auth khi có request; `.env.example` chỉ là mẫu, không chứa credential hợp lệ. Không commit secret. Mock authentication theo [hướng dẫn](../../packages/auth/README.md), không tự bật trong production.
+[Env example](.env.example): NODE_ENV, PORT, MOCK_AUTH, DATABASE_URL, RABBITMQ_URL, COURSE_URL, JWT_PUBLIC_KEY/JWT_ISSUER, IDENTITY_URL, IDENTITY_INTERNAL_JWT_PRIVATE_KEY và INTERNAL_JWT_PUBLIC_KEY. Guard dùng các biến auth khi có request; `.env.example` chỉ là mẫu, không chứa credential hợp lệ. Không commit secret. Mock authentication theo [hướng dẫn](../../packages/auth/README.md), không tự bật trong production.
 
 ## Kiểm tra và nghiệm thu
 
