@@ -7,6 +7,8 @@ import { AppService } from '../src/app.service';
 import { TerminusModule, TypeOrmHealthIndicator } from '@nestjs/terminus';
 import { HealthController } from '../src/health/health.controller';
 import { setupSwagger } from '../src/swagger';
+import { QuizController } from '../src/modules/quiz/quiz.controller';
+import { QuizService } from '../src/modules/quiz/quiz.service';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -14,9 +16,10 @@ describe('AppController (e2e)', () => {
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [TerminusModule],
-      controllers: [AppController, HealthController],
+      controllers: [AppController, HealthController, QuizController],
       providers: [
         AppService,
+        { provide: QuizService, useValue: { create: jest.fn() } },
         {
           provide: TypeOrmHealthIndicator,
           useValue: {
@@ -56,9 +59,36 @@ describe('AppController (e2e)', () => {
       .expect((response) => {
         expect(response.body.info.title).toBe('LMS Quiz Service API');
         expect(response.body.components.securitySchemes).toHaveProperty(
-          'bearer',
+          'bearerAuth',
         );
         expect(response.body.paths['/health'].get).toBeDefined();
+        const operation = response.body.paths['/api/v1/quizzes'].post;
+        expect(operation.operationId).toBe('createQuiz');
+        expect(operation.security).toEqual([{ bearerAuth: [] }]);
+        expect(
+          operation.requestBody.content['application/json'].schema.$ref,
+        ).toBe('#/components/schemas/CreateQuizRequest');
+        expect(
+          operation.responses['201'].content['application/json'].schema
+            .properties,
+        ).toEqual({
+          data: { $ref: '#/components/schemas/QuizData' },
+          meta: { $ref: '#/components/schemas/ApiMeta' },
+        });
+        expect(Object.keys(operation.responses)).toEqual([
+          '201',
+          '400',
+          '401',
+          '403',
+          '404',
+          '409',
+          '422',
+          '503',
+          '504',
+        ]);
+        expect(
+          operation.responses['422'].content['application/json'].schema.$ref,
+        ).toBe('#/components/schemas/ApiErrorResponse');
       });
   });
 
