@@ -179,6 +179,48 @@ describe('POST courses (HTTP with repository test double)', () => {
     parseContract('ApiErrorResponse', result.body);
   });
 
+  it.each(['DRAFT', 'REJECTED', 'IN_REVIEW', 'PUBLISHED'])(
+    'reads an owned course directly in status %s',
+    async (status) => {
+      const course = {
+        id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        instructorId: getMockUser('instructorA').id,
+        ...body,
+        status,
+        version: 1,
+        contentVersion: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      repository.findOneBy.mockResolvedValue(course);
+      const path = `/api/v1/instructor/courses/${course.id}`;
+      const result = await request(app.getHttpServer())
+        .get(path)
+        .set('x-mock-user', 'instructorA')
+        .expect(200);
+      expect(result.body.data.status).toBe(status);
+      parseContract('CourseData', result.body.data);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('x-mock-user', 'instructorB')
+        .expect(403);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('x-mock-user', 'studentA')
+        .expect(403);
+      await request(app.getHttpServer()).get(path).expect(401);
+      repository.findOneBy.mockResolvedValue(null);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('x-mock-user', 'instructorA')
+        .expect(404);
+      await request(app.getHttpServer())
+        .get('/api/v1/instructor/courses/not-uuid')
+        .set('x-mock-user', 'instructorA')
+        .expect(400);
+    },
+  );
+
   it('lists only published courses and applies all CourseQuery parameters', async () => {
     const published = {
       id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',

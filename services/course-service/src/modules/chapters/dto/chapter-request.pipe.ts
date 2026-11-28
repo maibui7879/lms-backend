@@ -3,9 +3,9 @@ import type { PipeTransform } from '@nestjs/common';
 import { ContractValidationError, parseContract } from '@lms/contracts';
 import type {
   CreateChapterRequest,
-  ReorderRequest,
+  RevisionReorderRequest,
   UpdateChapterRequest,
-  VersionRequest,
+  RevisionVersionRequest,
 } from '@lms/contracts';
 
 function validationError(error: unknown): never {
@@ -46,11 +46,11 @@ export class UpdateChapterPipe implements PipeTransform<
 
 export class ReorderChapterPipe implements PipeTransform<
   unknown,
-  ReorderRequest
+  RevisionReorderRequest
 > {
-  transform(value: unknown): ReorderRequest {
+  transform(value: unknown): RevisionReorderRequest {
     try {
-      return parseContract('ReorderRequest', value);
+      return parseContract('RevisionReorderRequest', value);
     } catch (error) {
       return validationError(error);
     }
@@ -59,11 +59,11 @@ export class ReorderChapterPipe implements PipeTransform<
 
 export class ChapterVersionRequestPipe implements PipeTransform<
   unknown,
-  VersionRequest
+  RevisionVersionRequest
 > {
-  transform(value: unknown): VersionRequest {
+  transform(value: unknown): RevisionVersionRequest {
     try {
-      return parseContract('VersionRequest', value);
+      return parseContract('RevisionVersionRequest', value);
     } catch (error) {
       return validationError(error);
     }

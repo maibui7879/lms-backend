@@ -16,6 +16,7 @@ import type {
   ApiResponse,
   AuthUser,
   CourseData,
+  CourseOutlineData,
   CourseRevisionData,
   CourseReviewData,
   CreateCourseRevisionRequest,
@@ -75,6 +76,19 @@ export class CourseRevisionsController {
         query,
         user,
       ),
+      meta: { requestId: String(request.headers['x-request-id']) },
+    };
+  }
+
+  @Get('course-revisions/:id/outline')
+  @UseGuards(CourseAuthGuard)
+  async getRevisionOutline(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ): Promise<ApiResponse<CourseOutlineData>> {
+    return {
+      data: await this.revisions.getRevisionOutline(validateCourseId(id), user),
       meta: { requestId: String(request.headers['x-request-id']) },
     };
   }

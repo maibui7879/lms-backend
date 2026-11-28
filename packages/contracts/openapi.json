@@ -3856,6 +3856,176 @@
         }
       }
     },
+    "/api/v1/instructor/courses/{id}": {
+      "get": {
+        "operationId": "getInstructorCourse",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Read an owned course in any status. Requires an active instructor who owns the course; other users receive 403, missing course 404.",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CourseData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ."
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn."
+          },
+          "403": {
+            "description": "Không có quyền thực hiện."
+          },
+          "404": {
+            "description": "Không tìm thấy dữ liệu."
+          },
+          "409": {
+            "description": "Xung đột phiên bản hoặc trạng thái."
+          },
+          "422": {
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
+          },
+          "503": {
+            "description": "Dịch vụ tạm thời không khả dụng."
+          },
+          "504": {
+            "description": "Quá thời gian chờ dịch vụ."
+          }
+        }
+      }
+    },
+    "/api/v1/course-revisions/{id}/outline": {
+      "get": {
+        "operationId": "getCourseRevisionOutline",
+        "tags": [
+          "course"
+        ],
+        "description": "Role sử dụng: COURSE_OWNER. Read chapters, lessons and learning items belonging only to the requested revision, including per-item versions. Owner or admin only. For an unpublished revision contentVersion is baseContentVersion, not a newly published version.",
+        "x-access-policy": "COURSE_OWNER",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thành công",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CourseOutlineData"
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/ApiMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dữ liệu không hợp lệ."
+          },
+          "401": {
+            "description": "Chưa đăng nhập hoặc token hết hạn."
+          },
+          "403": {
+            "description": "Không có quyền thực hiện."
+          },
+          "404": {
+            "description": "Không tìm thấy dữ liệu."
+          },
+          "409": {
+            "description": "Xung đột phiên bản hoặc trạng thái."
+          },
+          "422": {
+            "description": "Không đáp ứng điều kiện nghiệp vụ."
+          },
+          "503": {
+            "description": "Dịch vụ tạm thời không khả dụng."
+          },
+          "504": {
+            "description": "Quá thời gian chờ dịch vụ."
+          }
+        }
+      }
+    },
     "/api/v1/courses/{id}/outline": {
       "get": {
         "operationId": "getCourseOutline",
@@ -4218,7 +4388,7 @@
         "tags": [
           "course"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Xóa chapter khỏi revision DRAFT khi revisionId và expectedVersion khớp.",
+        "description": "Role sử dụng: COURSE_OWNER. Xóa chapter rỗng trong course/revision DRAFT hoặc REJECTED khi expectedVersion khớp. Có lesson con thì trả 409; không tự xóa nội dung con. Xóa, cập nhật thứ tự và tăng version trong cùng transaction.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -4293,7 +4463,7 @@
         "tags": [
           "course"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Sắp xếp lại chapter trong revision DRAFT bằng danh sách ID đầy đủ và version của revision.",
+        "description": "Role sử dụng: COURSE_OWNER. Sắp xếp chapter trong course/revision DRAFT hoặc REJECTED bằng danh sách ID đầy đủ, không trùng và version của course/revision. Toàn bộ cập nhật là atomic; xung đột trả 409 và rollback.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -4481,7 +4651,7 @@
         "tags": [
           "course"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Xóa lesson khỏi revision DRAFT khi revisionId và expectedVersion khớp.",
+        "description": "Role sử dụng: COURSE_OWNER. Xóa lesson rỗng trong course/revision DRAFT hoặc REJECTED khi expectedVersion khớp. Có learning item con thì trả 409; không tự xóa nội dung con. Thao tác là atomic.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -4556,7 +4726,7 @@
         "tags": [
           "course"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Sắp xếp lại lesson trong revision DRAFT bằng danh sách ID và version của revision.",
+        "description": "Role sử dụng: COURSE_OWNER. Sắp xếp lesson trong course/revision DRAFT hoặc REJECTED bằng danh sách ID đầy đủ, không trùng và version của course/revision. Atomic; xung đột trả 409. Trả mảng LessonData theo thứ tự mới.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -4598,7 +4768,10 @@
                   "additionalProperties": false,
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/CourseOutlineData"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LessonData"
+                      }
                     },
                     "meta": {
                       "$ref": "#/components/schemas/ApiMeta"
@@ -4839,7 +5012,7 @@
         "tags": [
           "course"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Xóa learning item khỏi revision DRAFT khi revisionId và expectedVersion khớp.",
+        "description": "Role sử dụng: COURSE_OWNER. Xóa learning item trong course/revision DRAFT hoặc REJECTED khi revisionId và expectedVersion khớp. Xóa, cập nhật thứ tự và tăng version trong cùng transaction.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -4914,7 +5087,7 @@
         "tags": [
           "course"
         ],
-        "description": "Role sử dụng: COURSE_OWNER. Sắp xếp lại learning item trong revision DRAFT bằng danh sách ID và version của revision.",
+        "description": "Role sử dụng: COURSE_OWNER. Sắp xếp learning item trong course/revision DRAFT hoặc REJECTED bằng danh sách ID đầy đủ, không trùng và version của course/revision. Toàn bộ cập nhật là atomic; xung đột trả 409 và rollback.",
         "x-access-policy": "COURSE_OWNER",
         "security": [
           {
@@ -12421,6 +12594,10 @@
               },
               {
                 "type": "string",
+                "const": "CONTENT_NOT_EMPTY"
+              },
+              {
+                "type": "string",
                 "const": "INVALID_QUIZ_TRANSITION"
               },
               {
@@ -16471,6 +16648,10 @@
           {
             "type": "string",
             "const": "INVALID_COURSE_TRANSITION"
+          },
+          {
+            "type": "string",
+            "const": "CONTENT_NOT_EMPTY"
           },
           {
             "type": "string",

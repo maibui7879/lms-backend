@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type {
   AuthUser,
   CourseData,
+  CourseOutlineData,
   CourseReviewData,
   PageData,
   PageQuery,
@@ -23,6 +24,9 @@ import { courseData } from '../courses/courses.service';
 import { CourseReview } from './entities/course-review.entity';
 import { CourseRevision } from './entities/course-revision.entity';
 import { Chapter } from '../chapters/entities/chapter.entity';
+import { chapterData } from '../chapters/chapters.service';
+import { lessonData } from '../lessons/lessons.service';
+import { learningItemData } from '../learning-items/learning-items.service';
 import { Lesson } from '../lessons/entities/lesson.entity';
 import { LearningItem } from '../learning-items/entities/learning-item.entity';
 import { DataSource, In, IsNull } from 'typeorm';
@@ -254,6 +258,36 @@ export class CourseRevisionsService {
     const course = await this.findCourse(revision.courseId);
     if (user.role !== 'ADMIN') this.assertOwner(course, user);
     return revisionData(revision);
+  }
+
+  async getRevisionOutline(
+    id: string,
+    user: AuthUser,
+  ): Promise<CourseOutlineData> {
+    const revision = await this.getRevision(id, user);
+    const where = { courseId: revision.courseId, revisionId: id };
+    const order = { order: 'ASC', id: 'ASC' } as const;
+    const [chapters, lessons, items] = await Promise.all([
+      this.chapters.find({ where, order }),
+      this.lessons.find({ where, order }),
+      this.items.find({ where, order }),
+    ]);
+    return {
+      courseId: revision.courseId,
+      revisionId: id,
+      contentVersion: revision.contentVersion ?? revision.baseContentVersion,
+      chapters: chapters.map((chapter) => ({
+        ...chapterData(chapter),
+        lessons: lessons
+          .filter((lesson) => lesson.chapterId === chapter.id)
+          .map((lesson) => ({
+            ...lessonData(lesson),
+            items: items
+              .filter((item) => item.lessonId === lesson.id)
+              .map(learningItemData),
+          })),
+      })),
+    };
   }
 
   async submitRevision(

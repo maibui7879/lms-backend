@@ -1633,6 +1633,10 @@
               },
               {
                 "type": "string",
+                "const": "CONTENT_NOT_EMPTY"
+              },
+              {
+                "type": "string",
                 "const": "INVALID_QUIZ_TRANSITION"
               },
               {
@@ -5683,6 +5687,10 @@
           {
             "type": "string",
             "const": "INVALID_COURSE_TRANSITION"
+          },
+          {
+            "type": "string",
+            "const": "CONTENT_NOT_EMPTY"
           },
           {
             "type": "string",

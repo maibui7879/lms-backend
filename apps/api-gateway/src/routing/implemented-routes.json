@@ -628,6 +628,14 @@
   },
   {
     "service": "course",
+    "method": "get",
+    "path": "/api/v1/course-revisions/{id}/outline",
+    "access": "AUTHENTICATED",
+    "operationId": "course_CourseRevisionsController_getRevisionOutline",
+    "success": 200
+  },
+  {
+    "service": "course",
     "method": "post",
     "path": "/api/v1/course-revisions/{id}/submit-review",
     "access": "AUTHENTICATED",
@@ -1201,6 +1209,14 @@
         }
       }
     }
+  },
+  {
+    "service": "course",
+    "method": "get",
+    "path": "/api/v1/instructor/courses/{id}",
+    "access": "AUTHENTICATED",
+    "operationId": "course_InstructorCoursesController_get",
+    "success": 200
   },
   {
     "service": "course",

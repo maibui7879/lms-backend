@@ -1,3 +1,4 @@
+import { contentTransaction } from '../../common/content-transaction';
 import {
   ConflictException,
   ForbiddenException,
@@ -13,7 +14,6 @@ import type {
   RevisionReorderRequest,
   RevisionVersionRequest,
   UpdateLearningItemRequest,
-  VersionRequest,
 } from '@lms/contracts';
 import { IsNull, Repository } from 'typeorm';
 import { Course } from '../courses/entities/course.entity';
@@ -60,6 +60,7 @@ export function learningItemData(item: LearningItem): LearningItemData {
 
 @Injectable()
 export class LearningItemsService {
+  private inTransaction = false;
   constructor(
     @InjectRepository(LearningItem)
     private readonly items: Repository<LearningItem>,
@@ -75,6 +76,24 @@ export class LearningItemsService {
     dto: CreateLearningItemRequest,
     user: AuthUser,
   ): Promise<LearningItemData> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.items.manager.connection,
+        Lesson,
+        lessonId,
+        async (manager) => {
+          const service = new LearningItemsService(
+            manager.getRepository(LearningItem),
+            manager.getRepository(Lesson),
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+          );
+          service.inTransaction = true;
+          return service.create(lessonId, dto, user);
+        },
+      );
+    }
     const { lesson, course, revision } = await this.assertEditableLesson(
       lessonId,
       dto.revisionId,
@@ -105,6 +124,24 @@ export class LearningItemsService {
     dto: UpdateLearningItemRequest,
     user: AuthUser,
   ): Promise<LearningItemData> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.items.manager.connection,
+        LearningItem,
+        id,
+        async (manager) => {
+          const service = new LearningItemsService(
+            manager.getRepository(LearningItem),
+            manager.getRepository(Lesson),
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+          );
+          service.inTransaction = true;
+          return service.update(id, dto, user);
+        },
+      );
+    }
     const item = await this.findItem(id);
     const { course, revision } = await this.assertEditableLesson(
       item.lessonId,
@@ -128,7 +165,7 @@ export class LearningItemsService {
         version: dto.expectedVersion + 1,
       },
     );
-    if (!result.affected)
+    if (result.affected !== 1)
       throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
     await this.bumpContent(course, revision);
     return learningItemData(await this.items.findOneByOrFail({ id }));
@@ -139,6 +176,24 @@ export class LearningItemsService {
     dto: RevisionVersionRequest,
     user: AuthUser,
   ): Promise<void> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.items.manager.connection,
+        LearningItem,
+        id,
+        async (manager) => {
+          const service = new LearningItemsService(
+            manager.getRepository(LearningItem),
+            manager.getRepository(Lesson),
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+          );
+          service.inTransaction = true;
+          return service.remove(id, dto, user);
+        },
+      );
+    }
     const item = await this.findItem(id);
     const { course, revision } = await this.assertEditableLesson(
       item.lessonId,
@@ -152,21 +207,29 @@ export class LearningItemsService {
       version: dto.expectedVersion,
       revisionId: revision?.id ?? IsNull(),
     });
-    if (!result.affected)
+    if (result.affected !== 1)
       throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
-    await this.items
-      .createQueryBuilder()
-      .update(LearningItem)
-      .set({ order: () => '"order" - 1' })
-      .where(
-        '"lessonId" = :lessonId AND "revisionId" IS NOT DISTINCT FROM :revisionId AND "order" > :order',
+    const siblings = await this.items.find({
+      where: { lessonId: item.lessonId, revisionId: revision?.id ?? IsNull() },
+      order: { order: 'ASC' },
+    });
+    for (const sibling of siblings.filter((row) => row.order > item.order)) {
+      const shifted = await this.items.update(
         {
-          lessonId: item.lessonId,
-          revisionId: revision?.id ?? null,
-          order: item.order,
+          id: sibling.id,
+          version: sibling.version,
+          revisionId: revision?.id ?? IsNull(),
         },
-      )
-      .execute();
+        {
+          order: sibling.order - 1,
+          version: sibling.version + 1,
+          contentVersion:
+            revision?.baseContentVersion ?? course.contentVersion + 1,
+        },
+      );
+      if (shifted.affected !== 1)
+        throw this.versionConflict(sibling.version, sibling.version + 1);
+    }
     await this.bumpContent(course, revision);
   }
 
@@ -175,13 +238,34 @@ export class LearningItemsService {
     dto: RevisionReorderRequest,
     user: AuthUser,
   ): Promise<CourseOutlineData> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.items.manager.connection,
+        Lesson,
+        lessonId,
+        async (manager) => {
+          const service = new LearningItemsService(
+            manager.getRepository(LearningItem),
+            manager.getRepository(Lesson),
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+          );
+          service.inTransaction = true;
+          return service.reorder(lessonId, dto, user);
+        },
+      );
+    }
     const { course, revision } = await this.assertEditableLesson(
       lessonId,
       dto.revisionId,
       user,
     );
     if ((revision?.version ?? course.version) !== dto.expectedVersion)
-      throw this.versionConflict(dto.expectedVersion, course.version);
+      throw this.versionConflict(
+        dto.expectedVersion,
+        revision?.version ?? course.version,
+      );
     const items = await this.items.find({
       where: { lessonId, revisionId: revision?.id ?? IsNull() },
       order: { order: 'ASC' },
@@ -199,8 +283,13 @@ export class LearningItemsService {
       });
     for (const [index, id] of dto.orderedIds.entries()) {
       const item = items.find((value) => value.id === id)!;
-      await this.items.update(
-        { id, lessonId, revisionId: revision?.id ?? IsNull() },
+      const result = await this.items.update(
+        {
+          id,
+          lessonId,
+          revisionId: revision?.id ?? IsNull(),
+          version: item.version,
+        },
         {
           order: index + 1,
           version: item.version + 1,
@@ -208,6 +297,8 @@ export class LearningItemsService {
             revision?.baseContentVersion ?? course.contentVersion + 1,
         },
       );
+      if (result.affected !== 1)
+        throw this.versionConflict(item.version, item.version + 1);
     }
     await this.bumpContent(course, revision);
     return this.courseOutline(
@@ -334,6 +425,7 @@ export class LearningItemsService {
         });
       return { lesson, course, revision };
     }
+    this.assertBelongsToRevision(lesson.revisionId, undefined);
     if (course.status === 'PUBLISHED' || course.status === 'IN_REVIEW')
       throw new ConflictException({
         code: 'INVALID_COURSE_TRANSITION',
@@ -358,7 +450,7 @@ export class LearningItemsService {
         { id: revision.id, version: revision.version },
         { version: revision.version + 1 },
       );
-      if (!result.affected)
+      if (result.affected !== 1)
         throw this.versionConflict(revision.version, revision.version + 1);
       return;
     }
@@ -369,7 +461,7 @@ export class LearningItemsService {
         contentVersion: course.contentVersion + 1,
       },
     );
-    if (!result.affected)
+    if (result.affected !== 1)
       throw this.versionConflict(course.version, course.version + 1);
   }
 

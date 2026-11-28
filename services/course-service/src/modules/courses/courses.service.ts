@@ -294,6 +294,15 @@ export class CoursesService {
     };
   }
 
+  async getInstructorCourse(id: string, user: AuthUser): Promise<CourseData> {
+    this.requireInstructor(user);
+    const course = await this.repository.findOneBy({ id });
+    if (!course) throw new NotFoundException('Course not found');
+    if (course.instructorId !== user.id)
+      throw new ForbiddenException('Course ownership required');
+    return courseData(course);
+  }
+
   async get(id: string): Promise<CourseData> {
     const course = await this.repository.findOneBy({
       id,

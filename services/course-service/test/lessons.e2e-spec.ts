@@ -1,3 +1,5 @@
+import { LearningItem } from '../src/modules/learning-items/entities/learning-item.entity';
+import { wireContentTransactionDouble } from './content-transaction-double';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -90,8 +92,34 @@ describe('Lesson endpoints (HTTP with repository test doubles)', () => {
     await app.init();
   });
 
+  it('rejects deleting a lesson with learning items using the documented 409 code', async () => {
+    lessonRepository.findOneBy.mockResolvedValue(lesson(lessonA, 1));
+    wireContentTransactionDouble(dataSource, [
+      [Course, courseRepository],
+      [Chapter, chapterRepository],
+      [Lesson, lessonRepository],
+      [CourseRevision, revisionRepository],
+      [LearningItem, { existsBy: async () => true }],
+    ]);
+    const result = await request(app.getHttpServer())
+      .delete(`/api/v1/lessons/${lessonA}`)
+      .set('x-mock-user', 'instructorA')
+      .send({ expectedVersion: 1 })
+      .expect(409);
+    expect(result.body.error.code).toBe('CONTENT_NOT_EMPTY');
+    parseContract('ApiErrorResponse', result.body);
+    expect(lessonRepository.delete).not.toHaveBeenCalled();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    wireContentTransactionDouble(dataSource, [
+      [Course, courseRepository],
+      [Chapter, chapterRepository],
+      [Lesson, lessonRepository],
+      [CourseRevision, revisionRepository],
+      [LearningItem, { existsBy: async () => false }],
+    ]);
     courseRepository.findOneBy.mockResolvedValue(course());
     courseRepository.update.mockResolvedValue({ affected: 1 });
     chapterRepository.findOneBy.mockResolvedValue(chapter());

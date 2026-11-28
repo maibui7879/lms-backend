@@ -291,6 +291,16 @@ Identity/Learning trên host được gọi qua `host.docker.internal`; có th�
 
 Container luôn dùng `MOCK_AUTH=false`, `DB_SYNC=false`, `NODE_ENV=production`. API internal của Course vì vậy yêu cầu JWT nội bộ đúng scope, không nhận token tĩnh development. Healthcheck dùng `GET /health` để kiểm tra HTTP và khả năng truy vấn DB. Để dừng container Course: `docker compose stop course`.
 
+## Authoring reads and safe content mutations
+
+- `GET /api/v1/instructor/courses/{id}` returns an owned course in any status; requires an active instructor. It does not make drafts public.
+- `GET /api/v1/course-revisions/{id}/outline` returns only the requested revision's chapters, lessons and items with their versions. Access is restricted to the active owner or admin. For unpublished revisions, `contentVersion` is the base version; `revisionId` identifies the editable snapshot.
+- Keep using `GET /api/v1/courses/{id}/outline` for current published/original content; it does not select an authoring revision.
+- Delete and reorder payloads accept optional `revisionId`. Delete uses the target entity's `expectedVersion`; reorder uses the course/revision's `expectedVersion` and a complete, duplicate-free `orderedIds` list.
+- Deleting a chapter with lessons or a lesson with items returns HTTP 409. Delete children explicitly first; the backend never silently cascades their removal.
+- Content writes serialize on the course row, including child creation. Delete/reorder and parent-version updates commit or roll back together on conflicts.
+- Lesson reorder continues to return `{ data: LessonData[], meta }`; OpenAPI now documents that existing response correctly.
+
 ## Health checks
 
 - `GET /health/live`: process liveness, no authentication or dependency checks.
