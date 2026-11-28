@@ -289,4 +289,20 @@ Sau build đầu, `docker compose up -d` khởi động các service hiện có 
 
 Identity/Learning trên host được gọi qua `host.docker.internal`; có thể override bằng `COURSE_IDENTITY_URL` và `COURSE_LEARNING_URL`. Khi bổ sung container Identity/Learning vào Compose, đổi sang tên service tương ứng. Nếu DB hoặc RabbitMQ nằm trên máy host thì URL bên trong container cũng phải dùng `host.docker.internal`, không phải `localhost`; Supabase remote giữ nguyên URL. Compose không override `RABBITMQ_URL`.
 
-Container luôn dùng `MOCK_AUTH=false`, `DB_SYNC=false`, `NODE_ENV=production`. API internal của Course vì vậy yêu cầu JWT nội bộ đúng scope, không nhận token tĩnh development. Healthcheck hiện chỉ kiểm tra HTTP `GET /`, không phải ping DB liên tục. Để dừng container Course: `docker compose stop course`.
+Container luôn dùng `MOCK_AUTH=false`, `DB_SYNC=false`, `NODE_ENV=production`. API internal của Course vì vậy yêu cầu JWT nội bộ đúng scope, không nhận token tĩnh development. Healthcheck dùng `GET /health` để kiểm tra HTTP và khả năng truy vấn DB. Để dừng container Course: `docker compose stop course`.
+
+## Authoring reads and safe content mutations
+
+- `GET /api/v1/instructor/courses/{id}` returns an owned course in any status; requires an active instructor. It does not make drafts public.
+- `GET /api/v1/course-revisions/{id}/outline` returns only the requested revision's chapters, lessons and items with their versions. Access is restricted to the active owner or admin. For unpublished revisions, `contentVersion` is the base version; `revisionId` identifies the editable snapshot.
+- Keep using `GET /api/v1/courses/{id}/outline` for current published/original content; it does not select an authoring revision.
+- Delete and reorder payloads accept optional `revisionId`. Delete uses the target entity's `expectedVersion`; reorder uses the course/revision's `expectedVersion` and a complete, duplicate-free `orderedIds` list.
+- Deleting a chapter with lessons or a lesson with items returns HTTP 409. Delete children explicitly first; the backend never silently cascades their removal.
+- Content writes serialize on the course row, including child creation. Delete/reorder and parent-version updates commit or roll back together on conflicts.
+- Lesson reorder continues to return `{ data: LessonData[], meta }`; OpenAPI now documents that existing response correctly.
+
+## Health checks
+
+- `GET /health/live`: process liveness, no authentication or dependency checks.
+- `GET /health`: readiness; queries the `courses` table and returns HTTP 503 if the database/table is unavailable. Course broker delivery is not checked by this endpoint.
+- Both endpoints are direct service URLs (default port 3002), not Gateway business routes. Compose uses `/health` for container readiness.

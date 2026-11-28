@@ -1,3 +1,4 @@
+import { contentTransaction } from '../../common/content-transaction';
 import {
   ConflictException,
   ForbiddenException,
@@ -12,13 +13,13 @@ import type {
   RevisionReorderRequest,
   RevisionVersionRequest,
   UpdateLessonRequest,
-  VersionRequest,
 } from '@lms/contracts';
 import { IsNull, Repository } from 'typeorm';
 import { Course } from '../courses/entities/course.entity';
 import { CourseRevision } from '../course-revisions/entities/course-revision.entity';
 import { Chapter } from '../chapters/entities/chapter.entity';
 import { Lesson } from './entities/lesson.entity';
+import { LearningItem } from '../learning-items/entities/learning-item.entity';
 
 export function lessonData(lesson: Lesson): LessonData {
   return {
@@ -34,6 +35,7 @@ export function lessonData(lesson: Lesson): LessonData {
 
 @Injectable()
 export class LessonsService {
+  private inTransaction = false;
   constructor(
     @InjectRepository(Lesson) private readonly lessons: Repository<Lesson>,
     @InjectRepository(Chapter) private readonly chapters: Repository<Chapter>,
@@ -47,6 +49,23 @@ export class LessonsService {
     dto: CreateLessonRequest,
     user: AuthUser,
   ): Promise<LessonData> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.lessons.manager.connection,
+        Chapter,
+        chapterId,
+        async (manager) => {
+          const service = new LessonsService(
+            manager.getRepository(Lesson),
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+          );
+          service.inTransaction = true;
+          return service.create(chapterId, dto, user);
+        },
+      );
+    }
     const { chapter, course, revision } = await this.assertEditableChapter(
       chapterId,
       dto.revisionId,
@@ -74,6 +93,23 @@ export class LessonsService {
     dto: UpdateLessonRequest,
     user: AuthUser,
   ): Promise<LessonData> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.lessons.manager.connection,
+        Lesson,
+        id,
+        async (manager) => {
+          const service = new LessonsService(
+            manager.getRepository(Lesson),
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+          );
+          service.inTransaction = true;
+          return service.update(id, dto, user);
+        },
+      );
+    }
     const lesson = await this.findLesson(id);
     const { course, revision } = await this.assertEditableChapter(
       lesson.chapterId,
@@ -90,7 +126,7 @@ export class LessonsService {
       },
       { title: dto.title, version: dto.expectedVersion + 1 },
     );
-    if (!result.affected)
+    if (result.affected !== 1)
       throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
     await this.bumpContent(course, revision);
     return lessonData(await this.lessons.findOneByOrFail({ id }));
@@ -101,6 +137,23 @@ export class LessonsService {
     dto: RevisionVersionRequest,
     user: AuthUser,
   ): Promise<void> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.lessons.manager.connection,
+        Lesson,
+        id,
+        async (manager) => {
+          const service = new LessonsService(
+            manager.getRepository(Lesson),
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+          );
+          service.inTransaction = true;
+          return service.remove(id, dto, user);
+        },
+      );
+    }
     const lesson = await this.findLesson(id);
     const { course, revision } = await this.assertEditableChapter(
       lesson.chapterId,
@@ -109,26 +162,43 @@ export class LessonsService {
     );
     this.assertBelongsToRevision(lesson.revisionId, revision?.id);
     this.assertVersion(lesson.version, dto.expectedVersion);
+    if (
+      await this.lessons.manager
+        .getRepository(LearningItem)
+        .existsBy({ lessonId: id })
+    ) {
+      throw new ConflictException({
+        code: 'CONTENT_NOT_EMPTY',
+        message: 'Lesson must be empty before deletion',
+        details: {},
+      });
+    }
     const result = await this.lessons.delete({
       id,
       version: dto.expectedVersion,
       revisionId: revision?.id ?? IsNull(),
     });
-    if (!result.affected)
+    if (result.affected !== 1)
       throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
-    await this.lessons
-      .createQueryBuilder()
-      .update(Lesson)
-      .set({ order: () => '"order" - 1' })
-      .where(
-        '"chapterId" = :chapterId AND "revisionId" IS NOT DISTINCT FROM :revisionId AND "order" > :order',
+    const siblings = await this.lessons.find({
+      where: {
+        chapterId: lesson.chapterId,
+        revisionId: revision?.id ?? IsNull(),
+      },
+      order: { order: 'ASC' },
+    });
+    for (const sibling of siblings.filter((row) => row.order > lesson.order)) {
+      const shifted = await this.lessons.update(
         {
-          chapterId: lesson.chapterId,
-          revisionId: revision?.id ?? null,
-          order: lesson.order,
+          id: sibling.id,
+          version: sibling.version,
+          revisionId: revision?.id ?? IsNull(),
         },
-      )
-      .execute();
+        { order: sibling.order - 1, version: sibling.version + 1 },
+      );
+      if (shifted.affected !== 1)
+        throw this.versionConflict(sibling.version, sibling.version + 1);
+    }
     await this.bumpContent(course, revision);
   }
 
@@ -137,13 +207,33 @@ export class LessonsService {
     dto: RevisionReorderRequest,
     user: AuthUser,
   ): Promise<LessonData[]> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.lessons.manager.connection,
+        Chapter,
+        chapterId,
+        async (manager) => {
+          const service = new LessonsService(
+            manager.getRepository(Lesson),
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+          );
+          service.inTransaction = true;
+          return service.reorder(chapterId, dto, user);
+        },
+      );
+    }
     const { chapter, course, revision } = await this.assertEditableChapter(
       chapterId,
       dto.revisionId,
       user,
     );
     if ((revision?.version ?? course.version) !== dto.expectedVersion)
-      throw this.versionConflict(dto.expectedVersion, course.version);
+      throw this.versionConflict(
+        dto.expectedVersion,
+        revision?.version ?? course.version,
+      );
     const lessons = await this.lessons.find({
       where: { chapterId, revisionId: revision?.id ?? IsNull() },
       order: { order: 'ASC' },
@@ -151,7 +241,8 @@ export class LessonsService {
     const actualIds = new Set(lessons.map((lesson) => lesson.id));
     if (
       dto.orderedIds.length !== lessons.length ||
-      dto.orderedIds.some((id) => !actualIds.has(id))
+      dto.orderedIds.some((id) => !actualIds.has(id)) ||
+      new Set(dto.orderedIds).size !== dto.orderedIds.length
     )
       throw new ConflictException({
         code: 'VALIDATION_ERROR',
@@ -160,14 +251,21 @@ export class LessonsService {
       });
     for (const [index, id] of dto.orderedIds.entries()) {
       const lesson = lessons.find((item) => item.id === id)!;
-      await this.lessons.update(
-        { id, chapterId, revisionId: revision?.id ?? IsNull() },
+      const result = await this.lessons.update(
+        {
+          id,
+          chapterId,
+          revisionId: revision?.id ?? IsNull(),
+          version: lesson.version,
+        },
         { order: index + 1, version: lesson.version + 1 },
       );
+      if (result.affected !== 1)
+        throw this.versionConflict(lesson.version, lesson.version + 1);
     }
     await this.bumpContent(course, revision);
     const ordered = await this.lessons.find({
-      where: { chapterId },
+      where: { chapterId, revisionId: revision?.id ?? IsNull() },
       order: { order: 'ASC' },
     });
     return ordered.map(lessonData);
@@ -219,6 +317,7 @@ export class LessonsService {
         });
       return { chapter, course, revision };
     }
+    this.assertBelongsToRevision(chapter.revisionId, undefined);
     if (course.status === 'PUBLISHED' || course.status === 'IN_REVIEW')
       throw new ConflictException({
         code: 'INVALID_COURSE_TRANSITION',
@@ -243,7 +342,7 @@ export class LessonsService {
         { id: revision.id, version: revision.version },
         { version: revision.version + 1 },
       );
-      if (!result.affected)
+      if (result.affected !== 1)
         throw this.versionConflict(revision.version, revision.version + 1);
       return;
     }
@@ -254,7 +353,7 @@ export class LessonsService {
         contentVersion: course.contentVersion + 1,
       },
     );
-    if (!result.affected)
+    if (result.affected !== 1)
       throw this.versionConflict(course.version, course.version + 1);
   }
 

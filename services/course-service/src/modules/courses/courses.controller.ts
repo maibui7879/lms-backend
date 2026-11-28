@@ -134,6 +134,19 @@ export class CoursesController {
 export class InstructorCoursesController {
   constructor(private readonly courses: CoursesService) {}
 
+  @Get('courses/:id')
+  @UseGuards(CourseAuthGuard)
+  async get(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ): Promise<ApiResponse<CourseData>> {
+    return {
+      data: await this.courses.getInstructorCourse(validateCourseId(id), user),
+      meta: { requestId: String(request.headers['x-request-id']) },
+    };
+  }
+
   @Get('courses')
   @UseGuards(CourseAuthGuard)
   async list(

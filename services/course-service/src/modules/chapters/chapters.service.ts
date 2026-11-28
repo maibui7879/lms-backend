@@ -1,3 +1,4 @@
+import { contentTransaction } from '../../common/content-transaction';
 import {
   ConflictException,
   ForbiddenException,
@@ -18,6 +19,7 @@ import { DataSource, IsNull, Repository } from 'typeorm';
 import { Course } from '../courses/entities/course.entity';
 import { CourseRevision } from '../course-revisions/entities/course-revision.entity';
 import { Chapter } from './entities/chapter.entity';
+import { Lesson } from '../lessons/entities/lesson.entity';
 
 export function chapterData(chapter: Chapter): ChapterData {
   return {
@@ -33,6 +35,7 @@ export function chapterData(chapter: Chapter): ChapterData {
 
 @Injectable()
 export class ChaptersService {
+  private inTransaction = false;
   constructor(
     @InjectRepository(Chapter) private readonly chapters: Repository<Chapter>,
     @InjectRepository(Course) private readonly courses: Repository<Course>,
@@ -46,6 +49,23 @@ export class ChaptersService {
     dto: CreateChapterRequest,
     user: AuthUser,
   ): Promise<ChapterData> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.dataSource,
+        Course,
+        courseId,
+        async (manager) => {
+          const service = new ChaptersService(
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+            this.dataSource,
+          );
+          service.inTransaction = true;
+          return service.create(courseId, dto, user);
+        },
+      );
+    }
     const { course, revision } = await this.assertEditableCourse(
       courseId,
       dto.revisionId,
@@ -74,6 +94,23 @@ export class ChaptersService {
     dto: UpdateChapterRequest,
     user: AuthUser,
   ): Promise<ChapterData> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.dataSource,
+        Chapter,
+        id,
+        async (manager) => {
+          const service = new ChaptersService(
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+            this.dataSource,
+          );
+          service.inTransaction = true;
+          return service.update(id, dto, user);
+        },
+      );
+    }
     const chapter = await this.findChapter(id);
     const { course, revision } = await this.assertEditableCourse(
       chapter.courseId,
@@ -96,7 +133,7 @@ export class ChaptersService {
         version: dto.expectedVersion + 1,
       },
     );
-    if (!result.affected)
+    if (result.affected !== 1)
       throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
     await this.bumpContent(course, revision);
     return chapterData(await this.chapters.findOneByOrFail({ id }));
@@ -107,6 +144,23 @@ export class ChaptersService {
     dto: RevisionVersionRequest,
     user: AuthUser,
   ): Promise<void> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.dataSource,
+        Chapter,
+        id,
+        async (manager) => {
+          const service = new ChaptersService(
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+            this.dataSource,
+          );
+          service.inTransaction = true;
+          return service.remove(id, dto, user);
+        },
+      );
+    }
     const chapter = await this.findChapter(id);
     const { course, revision } = await this.assertEditableCourse(
       chapter.courseId,
@@ -115,26 +169,43 @@ export class ChaptersService {
     );
     this.assertBelongsToRevision(chapter.revisionId, revision?.id);
     this.assertVersion(chapter.version, dto.expectedVersion);
+    if (
+      await this.chapters.manager
+        .getRepository(Lesson)
+        .existsBy({ chapterId: id })
+    ) {
+      throw new ConflictException({
+        code: 'CONTENT_NOT_EMPTY',
+        message: 'Chapter must be empty before deletion',
+        details: {},
+      });
+    }
     const result = await this.chapters.delete({
       id,
       version: dto.expectedVersion,
       revisionId: revision?.id ?? IsNull(),
     });
-    if (!result.affected)
+    if (result.affected !== 1)
       throw this.versionConflict(dto.expectedVersion, dto.expectedVersion + 1);
-    await this.chapters
-      .createQueryBuilder()
-      .update(Chapter)
-      .set({ order: () => '"order" - 1' })
-      .where(
-        '"courseId" = :courseId AND "revisionId" IS NOT DISTINCT FROM :revisionId AND "order" > :order',
+    const siblings = await this.chapters.find({
+      where: {
+        courseId: chapter.courseId,
+        revisionId: revision?.id ?? IsNull(),
+      },
+      order: { order: 'ASC' },
+    });
+    for (const sibling of siblings.filter((row) => row.order > chapter.order)) {
+      const shifted = await this.chapters.update(
         {
-          courseId: chapter.courseId,
-          revisionId: revision?.id ?? null,
-          order: chapter.order,
+          id: sibling.id,
+          version: sibling.version,
+          revisionId: revision?.id ?? IsNull(),
         },
-      )
-      .execute();
+        { order: sibling.order - 1, version: sibling.version + 1 },
+      );
+      if (shifted.affected !== 1)
+        throw this.versionConflict(sibling.version, sibling.version + 1);
+    }
     await this.bumpContent(course, revision);
   }
 
@@ -143,6 +214,23 @@ export class ChaptersService {
     dto: RevisionReorderRequest,
     user: AuthUser,
   ): Promise<CourseOutlineData> {
+    if (!this.inTransaction) {
+      return contentTransaction(
+        this.dataSource,
+        Course,
+        courseId,
+        async (manager) => {
+          const service = new ChaptersService(
+            manager.getRepository(Chapter),
+            manager.getRepository(Course),
+            manager.getRepository(CourseRevision),
+            this.dataSource,
+          );
+          service.inTransaction = true;
+          return service.reorder(courseId, dto, user);
+        },
+      );
+    }
     const { course, revision } = await this.assertEditableCourse(
       courseId,
       dto.revisionId,
@@ -167,31 +255,21 @@ export class ChaptersService {
         message: 'orderedIds must contain every chapter exactly once',
         details: {},
       });
-    await this.dataSource.transaction(async (manager) => {
-      for (const [index, id] of dto.orderedIds.entries()) {
-        const chapter = chapters.find((item) => item.id === id)!;
-        await manager.update(
-          Chapter,
-          { id, courseId, revisionId: revision?.id ?? IsNull() },
-          { order: index + 1, version: chapter.version + 1 },
-        );
-      }
-      if (revision)
-        await manager.update(
-          CourseRevision,
-          { id: revision.id, version: dto.expectedVersion },
-          { version: dto.expectedVersion + 1 },
-        );
-      else
-        await manager.update(
-          Course,
-          { id: courseId, version: dto.expectedVersion },
-          {
-            version: dto.expectedVersion + 1,
-            contentVersion: course.contentVersion + 1,
-          },
-        );
-    });
+    for (const [index, id] of dto.orderedIds.entries()) {
+      const chapter = chapters.find((item) => item.id === id)!;
+      const result = await this.chapters.update(
+        {
+          id,
+          courseId,
+          revisionId: revision?.id ?? IsNull(),
+          version: chapter.version,
+        },
+        { order: index + 1, version: chapter.version + 1 },
+      );
+      if (result.affected !== 1)
+        throw this.versionConflict(chapter.version, chapter.version + 1);
+    }
+    await this.bumpContent(course, revision);
     const ordered = await this.chapters.find({
       where: { courseId, revisionId: revision?.id ?? IsNull() },
       order: { order: 'ASC' },
@@ -266,7 +344,7 @@ export class ChaptersService {
         { id: revision.id, version: revision.version },
         { version: revision.version + 1 },
       );
-      if (!result.affected)
+      if (result.affected !== 1)
         throw this.versionConflict(revision.version, revision.version + 1);
       return;
     }
@@ -277,7 +355,7 @@ export class ChaptersService {
         contentVersion: course.contentVersion + 1,
       },
     );
-    if (!result.affected)
+    if (result.affected !== 1)
       throw this.versionConflict(course.version, course.version + 1);
   }
   private invalidTransition(message: string): ConflictException {

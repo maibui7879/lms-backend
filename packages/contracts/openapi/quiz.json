@@ -2393,6 +2393,10 @@
               },
               {
                 "type": "string",
+                "const": "CONTENT_NOT_EMPTY"
+              },
+              {
+                "type": "string",
                 "const": "INVALID_QUIZ_TRANSITION"
               },
               {
@@ -6446,6 +6450,10 @@
           },
           {
             "type": "string",
+            "const": "CONTENT_NOT_EMPTY"
+          },
+          {
+            "type": "string",
             "const": "INVALID_QUIZ_TRANSITION"
           },
           {
@@ -6633,6 +6641,18 @@
             "const": "application/pdf"
           },
           "list": {
+            "anyOf": [
+              {
+                "type": "boolean",
+                "const": false
+              },
+              {
+                "type": "boolean",
+                "const": true
+              }
+            ]
+          },
+          "array": {
             "anyOf": [
               {
                 "type": "boolean",

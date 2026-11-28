@@ -1,3 +1,4 @@
+import { wireContentTransactionDouble } from './content-transaction-double';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -37,6 +38,8 @@ describe('Learning item endpoints', () => {
     delete: jest.fn(),
     createQueryBuilder: jest.fn(),
   };
+
+  const dataSource = { transaction: jest.fn() };
 
   const course = () => ({
     id: courseId,
@@ -146,6 +149,13 @@ describe('Learning item endpoints', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    wireContentTransactionDouble(dataSource, [
+      [Course, courseRepository],
+      [Chapter, chapterRepository],
+      [Lesson, lessonRepository],
+      [LearningItem, itemRepository],
+      [CourseRevision, revisionRepository],
+    ]);
     courseRepository.findOneBy.mockResolvedValue(course());
     courseRepository.update.mockResolvedValue({ affected: 1 });
     lessonRepository.findOneBy.mockResolvedValue(lesson());

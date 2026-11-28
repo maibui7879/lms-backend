@@ -103,6 +103,103 @@ describe('Course review endpoints (HTTP with repository test doubles)', () => {
     await app.init();
   });
 
+  it.each(['DRAFT', 'REJECTED', 'IN_REVIEW', 'PUBLISHED'])(
+    'reads revision-specific outline in status %s without exposing another snapshot',
+    async (status) => {
+      const revisionId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+      const chapterId = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+      const lessonId = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+      courseRepository.findOneBy.mockResolvedValue(course('PUBLISHED'));
+      revisionRepository.findOneBy.mockResolvedValue({
+        id: revisionId,
+        courseId,
+        baseContentVersion: 2,
+        contentVersion: status === 'PUBLISHED' ? 3 : null,
+        status,
+        createdBy: instructor.id,
+        createdAt: new Date(),
+        submittedAt: null,
+        publishedAt: null,
+        version: 4,
+        updateType: 'NORMAL',
+        migrationPolicy: 'KEEP_ENROLLED_VERSION',
+      });
+      chapterRepository.find.mockResolvedValue([
+        {
+          id: chapterId,
+          courseId,
+          revisionId,
+          title: 'Revised chapter',
+          order: 1,
+          version: 2,
+          endSectionQuiz: null,
+        },
+      ]);
+      lessonRepository.find.mockResolvedValue([
+        {
+          id: lessonId,
+          courseId,
+          revisionId,
+          chapterId,
+          title: 'Revised lesson',
+          order: 1,
+          version: 3,
+        },
+      ]);
+      itemRepository.find.mockResolvedValue([
+        {
+          id: reviewId,
+          courseId,
+          revisionId,
+          lessonId,
+          title: 'Revised text',
+          type: 'READING',
+          body: 'Revision only',
+          required: true,
+          order: 1,
+          version: 4,
+          contentVersion: 2,
+        },
+      ]);
+      const path = `/api/v1/course-revisions/${revisionId}/outline`;
+      for (const caller of ['instructorA', 'adminA']) {
+        const result = await request(app.getHttpServer())
+          .get(path)
+          .set('x-mock-user', caller)
+          .expect(200);
+        parseContract('CourseOutlineData', result.body.data);
+        expect(result.body.data.revisionId).toBe(revisionId);
+        expect(result.body.data.contentVersion).toBe(
+          status === 'PUBLISHED' ? 3 : 2,
+        );
+        expect(result.body.data.chapters[0].lessons[0].items[0].body).toBe(
+          'Revision only',
+        );
+        expect(chapterRepository.find).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { courseId, revisionId } }),
+        );
+      }
+      await request(app.getHttpServer())
+        .get(path)
+        .set('x-mock-user', 'instructorB')
+        .expect(403);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('x-mock-user', 'studentA')
+        .expect(403);
+      await request(app.getHttpServer()).get(path).expect(401);
+      revisionRepository.findOneBy.mockResolvedValue(null);
+      await request(app.getHttpServer())
+        .get(path)
+        .set('x-mock-user', 'instructorA')
+        .expect(404);
+      await request(app.getHttpServer())
+        .get('/api/v1/course-revisions/not-uuid/outline')
+        .set('x-mock-user', 'instructorA')
+        .expect(400);
+    },
+  );
+
   beforeEach(() => {
     jest.clearAllMocks();
     transactionManager.update.mockImplementation(

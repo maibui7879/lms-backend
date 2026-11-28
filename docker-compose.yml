@@ -53,12 +53,12 @@ services:
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     healthcheck:
-      # Liveness only. This does not replace a dependency readiness endpoint.
+      # Readiness: Course must be able to query its database.
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3002/', {signal: AbortSignal.timeout(3000)}).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+        - "fetch('http://127.0.0.1:3002/health', {signal: AbortSignal.timeout(3000)}).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
       interval: 15s
       timeout: 5s
       start_period: 40s

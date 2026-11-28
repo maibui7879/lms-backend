@@ -22,6 +22,7 @@ export interface EndpointContract {
   response?: string;
   binaryResponse?: 'application/pdf';
   list?: boolean;
+  array?: boolean;
   nullable?: boolean;
   success: 200 | 201 | 204;
   idempotent?: boolean;
@@ -434,6 +435,64 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     success: 204,
   },
   {
+    operationId: 'listCourseChapters',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/courses/{id}/chapters',
+    access: 'ENROLLED',
+    description:
+      'List chapters in current course content, ordered by order then id. Same access rules as course outline; returns an array without nested lessons.',
+    response: 'ChapterData',
+    array: true,
+    success: 200,
+  },
+  {
+    operationId: 'listChapterLessons',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/chapters/{id}/lessons',
+    access: 'ENROLLED',
+    description:
+      'List lessons of a chapter in current course content. Same access rules as course outline; returns an array without nested items. Missing or non-current chapter returns 404.',
+    response: 'LessonData',
+    array: true,
+    success: 200,
+  },
+  {
+    operationId: 'listLessonLearningItems',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/lessons/{id}/learning-items',
+    access: 'ENROLLED',
+    description:
+      'List learning items of a lesson in current course content, ordered by order then id. Same access rules as course outline. Missing or non-current lesson returns 404.',
+    response: 'LearningItemData',
+    array: true,
+    success: 200,
+  },
+  {
+    operationId: 'getInstructorCourse',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/instructor/courses/{id}',
+    access: 'COURSE_OWNER',
+    description:
+      'Read an owned course in any status. Requires an active instructor who owns the course; other users receive 403, missing course 404.',
+    response: 'CourseData',
+    success: 200,
+  },
+  {
+    operationId: 'getCourseRevisionOutline',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/course-revisions/{id}/outline',
+    access: 'COURSE_OWNER',
+    description:
+      'Read chapters, lessons and learning items belonging only to the requested revision, including per-item versions. Owner or admin only. For an unpublished revision contentVersion is baseContentVersion, not a newly published version.',
+    response: 'CourseOutlineData',
+    success: 200,
+  },
+  {
     operationId: 'getCourseOutline',
     service: 'course',
     method: 'get',
@@ -497,7 +556,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/chapters/{id}',
     access: 'COURSE_OWNER',
     description:
-      'Xóa chapter khỏi revision DRAFT khi revisionId và expectedVersion khớp.',
+      'Xóa chapter rỗng trong course/revision DRAFT hoặc REJECTED khi expectedVersion khớp. Có lesson con thì trả 409; không tự xóa nội dung con. Xóa, cập nhật thứ tự và tăng version trong cùng transaction.',
     request: 'RevisionVersionRequest',
     success: 204,
   },
@@ -508,7 +567,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/courses/{id}/chapters/order',
     access: 'COURSE_OWNER',
     description:
-      'Sắp xếp lại chapter trong revision DRAFT bằng danh sách ID đầy đủ và version của revision.',
+      'Sắp xếp chapter trong course/revision DRAFT hoặc REJECTED bằng danh sách ID đầy đủ, không trùng và version của course/revision. Toàn bộ cập nhật là atomic; xung đột trả 409 và rollback.',
     request: 'RevisionReorderRequest',
     response: 'CourseOutlineData',
     success: 200,
@@ -543,7 +602,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/lessons/{id}',
     access: 'COURSE_OWNER',
     description:
-      'Xóa lesson khỏi revision DRAFT khi revisionId và expectedVersion khớp.',
+      'Xóa lesson rỗng trong course/revision DRAFT hoặc REJECTED khi expectedVersion khớp. Có learning item con thì trả 409; không tự xóa nội dung con. Thao tác là atomic.',
     request: 'RevisionVersionRequest',
     success: 204,
   },
@@ -554,9 +613,10 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/chapters/{id}/lessons/order',
     access: 'COURSE_OWNER',
     description:
-      'Sắp xếp lại lesson trong revision DRAFT bằng danh sách ID và version của revision.',
+      'Sắp xếp lesson trong course/revision DRAFT hoặc REJECTED bằng danh sách ID đầy đủ, không trùng và version của course/revision. Atomic; xung đột trả 409. Trả mảng LessonData theo thứ tự mới.',
     request: 'RevisionReorderRequest',
-    response: 'CourseOutlineData',
+    response: 'LessonData',
+    array: true,
     success: 200,
   },
   {
@@ -590,7 +650,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/learning-items/{id}',
     access: 'COURSE_OWNER',
     description:
-      'Xóa learning item khỏi revision DRAFT khi revisionId và expectedVersion khớp.',
+      'Xóa learning item trong course/revision DRAFT hoặc REJECTED khi revisionId và expectedVersion khớp. Xóa, cập nhật thứ tự và tăng version trong cùng transaction.',
     request: 'RevisionVersionRequest',
     success: 204,
   },
@@ -601,7 +661,7 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     path: '/api/v1/lessons/{id}/items/order',
     access: 'COURSE_OWNER',
     description:
-      'Sắp xếp lại learning item trong revision DRAFT bằng danh sách ID và version của revision.',
+      'Sắp xếp learning item trong course/revision DRAFT hoặc REJECTED bằng danh sách ID đầy đủ, không trùng và version của course/revision. Toàn bộ cập nhật là atomic; xung đột trả 409 và rollback.',
     request: 'RevisionReorderRequest',
     response: 'CourseOutlineData',
     success: 200,
