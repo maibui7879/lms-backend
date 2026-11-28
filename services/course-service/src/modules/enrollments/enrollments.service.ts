@@ -73,7 +73,12 @@ export class EnrollmentsService {
           }),
         );
         const snapshot = enrollmentData(enrollment);
-        await this.outbox.created(manager, snapshot, correlationId);
+        await this.outbox.created(
+          manager,
+          snapshot,
+          correlationId,
+          course.title,
+        );
         return snapshot;
       });
     } catch (error) {

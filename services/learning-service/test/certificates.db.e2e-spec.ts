@@ -1,3 +1,8 @@
+import {
+  serveIdentityAccess,
+  fixtureActor,
+  bearerFor,
+} from './fixtures/identity-auth';
 import { execFile } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, rm, rmdir, writeFile } from 'node:fs/promises';
@@ -102,23 +107,17 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
   }
 
   const providersServer = createServer((req, res) => {
+    if (serveIdentityAccess(req, res)) return;
     const url = new URL(req.url!, 'http://localhost');
     const send = (data: unknown) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ data }));
     };
-    if (
-      url.pathname === '/api/v1/users/me' &&
-      req.headers['x-mock-user'] === 'studentB'
-    ) {
+    if (url.pathname === '/api/v1/internal/users/' + userId) {
       const profile = {
         ...providers.identity.studentB,
         id: identityId,
         displayName,
-        avatarUrl: null,
-        bio: null,
-        createdAt: providers.course.enrollment.enrolledAt,
-        version: 1,
       };
       if (identityGate) {
         void identityGate().then(() => send(profile));
@@ -128,7 +127,7 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
     }
     if (url.pathname === '/api/v1/enrollments/me') {
       const items =
-        req.headers['x-mock-user'] === 'studentB'
+        fixtureActor(req) === 'studentB'
           ? [
               {
                 enrollment: {
@@ -254,7 +253,7 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
     http()
       .post(issuePath())
       .set('Idempotency-Key', key)
-      .set('X-Mock-User', actor);
+      .set('Authorization', bearerFor(actor));
   const verify = (code: string) =>
     http().get(`/api/v1/certificates/verify/${code}`);
   const revoke = (
@@ -263,7 +262,7 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
     reason = revocationReason,
   ) => {
     const req = http().put(`/api/v1/admin/certificates/${id}/revocation`);
-    if (actor) req.set('X-Mock-User', actor);
+    if (actor) req.set('Authorization', bearerFor(actor));
     return req.send({ reason });
   };
   const revokedVerification = {
@@ -275,12 +274,12 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
   };
   const download = (id: string, actor?: string) => {
     const req = http().get(`/api/v1/learning/me/certificates/${id}/download`);
-    return actor ? req.set('X-Mock-User', actor) : req;
+    return actor ? req.set('Authorization', bearerFor(actor)) : req;
   };
   const list = (actor = 'studentB') =>
     http()
       .get('/api/v1/learning/me/certificates?limit=1')
-      .set('X-Mock-User', actor);
+      .set('Authorization', bearerFor(actor));
 
   async function grade(
     template: typeof providers.quiz.attemptGraded,
@@ -312,12 +311,12 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
         for (const item of items.filter(({ required }) => required))
           await http()
             .put(`/api/v1/learning/items/${item.id}/completion`)
-            .set('X-Mock-User', 'studentB')
+            .set('Authorization', bearerFor('studentB'))
             .send({ completed: true, contentVersion: version })
             .expect(200);
         await http()
           .put(`/api/v1/learning/lessons/${id}/completion`)
-          .set('X-Mock-User', 'studentB')
+          .set('Authorization', bearerFor('studentB'))
           .send({ completed: true, contentVersion: version })
           .expect(200);
       }
@@ -706,7 +705,10 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
 
   it('CERT-01/04/06 checks completion and policy, then issues once across concurrent requests and retries', async () => {
     await http().post(issuePath()).expect(401);
-    await http().post(issuePath()).set('X-Mock-User', 'studentB').expect(400);
+    await http()
+      .post(issuePath())
+      .set('Authorization', bearerFor('studentB'))
+      .expect(400);
     const foreign = await issue('first', 'studentA').expect(403);
     expect(foreign.body).toMatchObject({
       error: { code: 'ENROLLMENT_REQUIRED' },
@@ -716,7 +718,7 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
     await completeLessons(1);
     const progress = await http()
       .get(`/api/v1/learning/courses/${courseId}/progress`)
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .expect(200);
     expect(progress.body).toMatchObject({
       data: { lessonProgressPercent: 100, status: 'IN_PROGRESS' },
@@ -728,7 +730,7 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
     );
     const beforeGrade = await http()
       .get(`/api/v1/learning/courses/${courseId}/progress`)
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .expect(200);
     expect(beforeGrade.body).toMatchObject({
       data: { status: 'IN_PROGRESS', passedRequiredAssessments: 0 },
@@ -923,7 +925,7 @@ suite('Certificate API with PostgreSQL and mock providers', () => {
     };
     const page = await http()
       .get('/api/v1/learning/me/certificates?page=2&limit=1')
-      .set('X-Mock-User', 'studentB')
+      .set('Authorization', bearerFor('studentB'))
       .expect(200);
     expect(page.body).toMatchObject({
       data: { total: 2, items: [historical] },

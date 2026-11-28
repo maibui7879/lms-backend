@@ -2,6 +2,7 @@ import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 import type {
   EnrollmentCreatedV2Event,
   EnrollmentCancelledEvent,
+  CourseReviewNotificationEvent,
 } from '@lms/contracts';
 
 @Entity('course_event_outbox')
@@ -16,7 +17,10 @@ export class EnrollmentOutboxEvent {
   routingKey!: string;
 
   @Column({ type: 'jsonb' })
-  event!: EnrollmentCreatedV2Event | EnrollmentCancelledEvent;
+  event!:
+    | EnrollmentCreatedV2Event
+    | EnrollmentCancelledEvent
+    | CourseReviewNotificationEvent;
 
   @Column({ type: 'timestamptz' })
   createdAt!: Date;

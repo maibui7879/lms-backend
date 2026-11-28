@@ -7,6 +7,7 @@ COPY services/identity-service/package.json services/identity-service/package.js
 COPY services/course-service/package.json services/course-service/package.json
 COPY services/quiz-service/package.json services/quiz-service/package.json
 COPY services/learning-service/package.json services/learning-service/package.json
+COPY services/notification-service/package.json services/notification-service/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/auth/package.json packages/auth/package.json
 

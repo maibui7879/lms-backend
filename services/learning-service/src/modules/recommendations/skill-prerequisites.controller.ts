@@ -10,7 +10,8 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { LearningAuthGuard } from '../../common/auth/learning-auth.guard';
 import type { AuthUser } from '@lms/contracts';
 import type { Response } from 'express';
 import { ApiExceptionFilter, apiError } from '../../common/api-error';
@@ -21,7 +22,7 @@ import { SkillPrerequisitesRepository } from './repositories/skill-prerequisites
 
 @Controller('api/v1/learning/courses/:id/skill-prerequisites')
 @UseFilters(ApiExceptionFilter)
-@UseGuards(MockAuthGuard)
+@UseGuards(LearningAuthGuard)
 export class SkillPrerequisitesController {
   constructor(
     private readonly skills: CourseSkillsService,
@@ -33,7 +34,7 @@ export class SkillPrerequisitesController {
     @Param('id') id: string,
     @Query() query: Record<string, unknown>,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ) {
     if (Object.keys(query).length)
@@ -42,7 +43,7 @@ export class SkillPrerequisitesController {
     const currentRequestId = requestId(response);
     await this.skills.requireManager(courseId, user, {
       userId: user.id,
-      mockUser,
+      authorization,
       requestId: currentRequestId,
     });
     return {
@@ -57,7 +58,7 @@ export class SkillPrerequisitesController {
     @Body() input: unknown,
     @Query() query: Record<string, unknown>,
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ) {
     if (Object.keys(query).length)
@@ -66,7 +67,7 @@ export class SkillPrerequisitesController {
     const currentRequestId = requestId(response);
     await this.skills.requireManager(courseId, user, {
       userId: user.id,
-      mockUser,
+      authorization,
       requestId: currentRequestId,
     });
     const body = validateRequest('SaveSkillPrerequisitesRequest', input);

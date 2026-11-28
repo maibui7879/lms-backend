@@ -27,6 +27,7 @@ const ALLOWED_CALLERS_BY_SCOPE: Record<string, string[]> = {
     'assessment-service',
   ],
   getUserAccess: [
+    'notification-service',
     'api-gateway',
     'course-service',
     'quiz-service',

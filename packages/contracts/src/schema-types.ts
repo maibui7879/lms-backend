@@ -46,6 +46,7 @@ export interface SchemaTypes {
   CourseLearningStructure: Contracts.CourseLearningStructure;
   CourseLevel: Contracts.CourseLevel;
   CourseMetadata: Contracts.CourseMetadata;
+  CourseNotificationData: Contracts.CourseNotificationData;
   CourseOutlineData: Contracts.CourseOutlineData;
   CoursePatchNoticeData: Contracts.CoursePatchNoticeData;
   CourseProgressData: Contracts.CourseProgressData;
@@ -54,6 +55,7 @@ export interface SchemaTypes {
   CoursePublishedPayload: Contracts.CoursePublishedPayload;
   CourseQuery: Contracts.CourseQuery;
   CourseReviewData: Contracts.CourseReviewData;
+  CourseReviewNotificationEvent: Contracts.CourseReviewNotificationEvent;
   CourseReviewedEvent: Contracts.CourseReviewedEvent;
   CourseRevisionChangeData: Contracts.CourseRevisionChangeData;
   CourseRevisionData: Contracts.CourseRevisionData;
@@ -128,6 +130,8 @@ export interface SchemaTypes {
   MigrateCourseItemsRequest: Contracts.MigrateCourseItemsRequest;
   MigrationPolicy: Contracts.MigrationPolicy;
   MutationHeaders: Contracts.MutationHeaders;
+  NotificationCreatedPayload: Contracts.NotificationCreatedPayload;
+  NotificationQuery: Contracts.NotificationQuery;
   PageQuery: Contracts.PageQuery;
   Permission: Contracts.Permission;
   PinDiscussionRequest: Contracts.PinDiscussionRequest;
@@ -179,6 +183,7 @@ export interface SchemaTypes {
   StartAttemptData: Contracts.StartAttemptData;
   StartAttemptRequest: Contracts.StartAttemptRequest;
   SubmitAttemptRequest: Contracts.SubmitAttemptRequest;
+  UnreadNotificationCount: Contracts.UnreadNotificationCount;
   UpdateAccountStatusRequest: Contracts.UpdateAccountStatusRequest;
   UpdateChapterRequest: Contracts.UpdateChapterRequest;
   UpdateCompletionPolicyRequest: Contracts.UpdateCompletionPolicyRequest;

@@ -6,7 +6,8 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser, MockAuthGuard } from '@lms/auth';
+import { CurrentUser } from '@lms/auth';
+import { LearningAuthGuard } from '../../../common/auth/learning-auth.guard';
 import type {
   ApiResponse,
   AuthUser,
@@ -21,7 +22,7 @@ import { sortRecentQuizzes } from '../rules/recent-quiz';
 
 @Controller('api/v1/learning/me/dashboard')
 @UseFilters(ApiExceptionFilter)
-@UseGuards(MockAuthGuard)
+@UseGuards(LearningAuthGuard)
 export class DashboardController {
   constructor(
     private readonly course: CourseClient,
@@ -31,7 +32,7 @@ export class DashboardController {
   @Get()
   async getDashboard(
     @CurrentUser() user: AuthUser,
-    @Headers('x-mock-user') mockUser: string,
+    @Headers('authorization') authorization: string,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ApiResponse<LearningDashboardData>> {
     if (user.status !== 'ACTIVE')
@@ -39,7 +40,7 @@ export class DashboardController {
 
     const context = {
       userId: user.id,
-      mockUser,
+      authorization,
       requestId: requestId(response),
     };
     const courses: LearningDashboardData['courses'] = [];

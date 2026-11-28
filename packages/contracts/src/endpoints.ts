@@ -2,7 +2,7 @@
  * public Gateway prefix; Gateway forwards the path unchanged to its service. */
 export interface EndpointContract {
   operationId: string;
-  service: 'identity' | 'course' | 'quiz' | 'learning';
+  service: 'identity' | 'course' | 'quiz' | 'learning' | 'notification';
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
   path: string;
   description?: string;
@@ -22,12 +22,47 @@ export interface EndpointContract {
   response?: string;
   binaryResponse?: 'application/pdf';
   list?: boolean;
+  array?: boolean;
   nullable?: boolean;
   success: 200 | 201 | 204;
   idempotent?: boolean;
 }
 
 export const ENDPOINTS: readonly EndpointContract[] = [
+  {
+    operationId: 'listNotifications',
+    service: 'notification',
+    method: 'get',
+    path: '/api/v1/notifications',
+    access: 'AUTHENTICATED',
+    description:
+      "List only the authenticated user's notifications, with pagination and optional unread filtering.",
+    query: 'NotificationQuery',
+    response: 'CourseNotificationData',
+    list: true,
+    success: 200,
+  },
+  {
+    operationId: 'getUnreadNotificationCount',
+    service: 'notification',
+    method: 'get',
+    path: '/api/v1/notifications/unread-count',
+    access: 'AUTHENTICATED',
+    description: "Count only the authenticated user's unread notifications.",
+    response: 'UnreadNotificationCount',
+    success: 200,
+  },
+  {
+    operationId: 'markNotificationRead',
+    service: 'notification',
+    method: 'put',
+    path: '/api/v1/notifications/{id}/read',
+    access: 'AUTHENTICATED',
+    description:
+      "Mark an owned notification read. Repeated calls return 200 with the same readAt; no Idempotency-Key is required. Return NOT_FOUND for missing or other users' notifications.",
+    response: 'CourseNotificationData',
+    success: 200,
+  },
   {
     operationId: 'getDetailedProfile',
     service: 'identity',
@@ -398,6 +433,42 @@ export const ENDPOINTS: readonly EndpointContract[] = [
     access: 'AUTHENTICATED',
     description: 'Ghi nhận learner đã đọc một thông báo thay đổi nội dung.',
     success: 204,
+  },
+  {
+    operationId: 'listCourseChapters',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/courses/{id}/chapters',
+    access: 'ENROLLED',
+    description:
+      'List chapters in current course content, ordered by order then id. Same access rules as course outline; returns an array without nested lessons.',
+    response: 'ChapterData',
+    array: true,
+    success: 200,
+  },
+  {
+    operationId: 'listChapterLessons',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/chapters/{id}/lessons',
+    access: 'ENROLLED',
+    description:
+      'List lessons of a chapter in current course content. Same access rules as course outline; returns an array without nested items. Missing or non-current chapter returns 404.',
+    response: 'LessonData',
+    array: true,
+    success: 200,
+  },
+  {
+    operationId: 'listLessonLearningItems',
+    service: 'course',
+    method: 'get',
+    path: '/api/v1/lessons/{id}/learning-items',
+    access: 'ENROLLED',
+    description:
+      'List learning items of a lesson in current course content, ordered by order then id. Same access rules as course outline. Missing or non-current lesson returns 404.',
+    response: 'LearningItemData',
+    array: true,
+    success: 200,
   },
   {
     operationId: 'getCourseOutline',

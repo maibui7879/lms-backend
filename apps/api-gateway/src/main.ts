@@ -1,8 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { configureGateway } from './bootstrap/configure-gateway';
+import { configureSwagger } from './bootstrap/configure-swagger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  await configureGateway(app);
+  configureSwagger(app);
+  app.enableShutdownHooks();
 
   const port = Number(process.env.PORT ?? 3000);
 
