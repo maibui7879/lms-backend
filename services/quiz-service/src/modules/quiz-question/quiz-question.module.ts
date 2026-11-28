@@ -5,10 +5,11 @@ import { Quiz } from '../quiz/entities/quiz.entity';
 import { QuizQuestion } from './entities/quiz-question.entity';
 import { QuizQuestionController } from './quiz-question.controller';
 import { QuizQuestionService } from './quiz-question.service';
+import { CourseClient } from '../../integrations/course.client';
 
 @Module({
   imports: [QuizAuthModule, TypeOrmModule.forFeature([Quiz, QuizQuestion])],
   controllers: [QuizQuestionController],
-  providers: [QuizQuestionService],
+  providers: [QuizQuestionService, CourseClient],
 })
 export class QuizQuestionModule {}
