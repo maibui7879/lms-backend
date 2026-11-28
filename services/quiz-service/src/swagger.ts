@@ -71,6 +71,50 @@ export function setupSwagger(app: INestApplication): OpenAPIObject {
     );
   }
 
+  const deleteQuiz = document.paths['/api/v1/quizzes/{id}']?.delete;
+  if (deleteQuiz) {
+    const contract = quizContract.paths['/api/v1/quizzes/{id}'].delete;
+    const { responses, ...operation } = contract;
+    Object.assign(deleteQuiz, operation);
+    deleteQuiz.responses = Object.fromEntries(
+      Object.entries(responses).map(([status, response]) => [
+        status,
+        status === '204'
+          ? response
+          : {
+              ...response,
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiErrorResponse' },
+                },
+              },
+            },
+      ]),
+    );
+  }
+
+  const publishQuiz = document.paths['/api/v1/quizzes/{id}/publish']?.post;
+  if (publishQuiz) {
+    const contract = quizContract.paths['/api/v1/quizzes/{id}/publish'].post;
+    const { responses, ...operation } = contract;
+    Object.assign(publishQuiz, operation);
+    publishQuiz.responses = Object.fromEntries(
+      Object.entries(responses).map(([status, response]) => [
+        status,
+        status === '200'
+          ? response
+          : {
+              ...response,
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiErrorResponse' },
+                },
+              },
+            },
+      ]),
+    );
+  }
+
   const createQuestion = document.paths['/api/v1/quizzes/{id}/questions']?.post;
   const listQuestions = document.paths['/api/v1/quizzes/{id}/questions']?.get;
   if (listQuestions) {

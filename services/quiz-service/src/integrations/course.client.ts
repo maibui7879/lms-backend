@@ -61,6 +61,67 @@ export class CourseClient {
       );
   }
 
+  async hasQuizReference(
+    quizId: string,
+    courseId: string,
+    context: CourseRequestContext,
+  ): Promise<boolean> {
+    const raw = await this.get(
+      `/api/v1/courses/${courseId}/outline`,
+      context,
+      'NOT_COURSE_OWNER',
+    );
+    const outline = this.parseOutline(raw, courseId);
+    return outline.chapters.some(
+      (chapter) =>
+        chapter.endSectionQuiz?.quizId.toLowerCase() === quizId.toLowerCase() ||
+        chapter.lessons.some((lesson) =>
+          lesson.items.some(
+            (item) =>
+              item.type === 'QUIZ' &&
+              item.quizId.toLowerCase() === quizId.toLowerCase(),
+          ),
+        ),
+    );
+  }
+
+  async requirePublishReference(
+    quiz: CreateQuizRequest & { id: string; assessmentVersion: number },
+    context: CourseRequestContext,
+  ): Promise<void> {
+    const raw = await this.get(
+      `/api/v1/courses/${quiz.courseId}/outline`,
+      context,
+      'NOT_COURSE_OWNER',
+    );
+    const outline = this.parseOutline(raw, quiz.courseId);
+    const chapter = outline.chapters.find(
+      (item) => item.id.toLowerCase() === quiz.chapterId.toLowerCase(),
+    );
+    const matches =
+      quiz.placement === 'SECTION_END'
+        ? chapter?.endSectionQuiz?.quizId.toLowerCase() ===
+            quiz.id.toLowerCase() &&
+          chapter.endSectionQuiz.assessmentVersion === quiz.assessmentVersion &&
+          chapter.endSectionQuiz.passingScorePercent ===
+            quiz.policy.passingScorePercent
+        : chapter?.lessons.some(
+            (lesson) =>
+              lesson.id.toLowerCase() === quiz.lessonId.toLowerCase() &&
+              lesson.items.some(
+                (item) =>
+                  item.type === 'QUIZ' &&
+                  item.quizId.toLowerCase() === quiz.id.toLowerCase() &&
+                  item.assessmentVersion === quiz.assessmentVersion,
+              ),
+          );
+    if (!matches)
+      throw this.domainError(
+        'CONTENT_VERSION_MISMATCH',
+        'Course does not reference this quiz assessment version',
+      );
+  }
+
   private async get(
     path: string,
     context: CourseRequestContext,

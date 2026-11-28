@@ -1,6 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -16,17 +19,63 @@ import type {
   CreateQuizRequest,
   QuizData,
   UpdateQuizRequest,
+  VersionRequest,
 } from '@lms/contracts';
 import type { Request } from 'express';
 import { apiResponse } from '../../common/api-response';
 import { QuizAuthGuard } from '../../common/auth/quiz-auth.guard';
-import { CreateQuizPipe, UpdateQuizPipe } from './dto/create-quiz.dto';
+import {
+  CreateQuizPipe,
+  DeleteQuizPipe,
+  PublishQuizPipe,
+  UpdateQuizPipe,
+} from './dto/create-quiz.dto';
 import { QuizService } from './quiz.service';
 
 @Controller('api/v1/quizzes')
 @UseGuards(QuizAuthGuard)
 export class QuizController {
   constructor(private readonly quizService: QuizService) {}
+
+  @Post(':id/publish')
+  @HttpCode(HttpStatus.OK)
+  async publish(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(PublishQuizPipe) body: VersionRequest,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ): Promise<ApiResponse<QuizData>> {
+    const context = {
+      authorization: request.headers.authorization,
+      mockUser:
+        typeof request.headers['x-mock-user'] === 'string'
+          ? request.headers['x-mock-user']
+          : undefined,
+      requestId: String(request.headers['x-request-id']),
+    };
+    return apiResponse(
+      await this.quizService.publish(id, body, user, context),
+      context.requestId,
+    );
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(DeleteQuizPipe) body: VersionRequest,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ): Promise<void> {
+    await this.quizService.remove(id, body, user, {
+      authorization: request.headers.authorization,
+      mockUser:
+        typeof request.headers['x-mock-user'] === 'string'
+          ? request.headers['x-mock-user']
+          : undefined,
+      requestId: String(request.headers['x-request-id']),
+    });
+  }
 
   @Patch(':id')
   async update(
